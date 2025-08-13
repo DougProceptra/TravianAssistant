@@ -3,12 +3,13 @@
   "name": "Travian Legends Assistant",
   "version": "0.1.0",
   "description": "Read-only overlay and data tap for Travian Legends (EN).",
-  "permissions": [
-    "storage"
-  ],
+  "permissions": ["storage"],
   "host_permissions": [
     "*://*.travian.com/*",
-    "*://*.travian.*/*"
+    "*://*.travian.de/*",
+    "*://*.travian.us/*",
+    "*://*.travian.co.uk/*",
+    "*://*.travian.fr/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -17,11 +18,12 @@
     {
       "matches": [
         "*://*.travian.com/*",
-        "*://*.travian.*/*"
+        "*://*.travian.de/*",
+        "*://*.travian.us/*",
+        "*://*.travian.co.uk/*",
+        "*://*.travian.fr/*"
       ],
-      "js": [
-        "content.js"
-      ],
+      "js": ["content.js"],
       "run_at": "document_end"
     }
   ],

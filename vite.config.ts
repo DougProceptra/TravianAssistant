@@ -1,29 +1,52 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 
 export default defineConfig({
   plugins: [
-    react(),
-    runtimeErrorOverlay(),
+    viteStaticCopy({
+      targets: [
+        { src: "manifest.json", dest: "." } // -> dist/manifest.json
+      ]
+    })
   ],
-  resolve: {
-    alias: {
-      "@": path.resolve(process.cwd(), "client", "src"),
-      "@shared": path.resolve(process.cwd(), "shared"),
-      "@assets": path.resolve(process.cwd(), "attached_assets"),
-    },
-  },
-  root: path.resolve(process.cwd(), "client"),
   build: {
-    outDir: path.resolve(process.cwd(), "dist/public"),
-    emptyOutDir: true,
-  },
-  server: {
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
-    },
-  },
+    outDir: "dist",
+    rollupOptions: {
+      input: {
+        content: "src/content/index.ts",
+        background: "src/background/service_worker.ts",
+        options: "src/options/index.html"
+      },
+      output: {
+        entryFileNames: "[name].js",
+        assetFileNames: "[name][extname]"
+      }
+    }
+  }
+});
+import { defineConfig } from "vite";
+import { viteStaticCopy } from "vite-plugin-static-copy";
+
+export default defineConfig({
+  plugins: [
+    viteStaticCopy({
+      targets: [
+        { src: "manifest.json", dest: "." } // -> dist/manifest.json
+      ]
+    })
+  ],
+  build: {
+    outDir: "dist",
+    rollupOptions: {
+      input: {
+        content: "src/content/index.ts",
+        background: "src/background/service_worker.ts",
+        options: "src/options/index.html"
+      },
+      output: {
+        entryFileNames: "[name].js",
+        assetFileNames: "[name][extname]"
+      }
+    }
+  }
 });
