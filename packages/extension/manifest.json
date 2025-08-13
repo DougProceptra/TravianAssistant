@@ -4,31 +4,11 @@
   "version": "0.1.0",
   "description": "Read-only overlay and data tap for Travian Legends (EN).",
   "permissions": ["storage"],
-  "host_permissions": [
-    "*://*.travian.com/*",
-    "*://*.travian.de/*",
-    "*://*.travian.us/*",
-    "*://*.travian.co.uk/*",
-    "*://*.travian.fr/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
+  "host_permissions": ["*://*.travian.com/*"],
+  "background": { "service_worker": "background.js" },
   "content_scripts": [
-    {
-      "matches": [
-        "*://*.travian.com/*",
-        "*://*.travian.de/*",
-        "*://*.travian.us/*",
-        "*://*.travian.co.uk/*",
-        "*://*.travian.fr/*"
-      ],
-      "js": ["content.js"],
-      "run_at": "document_end"
-    }
+    { "matches": ["*://*.travian.com/*"], "js": ["content.js"], "run_at": "document_end" }
   ],
   "options_page": "src/options/index.html",
-  "action": {
-    "default_title": "TLA"
-  }
+  "action": { "default_title": "TLA" }
 }

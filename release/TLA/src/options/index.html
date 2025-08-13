@@ -1,0 +1,10 @@
+<!doctype html><html><body>
+<h3>Travian Legends Assistant</h3>
+<label><input id="overlay" type="checkbox"/> Enable overlay</label>
+<script>
+const key="tla.overlay";
+const el=document.getElementById('overlay');
+chrome.storage.sync.get([key], v => el.checked = !!v[key]);
+el.addEventListener('change', ()=> chrome.storage.sync.set({[key]: el.checked}));
+</script>
+</body></html>
