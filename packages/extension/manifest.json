@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Travian Legends Assistant",
+  "version": "0.1.0",
+  "description": "Read-only overlay and data tap for Travian Legends (EN).",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.travian.com/*",
+    "*://*.travian.*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.travian.com/*",
+        "*://*.travian.*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "TLA"
+  }
+}

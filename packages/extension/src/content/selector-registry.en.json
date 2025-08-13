@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "lang": "en",
+  "pages": {
+    "dorf1": {
+      "resources": {
+        "wood": {
+          "value": "#l1 .value",
+          "perHour": "#l1 .prod"
+        },
+        "clay": {
+          "value": "#l2 .value",
+          "perHour": "#l2 .prod"
+        },
+        "iron": {
+          "value": "#l3 .value",
+          "perHour": "#l3 .prod"
+        },
+        "crop": {
+          "value": "#l4 .value",
+          "perHour": "#l4 .prod",
+          "net": "#stockBar .res .crop .balance"
+        }
+      },
+      "capacity": {
+        "warehouse": "#stockBar .warehouse",
+        "granary": "#stockBar .granary"
+      }
+    }
+  }
+}
