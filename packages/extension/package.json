@@ -1,0 +1,10 @@
+{
+  "name": "@tla/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cd ../.. && NODE_ENV=development npx tsx server/index-minimal.ts"
+  },
+  "dependencies": {}
+}
