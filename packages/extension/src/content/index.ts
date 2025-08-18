@@ -1,471 +1,428 @@
-import { ensureBar } from "../overlay";
-import registry from "./selector-registry.en.json";
+/** Travian Loader Assistant – content script (v0.2.4)
+ *  - Live HUD in the top-right with key info
+ *  - Scrapes resources, capacities, build queue, hero stats
+ *  - Saves world-state snapshots to localStorage every 5s
+ *  - Works across dorf1, dorf2, /hero/*, rally point, and other pages
+ *
+ *  NOTE: This file is self-contained (no imports). Safe to paste over existing content/index.ts.
+ */
 
-/* ───────────────────────────
-   Utilities
-   ─────────────────────────── */
-const DEBOUNCE_MS = 300;
-let timer: number | undefined;
+//////////////////////////
+// Constants & Utilities
+//////////////////////////
 
-function identifyPage(path: string) {
-  const p = path.toLowerCase();
-  if (p.includes("dorf1")) return "dorf1";
-  if (p.includes("dorf2") || p.includes("build.php")) return "dorf2";
-  if (p.includes("/hero/") || p.includes("hero.php")) return "hero";
-  if (p.includes("gid=16")) return "rally";
-  if (p.includes("gid=17")) return "market";
-  return "other";
-}
+const VERSION = "0.2.4";
+const HUD_ID = "__tla_hud__";
+const SNAPSHOT_KEY = "tla:snapshots";
+const SNAPSHOT_MAX = 100; // keep last N snapshots
+const TICK_MS = 1000;     // HUD refresh
+const SNAPSHOT_MS = 5000; // localStorage persist
 
-function $text(sel?: string | null, root: ParentNode = document): string | undefined {
-  if (!sel) return undefined;
-  return root.querySelector(sel)?.textContent ?? undefined;
-}
+let hudTimer: number | undefined;
+let snapshotTimer: number | undefined;
 
-function toNum(raw?: string | null): number | undefined {
+/** Normalize text and extract the last numeric token (robust to NBSP, bidi marks, commas). */
+function parseNum(raw?: string | null): number | undefined {
   if (!raw) return undefined;
   const cleaned = raw
-    .replace(/[\u00A0\u202F\u200E\u200F\u202A-\u202E]/g, "")
-    .replace(/[’']/g, "")
-    .replace(/\s+/g, " ")
+    .replace(/\u00A0/g, " ")          // NBSP -> space
+    .replace(/[\u200E\u200F\u202A-\u202E]/g, "") // bidi/control chars
+    .replace(/[’']/g, "")             // stray quotes
+    .replace(/\s+/g, " ")             // collapse spaces
     .trim();
-  const match = cleaned.match(/-?\d+(?:[.,]\d+)?/g);
-  if (!match) return undefined;
-  const token = match[match.length - 1].replace(",", "");
-  const n = Number(token);
+
+  // Grab all number-like tokens and take the last (often the visible value).
+  const matches = cleaned.match(/-?\d{1,3}(?:[.,\s]\d{3})*(?:\.\d+)?|-?\d+(?:\.\d+)?/g);
+  if (!matches || matches.length === 0) return undefined;
+  const last = matches[matches.length - 1].replace(/\s|,/g, "");
+  const n = Number(last);
   return Number.isFinite(n) ? n : undefined;
 }
-const fmt = (n?: number) => (typeof n === "number" && isFinite(n) ? n.toLocaleString() : "?");
 
-/* ───────────────────────────
-   dorf1: resources + capacity
-   ─────────────────────────── */
-function scrapeDorf1(doc: Document) {
-  const sel: any = (registry as any).pages?.dorf1;
-  if (!sel) return undefined;
-
-  const wood = toNum($text(sel.resources.wood.value, doc));
-  const clay = toNum($text(sel.resources.clay.value, doc));
-  const iron = toNum($text(sel.resources.iron.value, doc));
-  const crop = toNum($text(sel.resources.crop.value, doc));
-  const wh = toNum($text(sel.capacity.warehouse, doc));
-  const gr = toNum($text(sel.capacity.granary, doc));
-
-  if ([wood, clay, iron, crop].some(v => v == null)) return undefined;
-
-  return {
-    resources: {
-      wood: { current: wood },
-      clay: { current: clay },
-      iron: { current: iron },
-      crop: { current: crop },
-    },
-    capacity: { warehouse: wh, granary: gr },
-  };
+/** Safe query textContent. */
+function text(sel: string): string | undefined {
+  return (document.querySelector(sel)?.textContent || undefined)?.trim();
 }
 
-/* ───────────────────────────
-   dorf2: build queue
-   ─────────────────────────── */
-
-type BuildItem = { name?: string; level?: number; timeText?: string; finishesAt?: number };
-
-const BUILD_SEL = {
-  row: ".buildingList li, .underConstruction li, .buildingList .slotRow, .buildingList .contract",
-  name: [".name", ".title", ".building", ".desc", ".text", ".slot", ".contract .value"],
-  time: [".buildDuration", ".duration", ".time", ".finishesAt", ".timer"],
-} as const;
-
-function pickFirst(root: Element, selectors: readonly string[]): string | undefined {
+/** Try a list of selectors, return first hit raw text + which selector matched. */
+function pickText(selectors: string[]): { sel?: string; raw?: string } {
   for (const s of selectors) {
-    const el = root.querySelector(s);
-    const val = el?.textContent?.trim();
-    if (val) return val;
-  }
-  return undefined;
-}
-
-function splitNameLevel(raw?: string) {
-  if (!raw) return {};
-  const m = raw.match(/^(.*?)(?:\s+Level\s+(\d+))?$/i);
-  if (!m) return { name: raw };
-  const name = m[1].trim();
-  const level = m[2] ? Number(m[2]) : undefined;
-  return { name, level };
-}
-
-function parseTimeText(raw?: string): { timeText?: string; finishesAt?: number } {
-  if (!raw) return {};
-  const timeMatch = raw.match(/(\d{1,2}:\d{2}:\d{2}|\d{1,2}:\d{2})/);
-  const timeText = timeMatch?.[1];
-  let finishesAt: number | undefined;
-  const atMatch = raw.match(/\b(?:at|done\s+at)\s+(\d{1,2}:\d{2})(?::\d{2})?\b/i);
-  if (atMatch) {
-    const [hh, mm] = atMatch[1].split(":").map(n => Number(n));
-    const d = new Date();
-    d.setSeconds(0, 0);
-    d.setHours(hh, mm, 0, 0);
-    if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
-    finishesAt = d.getTime();
-  }
-  return { timeText, finishesAt };
-}
-
-function scrapeBuildQueue(doc: Document): { items: BuildItem[] } | undefined {
-  const rows = Array.from(doc.querySelectorAll(BUILD_SEL.row));
-  if (!rows.length) return undefined;
-
-  const items: BuildItem[] = [];
-
-  for (const row of rows) {
-    const rawName = pickFirst(row, BUILD_SEL.name);
-    const rawTime = pickFirst(row, BUILD_SEL.time);
-    if (!rawName && !rawTime) continue;
-
-    const { name, level } = splitNameLevel(rawName);
-    const { timeText, finishesAt } = parseTimeText(rawTime);
-    items.push({ name, level, timeText, finishesAt });
-  }
-
-  return items.length ? { items } : undefined;
-}
-
-/* ───────────────────────────
-   Master Builder (floating panel)
-   ─────────────────────────── */
-function scrapeMasterBuilder(doc: Document): { items: BuildItem[] } | undefined {
-  // Find any panel that contains the phrase "Master builder"
-  const candidates = Array.from(doc.querySelectorAll("div, section, article"))
-    .filter(el => (el.textContent || "").toLowerCase().includes("master builder"));
-  if (!candidates.length) {
-    // Fallback: scan for lines that look like "Something Level N  Start of construction in 00:.."
-    const lines = Array.from(doc.querySelectorAll("li, .contract, .slotRow, p, .white, .content"))
-      .map(el => (el.textContent || "").replace(/\s+/g, " ").trim())
-      .filter(t => /level\s+\d+/i.test(t) && /start of construction/i.test(t));
-    if (!lines.length) return undefined;
-    const items = lines.map(t => {
-      const nameMatch = t.match(/^(.*?level\s+\d+)/i)?.[1] || t;
-      const lvMatch = t.match(/level\s+(\d+)/i);
-      const timeBits = parseTimeText(t);
-      return {
-        name: (nameMatch || "").replace(/\blevel\s+\d+.*$/i, "").trim() || undefined,
-        level: lvMatch ? Number(lvMatch[1]) : undefined,
-        timeText: timeBits.timeText,
-        finishesAt: timeBits.finishesAt,
-      } as BuildItem;
-    });
-    return items.length ? { items } : undefined;
-  }
-
-  // Parse lines inside the first matching panel
-  const panel = candidates[0];
-  const lines = Array.from(panel.querySelectorAll("li, .contract, .slotRow, p, div"))
-    .map(el => (el.textContent || "").replace(/\s+/g, " ").trim())
-    .filter(t => t && /level\s+\d+/i.test(t));
-  const items: BuildItem[] = [];
-  for (const t of lines) {
-    const lvMatch = t.match(/level\s+(\d+)/i);
-    const nameRaw = t.replace(/start of construction.*$/i, "");
-    const baseName = nameRaw.replace(/\blevel\s+\d+.*$/i, "").trim();
-    const timeBits = parseTimeText(t);
-    items.push({
-      name: baseName || undefined,
-      level: lvMatch ? Number(lvMatch[1]) : undefined,
-      timeText: timeBits.timeText,
-      finishesAt: timeBits.finishesAt,
-    });
-  }
-  return items.length ? { items } : undefined;
-}
-
-/* ───────────────────────────
-   Troop movements (dorf1)
-   ─────────────────────────── */
-type MovementSummary = { count?: number; next?: string };
-
-function extractTimersFrom(el: Element): string[] {
-  // Collect any timer-like strings
-  const txt = (el.textContent || "").replace(/\s+/g, " ");
-  const times = Array.from(txt.matchAll(/\b\d{1,2}:\d{2}:\d{2}\b|\b\d{1,2}:\d{2}\b/g)).map(m => m[0]);
-  // plus explicit elements commonly used for countdowns
-  const q = el.querySelectorAll(".timer, .countdown, .dur, .duration, .in, .time");
-  for (const t of Array.from(q)) {
-    const v = (t.textContent || "").trim();
-    if (v && !times.includes(v)) times.push(v);
-  }
-  return times;
-}
-
-function summarizeBlock(labelEl: Element): MovementSummary {
-  // The block is usually a parent/sibling section of the label
-  let block: Element | null = labelEl.closest("div, section");
-  if (!block || block.textContent === labelEl.textContent) {
-    block = labelEl.parentElement;
-  }
-  if (!block) return {};
-  // Count items (li/rows) and grab the nearest/first timer
-  const rows = block.querySelectorAll("li, tr, .movement, .row");
-  const count = rows.length || undefined;
-  const timers = extractTimersFrom(block);
-  const next = timers.length ? timers[0] : undefined;
-  return { count, next };
-}
-
-function scrapeMovements(doc: Document): { incoming?: MovementSummary; outgoing?: MovementSummary; adventures?: MovementSummary } | undefined {
-  const allEls: Element[] = Array.from(doc.querySelectorAll("div, section, h3, h4, span, strong"));
-  let incoming: MovementSummary | undefined;
-  let outgoing: MovementSummary | undefined;
-  let adventures: MovementSummary | undefined;
-
-  for (const el of allEls) {
-    const t = (el.textContent || "").toLowerCase().trim();
-    if (!t) continue;
-    if (!incoming && /incoming\s+troops/.test(t)) incoming = summarizeBlock(el);
-    else if (!outgoing && /outgoing\s+troops/.test(t)) outgoing = summarizeBlock(el);
-    else if (!adventures && /adventure/.test(t)) adventures = summarizeBlock(el);
-  }
-
-  if (!incoming && !outgoing && !adventures) return undefined;
-  return { incoming, outgoing, adventures };
-}
-
-/* ───────────────────────────
-   Hero scraping (all tabs)
-   ─────────────────────────── */
-const HERO_TOPBAR = {
-  gold:   [".ajaxReplaceableGoldAmount", "#goldAmount", ".topBar .gold .value", "#gs .gold .value"],
-  silver: [".ajaxReplaceableSilverAmount", "#silverAmount", ".topBar .silver .value", "#gs .silver .value"],
-} as const;
-
-function pickNum(selectors: readonly string[]): { value?: number; used?: string } {
-  for (const s of selectors) {
-    const v = toNum($text(s));
-    if (v != null) return { value: v, used: s };
+    const el = document.querySelector(s);
+    const raw = el?.textContent?.trim();
+    if (raw) return { sel: s, raw };
   }
   return {};
 }
 
-function percentFromProgressBar(pb: Element | null): number | undefined {
-  if (!pb) return undefined;
-  const valText = ($text(".value", pb as unknown as ParentNode) ?? "").trim();
-  const fromText = toNum(valText);
-  if (typeof fromText === "number") return Math.max(0, Math.min(100, fromText));
-  const fill =
-    (pb.querySelector(".filling.primary") as HTMLElement | null) ||
-    (pb.querySelector(".filling.secondary") as HTMLElement | null);
-  const style = fill?.getAttribute("style") || "";
-  const m = style.match(/width:\s*([0-9.]+)%/i);
-  return m ? Math.max(0, Math.min(100, Number(m[1]))) : undefined;
+/** Try primary then fallback selectors, returning parsed number and the selector used. */
+function pickNum(primary: string[], fallback: string[] = []): { value?: number; used?: string } {
+  const a = pickText(primary);
+  if (a.raw) return { value: parseNum(a.raw), used: a.sel };
+  const b = pickText(fallback);
+  if (b.raw) return { value: parseNum(b.raw), used: b.sel };
+  return {};
 }
 
-function scrapeHeroItems(doc: Document) {
-  const equippedSel = ".heroEquipment .slot, .heroItems .slot, .equipment .slot";
-  const invSel = ".inventory .slot, .backpack .slot, .items .slot";
-  const readName = (el: Element) =>
-    (el.querySelector("img")?.getAttribute("alt") ||
-      el.querySelector("img")?.getAttribute("title") ||
-      el.getAttribute("title") ||
-      el.textContent ||
-      "")
-      .trim()
-      .replace(/\s+/g, " ");
-
-  const equipped: string[] = [];
-  for (const slot of Array.from(doc.querySelectorAll(equippedSel))) {
-    const name = readName(slot);
-    if (name) equipped.push(name);
-  }
-
-  const inventory: string[] = [];
-  for (const slot of Array.from(doc.querySelectorAll(invSel))) {
-    const name = readName(slot);
-    if (name) inventory.push(name);
-  }
-
-  return { equipped, inventory };
+/** Throttle helper for mutation observer. */
+function debounce(fn: () => void, ms: number) {
+  let t: number | undefined;
+  return () => {
+    if (t) clearTimeout(t);
+    t = window.setTimeout(fn, ms);
+  };
 }
 
-function scrapeHeroAttributes(doc: Document) {
-  const bars = Array.from(doc.querySelectorAll(".stats .progressBar, .content2 .progressBar"));
+//////////////////////////
+// Page Identification
+//////////////////////////
 
-  let healthPct: number | undefined;
-  let xpPct: number | undefined;
-  let speedText: string | undefined;
+type PageKind = "dorf1" | "dorf2" | "hero" | "rally" | "market" | "other";
 
-  for (const pb of bars) {
-    const label = ($text(".name", pb as unknown as ParentNode) || "").toLowerCase().trim();
-    if (label.includes("health")) healthPct ??= percentFromProgressBar(pb);
-    else if (label.includes("experience")) xpPct ??= percentFromProgressBar(pb);
-    else if (label.includes("speed")) {
-      const all = (pb.textContent || "").replace(/\s+/g, " ").trim();
-      speedText ??= all.replace(/^\s*speed\s*:?/i, "").trim();
+function identifyPage(path: string): PageKind {
+  const p = path.toLowerCase();
+  if (p.includes("dorf1")) return "dorf1";
+  if (p.includes("dorf2")) return "dorf2";
+  if (p.includes("/hero/")) return "hero";
+  if (p.includes("gid=16") || p.includes("rally")) return "rally";
+  if (p.includes("gid=17") || p.includes("market")) return "market";
+  return "other";
+}
+
+//////////////////////////
+// Selectors (with fallbacks)
+//////////////////////////
+
+const SEL = {
+  // Top stock bar (present on all pages)
+  wood: ["#stockBar .r1 .value", "#stockBar .wood .value", ".ajaxReplaceableWoodAmount", ".r1.value"],
+  clay: ["#stockBar .r2 .value", "#stockBar .clay .value", ".ajaxReplaceableClayAmount", ".r2.value"],
+  iron: ["#stockBar .r3 .value", "#stockBar .iron .value", ".ajaxReplaceableIronAmount", ".r3.value"],
+  crop: ["#stockBar .r4 .value", "#stockBar .crop .value", ".ajaxReplaceableCropAmount", ".r4.value"],
+
+  // Warehouse / Granary capacities in the stock bar
+  warehouseCap: ["#stockBar .warehouse .value", "#stockBar .warehouse", ".ajaxReplaceableWarehouse", ".warehouse .value"],
+  granaryCap: ["#stockBar .granary .value", "#stockBar .granary", ".ajaxReplaceableGranary", ".granary .value"],
+
+  // Dorf1 production (widget on the right). We’ll parse numbers directly from its list items.
+  prodBox: ".production", // container
+  prodWood: [".production .r1", ".production .wood"],
+  prodClay: [".production .r2", ".production .clay"],
+  prodIron: [".production .r3", ".production .iron"],
+  prodCrop: [".production .r4", ".production .crop"],
+
+  // Build queue (works on dorf2 + appears as panel on dorf1)
+  buildRow: ".buildingList li, #build .buildingList li, .buildingList .entry, .boxes .box .ul .li",
+  buildName: [".name", ".title", ".building", ".desc", ".text", ".slot", ".contract .value"],
+  buildTime: [".buildDuration", ".duration", ".time", ".finishesAt", ".timer"],
+
+  // Hero attributes (hero/attributes)
+  heroStatRow: ".content .stats .progressBar, .content .stats .bar, .progressBar", // generic
+  heroStatName: ".name",
+  heroStatValue: ".value, .valueue", // value text
+  heroFillPrimary: ".filling.primary", // width style -> %
+  heroFillSecondary: ".filling.secondary", // sometimes layered
+
+  // Rally overview (gid=16&t=1)
+  rallyIncomingTable: "#build .incomings, #build .incomingTroops, #build .troop_details, .incomingTroops",
+};
+
+//////////////////////////
+// HUD
+//////////////////////////
+
+function ensureHUD(): HTMLDivElement {
+  let el = document.getElementById(HUD_ID) as HTMLDivElement | null;
+  if (!el) {
+    el = document.createElement("div");
+    el.id = HUD_ID;
+    el.style.position = "fixed";
+    el.style.top = "8px";
+    el.style.right = "8px";
+    el.style.padding = "6px 10px";
+    el.style.background = "rgba(0,0,0,0.75)";
+    el.style.color = "#fff";
+    el.style.font = "12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    el.style.borderRadius = "10px";
+    el.style.zIndex = "2147483647";
+    el.style.pointerEvents = "none";
+    el.style.whiteSpace = "pre";
+    document.documentElement.appendChild(el);
+  }
+  return el;
+}
+
+const fmt = (n?: number) => (typeof n === "number" && isFinite(n) ? n.toLocaleString() : "?");
+const pct = (n?: number) => (typeof n === "number" && isFinite(n) ? Math.round(n) + "%" : "?");
+
+//////////////////////////
+// Scrapers
+//////////////////////////
+
+type ResourceBlock = {
+  current?: number;
+  perHour?: number;
+};
+type ResourcesSnapshot = {
+  wood?: ResourceBlock;
+  clay?: ResourceBlock;
+  iron?: ResourceBlock;
+  crop?: ResourceBlock & { net?: number };
+  capacity?: { warehouse?: number; granary?: number };
+};
+
+function scrapeResources(): ResourcesSnapshot {
+  // Current amounts (global, top bar)
+  const w = pickNum(SEL.wood);
+  const c = pickNum(SEL.clay);
+  const i = pickNum(SEL.iron);
+  const g = pickNum(SEL.crop);
+
+  // Capacities
+  const capW = pickNum(SEL.warehouseCap);
+  const capG = pickNum(SEL.granaryCap);
+
+  // Per-hour (try dorf1 widget if present; fall back to null)
+  const prodBox = document.querySelector(SEL.prodBox);
+  const per = { w: undefined as number | undefined, c: undefined as number | undefined, i: undefined as number | undefined, g: undefined as number | undefined };
+  if (prodBox) {
+    per.w = parseNum(document.querySelector(SEL.prodWood[0])?.textContent || document.querySelector(SEL.prodWood[1])?.textContent || undefined);
+    per.c = parseNum(document.querySelector(SEL.prodClay[0])?.textContent || document.querySelector(SEL.prodClay[1])?.textContent || undefined);
+    per.i = parseNum(document.querySelector(SEL.prodIron[0])?.textContent || document.querySelector(SEL.prodIron[1])?.textContent || undefined);
+    per.g = parseNum(document.querySelector(SEL.prodCrop[0])?.textContent || document.querySelector(SEL.prodCrop[1])?.textContent || undefined);
+  }
+
+  return {
+    wood: { current: w.value, perHour: per.w },
+    clay: { current: c.value, perHour: per.c },
+    iron: { current: i.value, perHour: per.i },
+    crop: { current: g.value, perHour: per.g, net: undefined }, // net crop is trickier; can add later
+    capacity: { warehouse: capW.value, granary: capG.value },
+  };
+}
+
+type BuildItem = { name?: string; timeText?: string };
+function scrapeBuildQueue(): BuildItem[] {
+  const rows = Array.from(document.querySelectorAll(SEL.buildRow));
+  if (!rows.length) return [];
+  const out: BuildItem[] = [];
+  for (const row of rows.slice(0, 3)) {
+    let name: string | undefined;
+    let timeText: string | undefined;
+
+    for (const s of SEL.buildName) {
+      const el = row.querySelector(s);
+      const raw = el?.textContent?.trim();
+      if (raw) {
+        name = raw.replace(/\s+/g, " ");
+        break;
+      }
     }
+    for (const s of SEL.buildTime) {
+      const el = row.querySelector(s);
+      const raw = el?.textContent?.trim();
+      if (raw) {
+        timeText = raw.replace(/\s+/g, " ");
+        break;
+      }
+    }
+    out.push({ name, timeText });
   }
-
-  const bonusBox = doc.querySelector(".attributes, .attributeBox, .attributeView, .attributesBox");
-  const readBonus = (label: string) => {
-    if (!bonusBox) return undefined;
-    const row = Array.from(bonusBox.querySelectorAll("tr, .row, .attribute, li")).find(r =>
-      (r.textContent || "").toLowerCase().includes(label)
-    );
-    if (!row) return undefined;
-    return (row.textContent || "").replace(/\s+/g, " ").trim();
-  };
-
-  const bonuses = {
-    fighting: readBonus("fighting"),
-    off: readBonus("off"),
-    def: readBonus("def"),
-    resources: readBonus("resource"),
-  };
-
-  return { healthPct, xpPct, speedText, bonuses };
-}
-
-function scrapeHero(doc: Document) {
-  const gold = pickNum(HERO_TOPBAR.gold);
-  const silver = pickNum(HERO_TOPBAR.silver);
-
-  const path = location.pathname.toLowerCase();
-  let view: "inventory" | "attributes" | "appearance" | "other" = "other";
-  if (path.includes("/hero/inventory")) view = "inventory";
-  else if (path.includes("/hero/attributes")) view = "attributes";
-  else if (path.includes("/hero/appearance")) view = "appearance";
-
-  const out: any = {
-    view,
-    gold: gold.value,
-    silver: silver.value,
-    _used: { goldSel: gold.used, silverSel: silver.used },
-  };
-
-  if (view === "inventory") {
-    Object.assign(out, scrapeHeroItems(doc));
-  } else if (view === "attributes") {
-    Object.assign(out, scrapeHeroAttributes(doc));
-  } else if (view === "appearance") {
-    out.appearance = { active: true };
-  }
-
-  const meaningful =
-    out.gold != null ||
-    out.silver != null ||
-    out.healthPct != null ||
-    out.xpPct != null ||
-    (Array.isArray(out.equipped) && out.equipped.length) ||
-    (Array.isArray(out.inventory) && out.inventory.length) ||
-    out.speedText;
-
-  return meaningful ? out : undefined;
-}
-
-/* ───────────────────────────
-   Snapshot + HUD
-   ─────────────────────────── */
-function scrapeSnapshot(page: string) {
-  const out: any = { page };
-
-  if (page === "dorf1") {
-    const d1 = scrapeDorf1(document);
-    if (d1) Object.assign(out, d1);
-
-    const mv = scrapeMovements(document);
-    if (mv) out.movements = mv;
-
-    const mb = scrapeMasterBuilder(document);
-    if (mb) out.masterBuilder = mb;
-  }
-
-  if (page === "dorf2") {
-    const q = scrapeBuildQueue(document);
-    if (q) out.build = q;
-
-    const mb = scrapeMasterBuilder(document);
-    if (mb) out.masterBuilder = mb;
-  }
-
-  if (page === "hero") {
-    out.hero = scrapeHero(document);
-  }
-
   return out;
 }
 
-function render(payload: any, page: string) {
-  const bar = ensureBar();
+type HeroSnapshot = {
+  healthPct?: number;
+  xp?: number;
+  speedFieldsPerHour?: number;
+};
+function scrapeHero(): HeroSnapshot | undefined {
+  if (!location.pathname.includes("/hero/")) return undefined;
 
-  if (page === "dorf1" && payload?.resources) {
-    const r = payload.resources;
-    const cap = payload.capacity || {};
-    const mv = payload.movements || {};
-    const inStr = mv.incoming?.count != null ? ` in:${mv.incoming.count}` : "";
-    const outStr = mv.outgoing?.count != null ? ` out:${mv.outgoing.count}` : "";
-    const nextStr = mv.incoming?.next || mv.outgoing?.next ? ` next ${mv.incoming?.next || mv.outgoing?.next}` : "";
-    bar.textContent =
-      `W:${fmt(r.wood?.current)}  ` +
-      `C:${fmt(r.clay?.current)}  ` +
-      `I:${fmt(r.iron?.current)}  ` +
-      `G:${fmt(r.crop?.current)}  ` +
-      `| Cap W:${fmt(cap.warehouse)} G:${fmt(cap.granary)}  ` +
-      `${inStr}${outStr}${nextStr}  (dorf1)`;
-    return;
+  // Try progress bars (attributes page)
+  const rows = Array.from(document.querySelectorAll(SEL.heroStatRow));
+  const hero: HeroSnapshot = {};
+  for (const r of rows) {
+    const label = r.querySelector(SEL.heroStatName)?.textContent?.trim()?.toLowerCase();
+    const valueText = r.querySelector(SEL.heroStatValue)?.textContent?.trim();
+    const primaryFill = (r.querySelector(SEL.heroFillPrimary) as HTMLElement | null)?.style.width;
+    const secondaryFill = (r.querySelector(SEL.heroFillSecondary) as HTMLElement | null)?.style.width;
+
+    if (!label) continue;
+
+    if (label.includes("health")) {
+      const p = parseNum(primaryFill || secondaryFill || valueText || "");
+      hero.healthPct = p;
+    } else if (label.includes("experience")) {
+      hero.xp = parseNum(valueText);
+    } else if (label.includes("speed")) {
+      hero.speedFieldsPerHour = parseNum(valueText);
+    }
   }
 
-  if (page === "dorf2") {
-    const items: BuildItem[] = payload?.build?.items || [];
-    const next = items[0]?.timeText || (items.length ? "…" : "idle");
-
-    // If Master Builder also present, show the soonest "start in" from that list as well
-    const mbItems: BuildItem[] = payload?.masterBuilder?.items || [];
-    const mbNext = mbItems[0]?.timeText;
-
-    bar.textContent = `Q:${items.length} next ${next}${mbNext ? ` | MB ${mbNext}` : ""}  (dorf2)`;
-    return;
+  // Fallbacks: try to parse visible speed line “34 fields/hour”
+  if (hero.speedFieldsPerHour == null) {
+    const speedLine = Array.from(document.querySelectorAll(".stats, .content")).map((n) => n.textContent || "").join(" ");
+    const maybe = speedLine.match(/(\d+)\s*fields?\/\s*hour/i);
+    if (maybe) hero.speedFieldsPerHour = Number(maybe[1]);
   }
 
-  if (page === "hero") {
-    const h = payload?.hero || {};
-    const bits: string[] = [];
-    bits.push(`Au:${fmt(h.gold)}`, `Ag:${fmt(h.silver)}`);
-    bits.push(`♥${typeof h.healthPct === "number" ? `${h.healthPct}%` : "?"}`);
-    bits.push(`XP:${typeof h.xpPct === "number" ? `${h.xpPct}%` : "?"}`);
-    if (h.speedText) bits.push(`spd:${h.speedText}`);
-    if (Array.isArray(h.equipped) && h.equipped.length) bits.push(`eq:${h.equipped.length}`);
-    if (Array.isArray(h.inventory) && h.inventory.length) bits.push(`inv:${h.inventory.length}`);
-    bar.textContent = `${bits.join("  ")}  (hero:${h.view || "?"})`;
-    return;
-  }
-
-  bar.textContent = `TLA active — page: ${page}`;
+  // If no stats found at all, return undefined
+  if (hero.healthPct == null && hero.xp == null && hero.speedFieldsPerHour == null) return undefined;
+  return hero;
 }
 
-/* ───────────────────────────
-   Loop
-   ─────────────────────────── */
-function tick() {
+type RallySnapshot = {
+  incomingCount?: number;
+};
+function scrapeRally(): RallySnapshot | undefined {
+  const isRally = location.search.toLowerCase().includes("gid=16") || location.pathname.toLowerCase().includes("rally");
+  if (!isRally) return undefined;
+  const wrap = document.querySelector(SEL.rallyIncomingTable) || document.querySelector("#build");
+  if (!wrap) return { incomingCount: 0 };
+  // Count rows that look like incoming troop entries
+  const rows = wrap.querySelectorAll("tr, .troop_details, .incomings .row");
+  return { incomingCount: rows.length || undefined };
+}
+
+//////////////////////////
+// Snapshot + HUD render
+//////////////////////////
+
+type Snapshot = {
+  ts: number;
+  page: PageKind;
+  url: string;
+  resources: ResourcesSnapshot;
+  buildQueue?: BuildItem[];
+  hero?: HeroSnapshot;
+  rally?: RallySnapshot;
+  version: string;
+};
+
+function buildSnapshot(): Snapshot {
   const page = identifyPage(location.pathname + location.search);
-  const payload = scrapeSnapshot(page);
+  const resources = scrapeResources();
+  const buildQueue = scrapeBuildQueue();
+  const hero = scrapeHero();
+  const rally = scrapeRally();
 
-  window.postMessage(
-    { __tla: true, type: "SNAPSHOT/UPSERT", page, ts: Date.now(), payload },
-    "*"
-  );
-
-  console.debug("[TLA] snapshot", payload);
-  render(payload, page);
+  return {
+    ts: Date.now(),
+    page,
+    url: location.href,
+    resources,
+    buildQueue: buildQueue && buildQueue.length ? buildQueue : undefined,
+    hero,
+    rally,
+    version: VERSION,
+  };
 }
 
-function onMut() {
-  if (timer) clearTimeout(timer);
-  // @ts-ignore
-  timer = setTimeout(tick, DEBOUNCE_MS);
+function renderHUD(s: Snapshot) {
+  const hud = ensureHUD();
+
+  const r = s.resources || {};
+  const w = r.wood?.current, c = r.clay?.current, i = r.iron?.current, g = r.crop?.current;
+  const capW = r.capacity?.warehouse, capG = r.capacity?.granary;
+
+  let line1 =
+    `TLA v${VERSION} — page: ${s.page}\n` +
+    `W:${fmt(w)}  C:${fmt(c)}  I:${fmt(i)}  G:${fmt(g)}  | Cap W:${fmt(capW)} G:${fmt(capG)}`;
+
+  const parts: string[] = [line1];
+
+  if (s.hero) {
+    parts.push(`Hero HP:${pct(s.hero.healthPct)}  XP:${fmt(s.hero.xp)}  Spd:${fmt(s.hero.speedFieldsPerHour)} f/h`);
+  }
+
+  if (s.buildQueue && s.buildQueue.length) {
+    const first = s.buildQueue[0];
+    parts.push(`Build: ${first.name || "?"} (${first.timeText || "?"})`);
+  } else if (s.page === "dorf2") {
+    parts.push(`Build: (idle)`);
+  }
+
+  if (s.rally?.incomingCount != null) {
+    parts.push(`Rally incoming rows: ${s.rally.incomingCount}`);
+  }
+
+  hud.textContent = parts.join("\n");
 }
 
-const observer = new MutationObserver(onMut);
-observer.observe(document.documentElement, {
-  subtree: true,
-  childList: true,
-  characterData: true,
-});
+function saveSnapshot(s: Snapshot) {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    const arr: Snapshot[] = raw ? JSON.parse(raw) : [];
+    arr.push(s);
+    while (arr.length > SNAPSHOT_MAX) arr.shift();
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(arr));
+  } catch (e) {
+    // Swallow; localStorage might be full or blocked.
+    console.warn("[TLA] snapshot save failed", e);
+  }
+}
 
-tick();
+//////////////////////////
+// Main loop
+//////////////////////////
+
+function refresh() {
+  const s = buildSnapshot();
+  renderHUD(s);
+  // Optional: broadcast for devtools/logging tools
+  window.postMessage({ __tla: true, type: "SNAPSHOT", payload: s }, "*");
+  // Debug console (comment out if noisy)
+  // console.debug("[TLA]", s);
+}
+
+function persist() {
+  const s = buildSnapshot();
+  saveSnapshot(s);
+  // Keep HUD fresh as well on snapshot ticks
+  renderHUD(s);
+}
+
+// Start timers
+function startLoops() {
+  if (hudTimer) clearInterval(hudTimer);
+  if (snapshotTimer) clearInterval(snapshotTimer);
+
+  refresh();
+  persist();
+
+  hudTimer = window.setInterval(refresh, TICK_MS);
+  snapshotTimer = window.setInterval(persist, SNAPSHOT_MS);
+}
+
+// Re-render on DOM mutations (debounced)
+const mo = new MutationObserver(debounce(refresh, 250));
+mo.observe(document.documentElement, { subtree: true, childList: true, characterData: true });
+
+// Kick off
+startLoops();
+
+// Expose a tiny debug helper in console
+//   window.TLA?.dump() -> prints latest snapshot
+declare global {
+  interface Window {
+    TLA?: any;
+  }
+}
+window.TLA = {
+  version: VERSION,
+  dump() {
+    try {
+      const raw = localStorage.getItem(SNAPSHOT_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      console.log(`[TLA] snapshots (${arr.length})`, arr[arr.length - 1]);
+      return arr[arr.length - 1];
+    } catch {
+      console.log("[TLA] no snapshots");
+      return null;
+    }
+  },
+  clear() {
+    localStorage.removeItem(SNAPSHOT_KEY);
+    console.log("[TLA] snapshots cleared");
+  },
+};

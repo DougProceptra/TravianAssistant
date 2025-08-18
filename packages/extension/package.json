@@ -1,18 +1,18 @@
 {
   "name": "@tla/extension",
   "private": true,
+  "version": "0.2.1",
   "type": "module",
   "scripts": {
-    "dev": "vite --config vite.config.ts",
+    "prebuild": "node ./scripts/bump-version.cjs",
     "build": "vite build --config vite.config.ts",
-    "test": "vitest run"
+    "watch": "vite build --watch --config vite.config.ts",
+    "clean": "rimraf dist"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.270",
-    "typescript": "^5.5.4",
-    "vite": "^5.4.8",
-    "vite-plugin-static-copy": "^3.1.1",
-    "vitest": "^2.0.5",
-    "zod": "^3.23.8"
+    "rimraf": "^5.0.5",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.19",
+    "vite-plugin-static-copy": "^1.0.4"
   }
 }
