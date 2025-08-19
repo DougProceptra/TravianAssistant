@@ -1,428 +1,401 @@
-/** Travian Loader Assistant – content script (v0.2.4)
- *  - Live HUD in the top-right with key info
- *  - Scrapes resources, capacities, build queue, hero stats
- *  - Saves world-state snapshots to localStorage every 5s
- *  - Works across dorf1, dorf2, /hero/*, rally point, and other pages
- *
- *  NOTE: This file is self-contained (no imports). Safe to paste over existing content/index.ts.
- */
+// packages/extension/src/content/index.ts
+// Travian Legends Assistant - Content Script (v0.2.6)
+// - 5s scrape cadence (paused when tab hidden)
+// - Safe selectors w/ per-field “used selector” + errors
+// - Minimal HUD with version, heartbeat, page, ✔︎/✖︎ groups, "Force scrape", "Copy JSON"
+// - Global debug: window.TLA.debug()
+// NOTE: This file is self-contained to avoid import mismatches.
 
-//////////////////////////
-// Constants & Utilities
-//////////////////////////
+(() => {
+  const VERSION = "0.2.6"; // Keep in sync with manifest.json
+  const LOOP_MS = 5000;
 
-const VERSION = "0.2.4";
-const HUD_ID = "__tla_hud__";
-const SNAPSHOT_KEY = "tla:snapshots";
-const SNAPSHOT_MAX = 100; // keep last N snapshots
-const TICK_MS = 1000;     // HUD refresh
-const SNAPSHOT_MS = 5000; // localStorage persist
+  // ---------- Utils ----------
+  const $ = (sel: string, root: ParentNode = document) =>
+    root.querySelector<HTMLElement>(sel) || null;
+  const $all = (sel: string, root: ParentNode = document) =>
+    Array.from(root.querySelectorAll<HTMLElement>(sel));
 
-let hudTimer: number | undefined;
-let snapshotTimer: number | undefined;
+  const txt = (el: Element | null | undefined) =>
+    (el?.textContent || "").trim() || undefined;
 
-/** Normalize text and extract the last numeric token (robust to NBSP, bidi marks, commas). */
-function parseNum(raw?: string | null): number | undefined {
-  if (!raw) return undefined;
-  const cleaned = raw
-    .replace(/\u00A0/g, " ")          // NBSP -> space
-    .replace(/[\u200E\u200F\u202A-\u202E]/g, "") // bidi/control chars
-    .replace(/[’']/g, "")             // stray quotes
-    .replace(/\s+/g, " ")             // collapse spaces
-    .trim();
-
-  // Grab all number-like tokens and take the last (often the visible value).
-  const matches = cleaned.match(/-?\d{1,3}(?:[.,\s]\d{3})*(?:\.\d+)?|-?\d+(?:\.\d+)?/g);
-  if (!matches || matches.length === 0) return undefined;
-  const last = matches[matches.length - 1].replace(/\s|,/g, "");
-  const n = Number(last);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-/** Safe query textContent. */
-function text(sel: string): string | undefined {
-  return (document.querySelector(sel)?.textContent || undefined)?.trim();
-}
-
-/** Try a list of selectors, return first hit raw text + which selector matched. */
-function pickText(selectors: string[]): { sel?: string; raw?: string } {
-  for (const s of selectors) {
-    const el = document.querySelector(s);
-    const raw = el?.textContent?.trim();
-    if (raw) return { sel: s, raw };
-  }
-  return {};
-}
-
-/** Try primary then fallback selectors, returning parsed number and the selector used. */
-function pickNum(primary: string[], fallback: string[] = []): { value?: number; used?: string } {
-  const a = pickText(primary);
-  if (a.raw) return { value: parseNum(a.raw), used: a.sel };
-  const b = pickText(fallback);
-  if (b.raw) return { value: parseNum(b.raw), used: b.sel };
-  return {};
-}
-
-/** Throttle helper for mutation observer. */
-function debounce(fn: () => void, ms: number) {
-  let t: number | undefined;
-  return () => {
-    if (t) clearTimeout(t);
-    t = window.setTimeout(fn, ms);
+  const toNum = (s?: string) => {
+    if (!s) return undefined;
+    // Normalize numbers like 12,345 or 12 345 or "‭3,445‬"
+    const cleaned = s.replace(/[^\d.,]/g, "").replace(/\u202F|\u00A0/g, "");
+    // prefer last number group, then strip commas
+    const m = cleaned.match(/[\d.,]+/g);
+    if (!m) return undefined;
+    const last = m[m.length - 1].replace(/,/g, "");
+    const n = Number(last);
+    return isFinite(n) ? n : undefined;
   };
-}
 
-//////////////////////////
-// Page Identification
-//////////////////////////
+  function pick(selectors: string[], root: ParentNode = document): { value?: string; sel?: string } {
+    for (const s of selectors) {
+      const el = $(s, root);
+      const v = txt(el);
+      if (v) return { value: v, sel: s };
+    }
+    return {};
+  }
 
-type PageKind = "dorf1" | "dorf2" | "hero" | "rally" | "market" | "other";
+  function pickNum(selectors: string[], root: ParentNode = document) {
+    const p = pick(selectors, root);
+    return { value: toNum(p.value), sel: p.sel };
+  }
 
-function identifyPage(path: string): PageKind {
-  const p = path.toLowerCase();
-  if (p.includes("dorf1")) return "dorf1";
-  if (p.includes("dorf2")) return "dorf2";
-  if (p.includes("/hero/")) return "hero";
-  if (p.includes("gid=16") || p.includes("rally")) return "rally";
-  if (p.includes("gid=17") || p.includes("market")) return "market";
-  return "other";
-}
+  function nowStamp() {
+    const d = new Date();
+    const hh = d.getHours().toString().padStart(2, "0");
+    const mm = d.getMinutes().toString().padStart(2, "0");
+    const ss = d.getSeconds().toString().padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  }
 
-//////////////////////////
-// Selectors (with fallbacks)
-//////////////////////////
+  function identifyPage(path: string) {
+    const p = path.toLowerCase();
+    if (p.includes("dorf1")) return "dorf1";
+    if (p.includes("dorf2")) return "dorf2";
+    if (p.includes("/hero/inventory")) return "hero_inventory";
+    if (p.includes("/hero/attributes")) return "hero_attributes";
+    if (p.includes("/hero/appearance")) return "hero_appearance";
+    if (p.includes("gid=16")) return "rallypoint"; // Rally Point (overview tab)
+    return "other";
+  }
 
-const SEL = {
-  // Top stock bar (present on all pages)
-  wood: ["#stockBar .r1 .value", "#stockBar .wood .value", ".ajaxReplaceableWoodAmount", ".r1.value"],
-  clay: ["#stockBar .r2 .value", "#stockBar .clay .value", ".ajaxReplaceableClayAmount", ".r2.value"],
-  iron: ["#stockBar .r3 .value", "#stockBar .iron .value", ".ajaxReplaceableIronAmount", ".r3.value"],
-  crop: ["#stockBar .r4 .value", "#stockBar .crop .value", ".ajaxReplaceableCropAmount", ".r4.value"],
+  // ---------- Selectors ----------
+  const SEL = {
+    // Top bar resources (multiple fallbacks; works on dorf1/dorf2/others)
+    res: {
+      wood: [
+        "#l1 .value", "#l1.value", ".r1 .value",
+        "#stockBar .r1 .value", "#stockBar .wood .value"
+      ],
+      clay: [
+        "#l2 .value", "#l2.value", ".r2 .value",
+        "#stockBar .r2 .value", "#stockBar .clay .value"
+      ],
+      iron: [
+        "#l3 .value", "#l3.value", ".r3 .value",
+        "#stockBar .r3 .value", "#stockBar .iron .value"
+      ],
+      crop: [
+        "#l4 .value", "#l4.value", ".r4 .value",
+        "#stockBar .r4 .value", "#stockBar .crop .value"
+      ],
+      cap: [
+        "#stockBar .warehouse .capacity .value",
+        "#stockBar .warehouse .value", ".warehouse .capacity .value",
+      ],
+      gran: [
+        "#stockBar .granary .capacity .value",
+        "#stockBar .granary .value", ".granary .capacity .value",
+      ],
+      gold: [
+        ".ajaxReplaceableGoldAmount", "#topBar .gold .value", ".gold .value"
+      ],
+      silver: [
+        ".ajaxReplaceableSilverAmount", "#topBar .silver .value", ".silver .value"
+      ],
+    },
 
-  // Warehouse / Granary capacities in the stock bar
-  warehouseCap: ["#stockBar .warehouse .value", "#stockBar .warehouse", ".ajaxReplaceableWarehouse", ".warehouse .value"],
-  granaryCap: ["#stockBar .granary .value", "#stockBar .granary", ".ajaxReplaceableGranary", ".granary .value"],
+    // Build queue (dorf1/dorf2 center panel)
+    build: {
+      rows: ".buildingList li, .boxes.buildingList li, .buildingList .build .entry, .buildingList .active .entry",
+      name: [".name", ".title", ".building", ".desc", ".text", ".slot"],
+      timer: [".contract .value", ".finishingTime .value", ".timer", ".countdown"],
+    },
 
-  // Dorf1 production (widget on the right). We’ll parse numbers directly from its list items.
-  prodBox: ".production", // container
-  prodWood: [".production .r1", ".production .wood"],
-  prodClay: [".production .r2", ".production .clay"],
-  prodIron: [".production .r3", ".production .iron"],
-  prodCrop: [".production .r4", ".production .crop"],
+    // Hero attributes page
+    heroAttr: {
+      box: ".contentNavi .herobox, #content .herobox, .contentNavi + .content .herobox, .heroAttributesBox, #herobox", // broad
+      statsRow: ".stats .progressBar",
+      // within a stats row:
+      rowLabel: ".name",
+      rowValue: ".value",
+      rowPrimaryFill: ".bar .filling.primary",
+      rowSecondaryFill: ".bar .filling.secondary",
+      speedText: ".value, .speedValue, .fieldsPerHour",
+    },
 
-  // Build queue (works on dorf2 + appears as panel on dorf1)
-  buildRow: ".buildingList li, #build .buildingList li, .buildingList .entry, .boxes .box .ul .li",
-  buildName: [".name", ".title", ".building", ".desc", ".text", ".slot", ".contract .value"],
-  buildTime: [".buildDuration", ".duration", ".time", ".finishesAt", ".timer"],
+    // Rally point (incoming overview)
+    rally: {
+      table: "#overview .troop_details, #build .overview, .troop_movements",
+      headerRow: ".movements .thead, .last tr.troop_info, .thead",
+      // Fallback: count of blocks
+      blocks: ".movements .tr, .movements .tbody .tr, .incoming .tr, .incoming .mov",
+    },
+  } as const;
 
-  // Hero attributes (hero/attributes)
-  heroStatRow: ".content .stats .progressBar, .content .stats .bar, .progressBar", // generic
-  heroStatName: ".name",
-  heroStatValue: ".value, .valueue", // value text
-  heroFillPrimary: ".filling.primary", // width style -> %
-  heroFillSecondary: ".filling.secondary", // sometimes layered
+  // ---------- Scrapers ----------
+  type Used = Record<string, string | undefined>;
+  type GroupResult<T> = { ok: boolean; used: Used; data: T; errors?: string[] };
 
-  // Rally overview (gid=16&t=1)
-  rallyIncomingTable: "#build .incomings, #build .incomingTroops, #build .troop_details, .incomingTroops",
-};
+  function scrapeResources(): GroupResult<{
+    wood?: number; clay?: number; iron?: number; crop?: number;
+    cap?: number; gran?: number; gold?: number; silver?: number;
+  }> {
+    const used: Used = {};
+    const errors: string[] = [];
+    const w = pickNum(SEL.res.wood); used.wood = w.sel;
+    const c = pickNum(SEL.res.clay); used.clay = c.sel;
+    const i = pickNum(SEL.res.iron); used.iron = i.sel;
+    const r = pickNum(SEL.res.crop); used.crop = r.sel;
+    const cap = pickNum(SEL.res.cap); used.cap = cap.sel;
+    const gran = pickNum(SEL.res.gran); used.gran = gran.sel;
+    const gold = pickNum(SEL.res.gold); used.gold = gold.sel;
+    const silver = pickNum(SEL.res.silver); used.silver = silver.sel;
 
-//////////////////////////
-// HUD
-//////////////////////////
+    const data = {
+      wood: w.value, clay: c.value, iron: i.value, crop: r.value,
+      cap: cap.value, gran: gran.value, gold: gold.value, silver: silver.value,
+    };
+    Object.entries(data).forEach(([k, v]) => { if (typeof v !== "number") errors.push(`missing:${k}`); });
+    return { ok: errors.length === 0, used, data, errors };
+  }
 
-function ensureHUD(): HTMLDivElement {
-  let el = document.getElementById(HUD_ID) as HTMLDivElement | null;
-  if (!el) {
+  function scrapeBuild(): GroupResult<{ items: Array<{ name?: string; timeText?: string }> }> {
+    const used: Used = {};
+    const rows = $all(SEL.build.rows);
+    if (!rows.length) {
+      return { ok: false, used, data: { items: [] }, errors: ["no-rows"] };
+    }
+    const items = rows.map((row) => {
+      const namePick = pick(SEL.build.name, row);
+      const tPick = pick(SEL.build.timer, row);
+      return { name: namePick.value, timeText: tPick.value };
+    });
+    used.rows = SEL.build.rows;
+    return { ok: items.length > 0, used, data: { items } };
+  }
+
+  function scrapeHeroAttributes(): GroupResult<{
+    health?: { pct?: number; text?: string };
+    experience?: { pct?: number; text?: string };
+    speed?: { fieldsPerHour?: number; text?: string };
+  }> {
+    const used: Used = {};
+    const errors: string[] = [];
+
+    // Try to locate visible stats rows
+    const rows = $all(SEL.heroAttr.statsRow);
+    used.statsRow = SEL.heroAttr.statsRow;
+
+    // Helper: read percent from style width
+    const pctFromRow = (row: HTMLElement | null) => {
+      if (!row) return undefined;
+      const pri = $(SEL.heroAttr.rowPrimaryFill, row);
+      const sec = $(SEL.heroAttr.rowSecondaryFill, row);
+      const read = (el: HTMLElement | null) => {
+        const style = el?.getAttribute("style") || "";
+        const m = style.match(/width:\s*([\d.]+)%/);
+        return m ? Number(m[1]) : undefined;
+      };
+      return read(pri) ?? read(sec);
+    };
+
+    // Discover rows by label
+    let healthPct: number | undefined;
+    let healthText: string | undefined;
+    let expPct: number | undefined;
+    let expText: string | undefined;
+    let speedFph: number | undefined;
+    let speedText: string | undefined;
+
+    rows.forEach((row) => {
+      const label = txt($(SEL.heroAttr.rowLabel, row))?.toLowerCase() || "";
+      const raw = txt($(SEL.heroAttr.rowValue, row));
+      if (label.includes("health")) {
+        healthPct = pctFromRow(row);
+        healthText = raw;
+      } else if (label.includes("experience")) {
+        expPct = pctFromRow(row);
+        expText = raw;
+      } else if (label.includes("speed")) {
+        // sometimes speed is rendered in a separate line/row
+        speedText = raw || txt($(SEL.heroAttr.speedText, row));
+        speedFph = toNum(speedText);
+      }
+    });
+
+    // If speed isn’t in rows, try outside box
+    if (speedFph == null) {
+      const any = pick(SEL.heroAttr.speedText);
+      speedText = any.value || speedText;
+      speedFph = toNum(speedText);
+      if (any.sel) used.speed = any.sel;
+    }
+
+    const data = {
+      health: { pct: healthPct, text: healthText },
+      experience: { pct: expPct, text: expText },
+      speed: { fieldsPerHour: speedFph, text: speedText },
+    };
+
+    if (healthPct == null) errors.push("hero.health.missing");
+    if (expPct == null) errors.push("hero.exp.missing");
+    if (speedFph == null) errors.push("hero.speed.missing");
+
+    return { ok: errors.length === 0, used, data, errors };
+  }
+
+  function scrapeRally(): GroupResult<{ incomingCount?: number }> {
+    const used: Used = {};
+    const blocks = $all(SEL.rally.blocks);
+    used.blocks = SEL.rally.blocks;
+    const count = blocks.length || undefined;
+    return { ok: typeof count === "number", used, data: { incomingCount: count } };
+  }
+
+  // ---------- HUD ----------
+  const HUD_ID = "tla-hud";
+  function ensureHUD() {
+    let el = document.getElementById(HUD_ID) as HTMLDivElement | null;
+    if (el) return el;
+
     el = document.createElement("div");
     el.id = HUD_ID;
     el.style.position = "fixed";
     el.style.top = "8px";
     el.style.right = "8px";
-    el.style.padding = "6px 10px";
-    el.style.background = "rgba(0,0,0,0.75)";
-    el.style.color = "#fff";
-    el.style.font = "12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-    el.style.borderRadius = "10px";
     el.style.zIndex = "2147483647";
-    el.style.pointerEvents = "none";
-    el.style.whiteSpace = "pre";
+    el.style.font = "12px/1.3 system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    el.style.color = "#eee";
+    el.style.background = "rgba(0,0,0,.65)";
+    el.style.padding = "8px 10px";
+    el.style.borderRadius = "8px";
+    el.style.backdropFilter = "blur(2px)";
+    el.style.boxShadow = "0 2px 8px rgba(0,0,0,.35)";
+    el.style.minWidth = "220px";
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div><b>TLA</b> <span id="tla-ver"></span> — <span id="tla-page"></span></div>
+        <div id="tla-heart" title="last scrape">--:--:--</div>
+      </div>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+        <span id="tla-chip-res"   style="padding:2px 6px;border-radius:999px;background:#333">Res</span>
+        <span id="tla-chip-build" style="padding:2px 6px;border-radius:999px;background:#333">Build</span>
+        <span id="tla-chip-hero"  style="padding:2px 6px;border-radius:999px;background:#333">Hero</span>
+        <span id="tla-chip-rall"  style="padding:2px 6px;border-radius:999px;background:#333">Rally</span>
+      </div>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+        <button id="tla-btn-scrape" style="padding:2px 6px;border-radius:6px;border:1px solid #555;background:#1f6feb;color:#fff;cursor:pointer">Force scrape</button>
+        <button id="tla-btn-copy" style="padding:2px 6px;border-radius:6px;border:1px solid #555;background:#444;color:#fff;cursor:pointer">Copy JSON</button>
+      </div>
+      <div id="tla-msg" style="margin-top:6px;opacity:.8"></div>
+    `;
     document.documentElement.appendChild(el);
-  }
-  return el;
-}
 
-const fmt = (n?: number) => (typeof n === "number" && isFinite(n) ? n.toLocaleString() : "?");
-const pct = (n?: number) => (typeof n === "number" && isFinite(n) ? Math.round(n) + "%" : "?");
+    // wire buttons
+    $("#tla-btn-scrape", el)?.addEventListener("click", () => runOnce(true));
+    $("#tla-btn-copy", el)?.addEventListener("click", () => {
+      navigator.clipboard.writeText(JSON.stringify(lastPayload, null, 2))
+        .then(() => showMsg("Copied payload to clipboard"))
+        .catch(() => showMsg("Copy failed"));
+    });
 
-//////////////////////////
-// Scrapers
-//////////////////////////
-
-type ResourceBlock = {
-  current?: number;
-  perHour?: number;
-};
-type ResourcesSnapshot = {
-  wood?: ResourceBlock;
-  clay?: ResourceBlock;
-  iron?: ResourceBlock;
-  crop?: ResourceBlock & { net?: number };
-  capacity?: { warehouse?: number; granary?: number };
-};
-
-function scrapeResources(): ResourcesSnapshot {
-  // Current amounts (global, top bar)
-  const w = pickNum(SEL.wood);
-  const c = pickNum(SEL.clay);
-  const i = pickNum(SEL.iron);
-  const g = pickNum(SEL.crop);
-
-  // Capacities
-  const capW = pickNum(SEL.warehouseCap);
-  const capG = pickNum(SEL.granaryCap);
-
-  // Per-hour (try dorf1 widget if present; fall back to null)
-  const prodBox = document.querySelector(SEL.prodBox);
-  const per = { w: undefined as number | undefined, c: undefined as number | undefined, i: undefined as number | undefined, g: undefined as number | undefined };
-  if (prodBox) {
-    per.w = parseNum(document.querySelector(SEL.prodWood[0])?.textContent || document.querySelector(SEL.prodWood[1])?.textContent || undefined);
-    per.c = parseNum(document.querySelector(SEL.prodClay[0])?.textContent || document.querySelector(SEL.prodClay[1])?.textContent || undefined);
-    per.i = parseNum(document.querySelector(SEL.prodIron[0])?.textContent || document.querySelector(SEL.prodIron[1])?.textContent || undefined);
-    per.g = parseNum(document.querySelector(SEL.prodCrop[0])?.textContent || document.querySelector(SEL.prodCrop[1])?.textContent || undefined);
+    return el;
   }
 
-  return {
-    wood: { current: w.value, perHour: per.w },
-    clay: { current: c.value, perHour: per.c },
-    iron: { current: i.value, perHour: per.i },
-    crop: { current: g.value, perHour: per.g, net: undefined }, // net crop is trickier; can add later
-    capacity: { warehouse: capW.value, granary: capG.value },
-  };
-}
-
-type BuildItem = { name?: string; timeText?: string };
-function scrapeBuildQueue(): BuildItem[] {
-  const rows = Array.from(document.querySelectorAll(SEL.buildRow));
-  if (!rows.length) return [];
-  const out: BuildItem[] = [];
-  for (const row of rows.slice(0, 3)) {
-    let name: string | undefined;
-    let timeText: string | undefined;
-
-    for (const s of SEL.buildName) {
-      const el = row.querySelector(s);
-      const raw = el?.textContent?.trim();
-      if (raw) {
-        name = raw.replace(/\s+/g, " ");
-        break;
-      }
-    }
-    for (const s of SEL.buildTime) {
-      const el = row.querySelector(s);
-      const raw = el?.textContent?.trim();
-      if (raw) {
-        timeText = raw.replace(/\s+/g, " ");
-        break;
-      }
-    }
-    out.push({ name, timeText });
-  }
-  return out;
-}
-
-type HeroSnapshot = {
-  healthPct?: number;
-  xp?: number;
-  speedFieldsPerHour?: number;
-};
-function scrapeHero(): HeroSnapshot | undefined {
-  if (!location.pathname.includes("/hero/")) return undefined;
-
-  // Try progress bars (attributes page)
-  const rows = Array.from(document.querySelectorAll(SEL.heroStatRow));
-  const hero: HeroSnapshot = {};
-  for (const r of rows) {
-    const label = r.querySelector(SEL.heroStatName)?.textContent?.trim()?.toLowerCase();
-    const valueText = r.querySelector(SEL.heroStatValue)?.textContent?.trim();
-    const primaryFill = (r.querySelector(SEL.heroFillPrimary) as HTMLElement | null)?.style.width;
-    const secondaryFill = (r.querySelector(SEL.heroFillSecondary) as HTMLElement | null)?.style.width;
-
-    if (!label) continue;
-
-    if (label.includes("health")) {
-      const p = parseNum(primaryFill || secondaryFill || valueText || "");
-      hero.healthPct = p;
-    } else if (label.includes("experience")) {
-      hero.xp = parseNum(valueText);
-    } else if (label.includes("speed")) {
-      hero.speedFieldsPerHour = parseNum(valueText);
-    }
+  function setChip(id: string, ok: boolean) {
+    const chip = document.getElementById(id);
+    if (!chip) return;
+    chip.textContent = chip.textContent?.split(" ")[0] + (ok ? " ✔︎" : " ✖︎");
+    chip.setAttribute("style",
+      `padding:2px 6px;border-radius:999px;background:${ok ? "#264d00" : "#5a0000"};color:#fff`);
   }
 
-  // Fallbacks: try to parse visible speed line “34 fields/hour”
-  if (hero.speedFieldsPerHour == null) {
-    const speedLine = Array.from(document.querySelectorAll(".stats, .content")).map((n) => n.textContent || "").join(" ");
-    const maybe = speedLine.match(/(\d+)\s*fields?\/\s*hour/i);
-    if (maybe) hero.speedFieldsPerHour = Number(maybe[1]);
+  function showMsg(s: string) {
+    const el = document.getElementById("tla-msg");
+    if (!el) return;
+    el.textContent = s;
+    setTimeout(() => { if (el.textContent === s) el.textContent = ""; }, 3000);
   }
 
-  // If no stats found at all, return undefined
-  if (hero.healthPct == null && hero.xp == null && hero.speedFieldsPerHour == null) return undefined;
-  return hero;
-}
+  // ---------- Main loop ----------
+  let lastPayload: any = null;
+  let timer: number | undefined;
 
-type RallySnapshot = {
-  incomingCount?: number;
-};
-function scrapeRally(): RallySnapshot | undefined {
-  const isRally = location.search.toLowerCase().includes("gid=16") || location.pathname.toLowerCase().includes("rally");
-  if (!isRally) return undefined;
-  const wrap = document.querySelector(SEL.rallyIncomingTable) || document.querySelector("#build");
-  if (!wrap) return { incomingCount: 0 };
-  // Count rows that look like incoming troop entries
-  const rows = wrap.querySelectorAll("tr, .troop_details, .incomings .row");
-  return { incomingCount: rows.length || undefined };
-}
+  function buildPayload() {
+    const page = identifyPage(location.pathname + location.search);
+    const res = scrapeResources();
+    const build = scrapeBuild();
+    const hero = page === "hero_attributes" ? scrapeHeroAttributes() : { ok: false, used: {}, data: {}, errors: ["not-on-hero-attributes"] };
+    const rally = page === "rallypoint" ? scrapeRally() : { ok: false, used: {}, data: {}, errors: ["not-on-rallypoint"] };
 
-//////////////////////////
-// Snapshot + HUD render
-//////////////////////////
-
-type Snapshot = {
-  ts: number;
-  page: PageKind;
-  url: string;
-  resources: ResourcesSnapshot;
-  buildQueue?: BuildItem[];
-  hero?: HeroSnapshot;
-  rally?: RallySnapshot;
-  version: string;
-};
-
-function buildSnapshot(): Snapshot {
-  const page = identifyPage(location.pathname + location.search);
-  const resources = scrapeResources();
-  const buildQueue = scrapeBuildQueue();
-  const hero = scrapeHero();
-  const rally = scrapeRally();
-
-  return {
-    ts: Date.now(),
-    page,
-    url: location.href,
-    resources,
-    buildQueue: buildQueue && buildQueue.length ? buildQueue : undefined,
-    hero,
-    rally,
-    version: VERSION,
-  };
-}
-
-function renderHUD(s: Snapshot) {
-  const hud = ensureHUD();
-
-  const r = s.resources || {};
-  const w = r.wood?.current, c = r.clay?.current, i = r.iron?.current, g = r.crop?.current;
-  const capW = r.capacity?.warehouse, capG = r.capacity?.granary;
-
-  let line1 =
-    `TLA v${VERSION} — page: ${s.page}\n` +
-    `W:${fmt(w)}  C:${fmt(c)}  I:${fmt(i)}  G:${fmt(g)}  | Cap W:${fmt(capW)} G:${fmt(capG)}`;
-
-  const parts: string[] = [line1];
-
-  if (s.hero) {
-    parts.push(`Hero HP:${pct(s.hero.healthPct)}  XP:${fmt(s.hero.xp)}  Spd:${fmt(s.hero.speedFieldsPerHour)} f/h`);
+    return {
+      version: VERSION,
+      page,
+      at: new Date().toISOString(),
+      resources: res,
+      build,
+      hero,
+      rally,
+      url: location.href
+    };
   }
 
-  if (s.buildQueue && s.buildQueue.length) {
-    const first = s.buildQueue[0];
-    parts.push(`Build: ${first.name || "?"} (${first.timeText || "?"})`);
-  } else if (s.page === "dorf2") {
-    parts.push(`Build: (idle)`);
+  function renderHUD(payload: any) {
+    const hud = ensureHUD();
+    const page = payload.page;
+    $("#tla-ver", hud)!.textContent = `v${VERSION}`;
+    $("#tla-page", hud)!.textContent = page;
+    $("#tla-heart", hud)!.textContent = nowStamp();
+
+    setChip("tla-chip-res",  !!payload.resources?.ok);
+    setChip("tla-chip-build",!!payload.build?.ok);
+    setChip("tla-chip-hero", !!payload.hero?.ok);
+    setChip("tla-chip-rall", !!payload.rally?.ok);
   }
 
-  if (s.rally?.incomingCount != null) {
-    parts.push(`Rally incoming rows: ${s.rally.incomingCount}`);
-  }
-
-  hud.textContent = parts.join("\n");
-}
-
-function saveSnapshot(s: Snapshot) {
-  try {
-    const raw = localStorage.getItem(SNAPSHOT_KEY);
-    const arr: Snapshot[] = raw ? JSON.parse(raw) : [];
-    arr.push(s);
-    while (arr.length > SNAPSHOT_MAX) arr.shift();
-    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(arr));
-  } catch (e) {
-    // Swallow; localStorage might be full or blocked.
-    console.warn("[TLA] snapshot save failed", e);
-  }
-}
-
-//////////////////////////
-// Main loop
-//////////////////////////
-
-function refresh() {
-  const s = buildSnapshot();
-  renderHUD(s);
-  // Optional: broadcast for devtools/logging tools
-  window.postMessage({ __tla: true, type: "SNAPSHOT", payload: s }, "*");
-  // Debug console (comment out if noisy)
-  // console.debug("[TLA]", s);
-}
-
-function persist() {
-  const s = buildSnapshot();
-  saveSnapshot(s);
-  // Keep HUD fresh as well on snapshot ticks
-  renderHUD(s);
-}
-
-// Start timers
-function startLoops() {
-  if (hudTimer) clearInterval(hudTimer);
-  if (snapshotTimer) clearInterval(snapshotTimer);
-
-  refresh();
-  persist();
-
-  hudTimer = window.setInterval(refresh, TICK_MS);
-  snapshotTimer = window.setInterval(persist, SNAPSHOT_MS);
-}
-
-// Re-render on DOM mutations (debounced)
-const mo = new MutationObserver(debounce(refresh, 250));
-mo.observe(document.documentElement, { subtree: true, childList: true, characterData: true });
-
-// Kick off
-startLoops();
-
-// Expose a tiny debug helper in console
-//   window.TLA?.dump() -> prints latest snapshot
-declare global {
-  interface Window {
-    TLA?: any;
-  }
-}
-window.TLA = {
-  version: VERSION,
-  dump() {
+  function runOnce(manual = false) {
     try {
-      const raw = localStorage.getItem(SNAPSHOT_KEY);
-      const arr = raw ? JSON.parse(raw) : [];
-      console.log(`[TLA] snapshots (${arr.length})`, arr[arr.length - 1]);
-      return arr[arr.length - 1];
-    } catch {
-      console.log("[TLA] no snapshots");
-      return null;
+      lastPayload = buildPayload();
+      renderHUD(lastPayload);
+      if (manual) showMsg("Scrape completed");
+      // Expose for console-based verification
+      (window as any).TLA = (window as any).TLA || {};
+      (window as any).TLA.state = lastPayload;
+      (window as any).TLA.debug = () => {
+        console.log("[TLA DEBUG]", lastPayload);
+        return lastPayload;
+      };
+    } catch (err) {
+      console.error("[TLA] run error:", err);
+      showMsg("Scrape failed (see console)");
     }
-  },
-  clear() {
-    localStorage.removeItem(SNAPSHOT_KEY);
-    console.log("[TLA] snapshots cleared");
-  },
-};
+  }
+
+  function startLoop() {
+    stopLoop();
+    runOnce(false); // immediate on load/navigation
+    timer = window.setInterval(() => {
+      if (document.hidden) return; // pause when hidden
+      runOnce(false);
+    }, LOOP_MS);
+  }
+
+  function stopLoop() {
+    if (timer) {
+      window.clearInterval(timer);
+      timer = undefined;
+    }
+  }
+
+  // restart on SPA-like nav changes
+  let lastHref = location.href;
+  setInterval(() => {
+    if (location.href !== lastHref) {
+      lastHref = location.href;
+      startLoop();
+    }
+  }, 1000);
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) runOnce(false);
+  });
+
+  // Kick things off
+  startLoop();
+})();

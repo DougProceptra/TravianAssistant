@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Travian Legends Assistant",
-  "version": "0.2.4",
+  "version": "0.2.8",
   "description": "Lightweight HUD and data scraper for Travian Legends.",
   "permissions": [
     "storage"
