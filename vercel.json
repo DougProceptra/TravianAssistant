@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/anthropic.js": {
-      "runtime": "@vercel/node@3.0.0",
+      "runtime": "@vercel/edge",
       "maxDuration": 30
     }
   }
