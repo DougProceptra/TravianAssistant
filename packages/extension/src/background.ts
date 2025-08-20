@@ -3,8 +3,8 @@
 
 console.log('[TLA BG] Background service starting...');
 
-// Your Vercel deployment URL - UPDATE THIS after deploying
-const PROXY_URL = 'https://your-vercel-app.vercel.app/api/anthropic';
+// Your Vercel deployment URL - UPDATED with actual deployment
+const PROXY_URL = 'https://travian-assistant-proxy.vercel.app/api/anthropic';
 // For local testing: 'http://localhost:3000/api/anthropic'
 
 class BackgroundService {
