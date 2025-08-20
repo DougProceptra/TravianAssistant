@@ -18,6 +18,7 @@ export default function handler(req, res) {
   // Test response
   res.status(200).json({ 
     message: 'API is working!',
-    received: req.body 
+    received: req.body,
+    timestamp: new Date().toISOString()
   });
 }
