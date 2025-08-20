@@ -3,7 +3,7 @@
 
 console.log('[TLA BG] Background service starting...');
 
-// YOUR VERCEL DEPLOYMENT URL - UPDATE AFTER DEPLOYMENT
+// CORRECT VERCEL URL - THE ONE THAT ACTUALLY WORKS
 const PROXY_URL = 'https://travian-proxy-efheqvbxk-doug-dosta-proceptras-projects.vercel.app/api/anthropic';
 
 class BackgroundService {
