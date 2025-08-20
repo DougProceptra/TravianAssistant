@@ -1,115 +1,23 @@
-// api/anthropic.js
-// Vercel Edge Function to proxy Anthropic API calls
-
-export const runtime = 'edge';
-
-// CORS headers for browser extension
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-extension-auth',
-};
-
-export default async function handler(request) {
-  // Handle CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200, 
-      headers: corsHeaders 
-    });
+// Simple Node.js function for Vercel
+export default function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Handle OPTIONS
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
-
+  
   // Only allow POST
-  if (request.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }), 
-      { 
-        status: 405, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
-
-  try {
-    // Get request body
-    const body = await request.json();
-    
-    // Validate request
-    if (!body.messages || !Array.isArray(body.messages)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid request format' }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    // Check for API key in environment
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      console.error('ANTHROPIC_API_KEY not configured in Vercel environment');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    // Make request to Anthropic
-    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: body.model || 'claude-3-5-sonnet-20241022',
-        max_tokens: body.max_tokens || 1000,
-        messages: body.messages,
-        temperature: body.temperature || 0.7,
-      }),
-    });
-
-    // Check if Anthropic request was successful
-    if (!anthropicResponse.ok) {
-      const errorText = await anthropicResponse.text();
-      console.error('Anthropic API error:', errorText);
-      return new Response(
-        JSON.stringify({ 
-          error: 'AI service error', 
-          details: anthropicResponse.status === 401 ? 'Invalid API key' : 'Service unavailable'
-        }), 
-        { 
-          status: anthropicResponse.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    // Get Anthropic response
-    const data = await anthropicResponse.json();
-
-    // Return successful response
-    return new Response(
-      JSON.stringify(data), 
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
-
-  } catch (error) {
-    console.error('Proxy error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', message: error.message }), 
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
-  }
+  
+  // Test response
+  res.status(200).json({ 
+    message: 'API is working!',
+    received: req.body 
+  });
 }
