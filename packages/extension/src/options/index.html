@@ -1,16 +1,160 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>TLA Options</title>
-    <meta http-equiv="Content-Security-Policy" content="script-src 'self'">
-    <style>
-      body { font: 14px/1.4 system-ui, sans-serif; padding: 16px; }
-    </style>
-  </head>
-  <body>
-    <h1>Travian Legends Assistant</h1>
-    <p>HUD toggle and settings (future).</p>
-    <script type="module" src="/options.js"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <title>Travian Assistant - Settings</title>
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self'">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font: 14px/1.5 system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 30px;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #555;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 10px;
+      text-align: center;
+      display: none;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+    .api-key-info {
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚔️ Travian Assistant Settings</h1>
+    
+    <div class="api-key-info">
+      💡 Get your API key from <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic Console</a>
+    </div>
+    
+    <div class="form-group">
+      <label for="apiKey">Claude API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-api03-..." />
+    </div>
+    
+    <div class="form-group">
+      <label for="tribe">Your Tribe</label>
+      <select id="tribe">
+        <option value="Romans">Romans</option>
+        <option value="Gauls">Gauls</option>
+        <option value="Teutons">Teutons</option>
+        <option value="Egyptians" selected>Egyptians</option>
+        <option value="Huns">Huns</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="style">Play Style</label>
+      <select id="style">
+        <option value="aggressive">Aggressive</option>
+        <option value="defensive">Defensive</option>
+        <option value="economic" selected>Economic</option>
+        <option value="balanced">Balanced</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="goldUsage">Gold Usage</label>
+      <select id="goldUsage">
+        <option value="none">None</option>
+        <option value="minimal">Minimal</option>
+        <option value="moderate">Moderate</option>
+        <option value="aggressive" selected>Aggressive</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label for="hoursPerDay">Hours Per Day</label>
+      <input type="number" id="hoursPerDay" min="0.5" max="24" step="0.5" value="1.5" />
+    </div>
+    
+    <div class="form-group">
+      <label for="primaryGoal">Primary Goal</label>
+      <select id="primaryGoal">
+        <option value="top_attacker">Top Attacker</option>
+        <option value="top_defender">Top Defender</option>
+        <option value="top_economy" selected>Top Economy</option>
+        <option value="wonder_win">Wonder Victory</option>
+        <option value="alliance_support">Alliance Support</option>
+      </select>
+    </div>
+    
+    <button id="saveBtn">Save Settings</button>
+    <button id="testBtn">Test AI Connection</button>
+    
+    <div id="status" class="status"></div>
+  </div>
+  
+  <script type="module" src="/options.js"></script>
+</body>
 </html>
