@@ -1,10 +1,7 @@
 // api/anthropic.js
 // Vercel Edge Function to proxy Anthropic API calls
-// This keeps the API key secure on the server
 
-export const config = {
-  runtime: 'edge',
-};
+export const runtime = 'edge';
 
 // CORS headers for browser extension
 const corsHeaders = {
