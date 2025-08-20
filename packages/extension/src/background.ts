@@ -1,172 +1,175 @@
 // packages/extension/src/background.ts
-// Background Service Worker with AI Integration
+// Background service that uses Vercel proxy for API calls
 
-interface ServiceWorkerState {
-  version: string;
-  startedAt: string;
-  serverConfig?: {
-    speed: number;
-    url: string;
-  };
-  lastAnalysis?: any;
-  apiKey?: string;
-}
+console.log('[TLA BG] Background service starting...');
 
-const MANIFEST = chrome.runtime.getManifest();
-const state: ServiceWorkerState = {
-  version: MANIFEST.version,
-  startedAt: new Date().toISOString(),
-};
+// Your Vercel deployment URL - UPDATE THIS after deploying
+const PROXY_URL = 'https://your-vercel-app.vercel.app/api/anthropic';
+// For local testing: 'http://localhost:3000/api/anthropic'
 
-// Load API key from storage
-chrome.storage.local.get(['apiKey'], (result) => {
-  if (result.apiKey) {
-    state.apiKey = result.apiKey;
-    console.log('[TLA SW] API key loaded');
+class BackgroundService {
+  private proxyUrl: string = PROXY_URL;
+
+  constructor() {
+    this.initialize();
   }
-});
 
-// Message handler for content script and popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log(`[TLA SW v${state.version}] Message:`, request.type);
-  
-  switch(request.type) {
-    case 'GET_SW_INFO':
-      sendResponse(state);
-      break;
-      
-    case 'SET_API_KEY':
-      state.apiKey = request.payload;
-      chrome.storage.local.set({ apiKey: request.payload });
-      sendResponse({ success: true });
-      break;
-      
-    case 'ANALYZE_GAME_STATE':
-      if (!state.apiKey) {
-        sendResponse({ error: 'No API key configured' });
-        return;
-      }
-      analyzeWithClaude(request.payload)
-        .then(analysis => {
-          state.lastAnalysis = analysis;
-          sendResponse(analysis);
-        })
-        .catch(error => sendResponse({ error: error.message }));
-      return true; // Will respond asynchronously
-      
-    case 'GET_LAST_ANALYSIS':
-      sendResponse(state.lastAnalysis || { error: 'No analysis available' });
-      break;
-      
-    default:
-      sendResponse({ error: 'Unknown message type' });
-  }
-});
-
-// Claude API Integration
-async function analyzeWithClaude(gameState: any): Promise<any> {
-  if (!state.apiKey) throw new Error('No API key');
-  
-  // Get player profile from storage
-  const { profile } = await chrome.storage.local.get('profile');
-  const playerProfile = profile || {
-    tribe: 'Egyptians',
-    style: 'economic',
-    goldUsage: 'aggressive',
-    hoursPerDay: 1.5,
-    primaryGoal: 'top_economy'
-  };
-  
-  const prompt = buildPrompt(gameState, playerProfile);
-  
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-haiku-20240307', // Cheapest, fast
-        max_tokens: 1000,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      })
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+  private async initialize() {
+    // Check if proxy URL is configured
+    const stored = await chrome.storage.sync.get(['proxyUrl']);
+    if (stored.proxyUrl) {
+      this.proxyUrl = stored.proxyUrl;
+      console.log('[TLA BG] Using custom proxy URL');
     }
-    
-    const data = await response.json();
-    return parseClaudeResponse(data);
-  } catch (error) {
-    console.error('[TLA] Claude API error:', error);
-    throw error;
+
+    // Message listener
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      console.log('[TLA BG] Message:', request.type);
+      
+      this.handleMessage(request)
+        .then(sendResponse)
+        .catch(error => {
+          console.error('[TLA BG] Error:', error);
+          sendResponse({ success: false, error: error.message });
+        });
+      
+      return true; // Keep channel open for async response
+    });
+
+    console.log('[TLA BG] Background service initialized');
+    console.log('[TLA BG] Proxy URL:', this.proxyUrl);
   }
-}
 
-function buildPrompt(gameState: any, profile: any): string {
-  return `You are an expert Travian Legends player providing strategic advice.
+  private async handleMessage(request: any): Promise<any> {
+    switch (request.type) {
+      case 'SET_PROXY_URL':
+        this.proxyUrl = request.url;
+        await chrome.storage.sync.set({ proxyUrl: this.proxyUrl });
+        return { success: true };
 
-PLAYER PROFILE:
-- Tribe: ${profile.tribe}
-- Style: ${profile.style}
-- Gold usage: ${profile.goldUsage}
-- Hours per day: ${profile.hoursPerDay}
-- Goal: ${profile.primaryGoal}
+      case 'TEST_CONNECTION':
+      case 'ANALYZE_GAME_STATE':
+        try {
+          const response = await this.callProxy('Test connection. Reply with "Connection successful".');
+          return { success: true, response };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
 
-CURRENT GAME STATE:
-Page: ${gameState.page}
-Resources: Wood ${gameState.resources?.data?.wood || '?'}, Clay ${gameState.resources?.data?.clay || '?'}, Iron ${gameState.resources?.data?.iron || '?'}, Crop ${gameState.resources?.data?.crop || '?'}
-Storage: Warehouse ${gameState.resources?.data?.cap || '?'}, Granary ${gameState.resources?.data?.gran || '?'}
-Build Queue: ${gameState.build?.data?.items?.length || 0} items
+      case 'ANALYZE_NOW':
+        try {
+          const analysis = await this.analyzeGame(request.state);
+          return { success: true, analysis };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
 
-Provide the TOP 3 ACTIONS in this exact JSON format:
+      case 'ASK_QUESTION':
+        try {
+          const answer = await this.callProxy(request.question);
+          return { success: true, answer };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
+
+      case 'STATE_UPDATE':
+        // Store state for analysis
+        return { success: true };
+
+      default:
+        return { success: true };
+    }
+  }
+
+  private async callProxy(prompt: string): Promise<string> {
+    console.log('[TLA BG] Calling proxy at:', this.proxyUrl);
+    
+    try {
+      const response = await fetch(this.proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: prompt
+          }]
+        })
+      });
+
+      console.log('[TLA BG] Proxy response status:', response.status);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || `Proxy error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.content && data.content[0] && data.content[0].text) {
+        return data.content[0].text;
+      } else {
+        throw new Error('Invalid response format from proxy');
+      }
+    } catch (error) {
+      console.error('[TLA BG] Proxy call failed:', error);
+      throw error;
+    }
+  }
+
+  private async analyzeGame(state: any): Promise<any> {
+    const prompt = `You are a Travian Legends expert. Analyze this game state and provide exactly 3 strategic recommendations.
+
+Game State:
+${JSON.stringify(state, null, 2)}
+
+Return ONLY a valid JSON object with this exact structure:
 {
   "recommendations": [
     {
-      "priority": 1,
       "action": "Specific action to take",
       "reason": "Why this is important now",
-      "benefit": "Expected outcome",
-      "urgency": "high/medium/low"
+      "priority": "high"
+    },
+    {
+      "action": "Another specific action",
+      "reason": "Why this matters",
+      "priority": "medium"
+    },
+    {
+      "action": "Third action",
+      "reason": "Why to do this",
+      "priority": "low"
     }
-  ],
-  "warnings": ["Any critical issues"],
-  "efficiency": "Current efficiency score 0-100"
+  ]
 }`;
-}
 
-function parseClaudeResponse(data: any): any {
-  try {
-    const content = data.content[0].text;
-    // Try to parse as JSON first
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]);
+    try {
+      const response = await this.callProxy(prompt);
+      // Try to extract JSON from response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      throw new Error('Could not parse AI response');
+    } catch (error) {
+      console.error('[TLA BG] Failed to parse analysis:', error);
+      return {
+        recommendations: [
+          { 
+            action: 'Configure proxy URL', 
+            reason: 'The AI service needs to be configured', 
+            priority: 'high' 
+          }
+        ]
+      };
     }
-    // Fallback to text parsing
-    return {
-      recommendations: [{
-        priority: 1,
-        action: content.split('\n')[0],
-        reason: 'See full response',
-        benefit: 'Optimized play',
-        urgency: 'medium'
-      }],
-      rawResponse: content
-    };
-  } catch (error) {
-    console.error('[TLA] Failed to parse Claude response:', error);
-    return {
-      error: 'Failed to parse AI response',
-      rawContent: data.content[0].text
-    };
   }
 }
 
-console.log(`[TLA SW] Started v${state.version}`);
+// Initialize service
+new BackgroundService();
+console.log('[TLA BG] Script loaded');
