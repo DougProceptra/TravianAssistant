@@ -1,7 +1,6 @@
 {
   "name": "travianassistant",
   "private": true,
-  "type": "module",
   "workspaces": [
     "packages/*"
   ],
