@@ -3,8 +3,8 @@
 
 console.log('[TLA BG] Background service starting...');
 
-// Your Vercel deployment URL - UPDATED with actual deployment
-const PROXY_URL = 'https://travian-assistant-proxy.vercel.app/api/anthropic';
+// Your Vercel deployment URL - FIXED with correct URL
+const PROXY_URL = 'https://travian-proxy-efheqvbxk-doug-dosta-proceptras-projects.vercel.app/api/anthropic';
 // For local testing: 'http://localhost:3000/api/anthropic'
 
 class BackgroundService {
@@ -48,10 +48,19 @@ class BackgroundService {
         return { success: true };
 
       case 'TEST_CONNECTION':
-      case 'ANALYZE_GAME_STATE':
         try {
           const response = await this.callProxy('Test connection. Reply with "Connection successful".');
           return { success: true, response };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
+
+      case 'ANALYZE_GAME_STATE':
+        try {
+          // FIX: Actually analyze the game state passed in the payload
+          const gameState = request.payload || request.state;
+          const analysis = await this.analyzeGame(gameState);
+          return { success: true, ...analysis };
         } catch (error: any) {
           return { success: false, error: error.message };
         }
@@ -103,8 +112,9 @@ class BackgroundService {
       console.log('[TLA BG] Proxy response status:', response.status);
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Proxy error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('[TLA BG] Proxy error response:', errorText);
+        throw new Error(`Proxy error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
@@ -140,7 +150,7 @@ Return ONLY a valid JSON object with this exact structure:
       "priority": "medium"
     },
     {
-      "action": "Third action",
+      "action": "Third action",  
       "reason": "Why to do this",
       "priority": "low"
     }
@@ -160,9 +170,19 @@ Return ONLY a valid JSON object with this exact structure:
       return {
         recommendations: [
           { 
-            action: 'Configure proxy URL', 
-            reason: 'The AI service needs to be configured', 
+            action: 'Check proxy configuration', 
+            reason: 'Failed to connect to AI service', 
             priority: 'high' 
+          },
+          {
+            action: 'Verify API key is set in Vercel',
+            reason: 'The proxy may be missing the ANTHROPIC_API_KEY',
+            priority: 'high'
+          },
+          {
+            action: 'Test with curl command',
+            reason: 'Verify the proxy is working independently',
+            priority: 'medium'
           }
         ]
       };
