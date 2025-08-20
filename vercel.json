@@ -1,9 +1,8 @@
 {
-  "buildCommand": "echo 'No build needed'",
-  "outputDirectory": ".",
   "functions": {
     "api/anthropic.js": {
-      "runtime": "@vercel/node@3.0.0"
+      "runtime": "@vercel/node@3.0.0",
+      "maxDuration": 30
     }
   }
 }
