@@ -1,11 +1,5 @@
-// Deployment timestamp: 1755702029
 // api/anthropic.js
-// Vercel Edge Function to proxy Anthropic API calls
-// This keeps the API key secure on the server
-
-export const config = {
-  runtime: 'edge',
-};
+// Vercel Serverless Function to proxy Anthropic API calls
 
 // CORS headers for browser extension
 const corsHeaders = {
@@ -14,52 +8,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, x-extension-auth',
 };
 
-export default async function handler(request) {
+export default async function handler(req, res) {
+  // Set CORS headers
+  Object.keys(corsHeaders).forEach(key => {
+    res.setHeader(key, corsHeaders[key]);
+  });
+
   // Handle CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200, 
-      headers: corsHeaders 
-    });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
   // Only allow POST
-  if (request.method !== 'POST') {
-    return new Response(
-      JSON.stringify({ error: 'Method not allowed' }), 
-      { 
-        status: 405, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Get request body
-    const body = await request.json();
+    const body = req.body;
     
     // Validate request
     if (!body.messages || !Array.isArray(body.messages)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid request format' }), 
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      return res.status(400).json({ error: 'Invalid request format' });
     }
 
-    // Check for API key in environment
+    // Check for API key
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       console.error('ANTHROPIC_API_KEY not configured in Vercel environment');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }), 
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      return res.status(500).json({ error: 'Server configuration error' });
     }
 
     // Make request to Anthropic
@@ -82,39 +59,23 @@ export default async function handler(request) {
     if (!anthropicResponse.ok) {
       const errorText = await anthropicResponse.text();
       console.error('Anthropic API error:', errorText);
-      return new Response(
-        JSON.stringify({ 
-          error: 'AI service error', 
-          details: anthropicResponse.status === 401 ? 'Invalid API key' : 'Service unavailable'
-        }), 
-        { 
-          status: anthropicResponse.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      return res.status(anthropicResponse.status).json({ 
+        error: 'AI service error', 
+        details: anthropicResponse.status === 401 ? 'Invalid API key' : 'Service unavailable'
+      });
     }
 
     // Get Anthropic response
     const data = await anthropicResponse.json();
 
     // Return successful response
-    return new Response(
-      JSON.stringify(data), 
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return res.status(200).json(data);
 
   } catch (error) {
     console.error('Proxy error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', message: error.message }), 
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return res.status(500).json({ 
+      error: 'Internal server error', 
+      message: error.message 
+    });
   }
 }
-// Deploy trigger: 1755701500
