@@ -7,7 +7,8 @@
     "storage"
   ],
   "host_permissions": [
-    "*://*.travian.com/*"
+    "*://*.travian.com/*",
+    "https://travian-proxy-efheqvbxk-doug-dosta-proceptras-projects.vercel.app/*"
   ],
   "background": {
     "service_worker": "background.js"
