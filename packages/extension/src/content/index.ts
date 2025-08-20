@@ -1,13 +1,14 @@
 // packages/extension/src/content/index.ts
-// Travian Legends Assistant - Content Script (v0.2.6)
+// Travian Legends Assistant - Content Script (v0.2.8)
 // - 5s scrape cadence (paused when tab hidden)
-// - Safe selectors w/ per-field “used selector” + errors
+// - Safe selectors w/ per-field "used selector" + errors
 // - Minimal HUD with version, heartbeat, page, ✔︎/✖︎ groups, "Force scrape", "Copy JSON"
+// - AI Integration with Claude API
 // - Global debug: window.TLA.debug()
 // NOTE: This file is self-contained to avoid import mismatches.
 
 (() => {
-  const VERSION = "0.2.6"; // Keep in sync with manifest.json
+  const VERSION = "0.2.8"; // Keep in sync with manifest.json
   const LOOP_MS = 5000;
 
   // ---------- Utils ----------
@@ -219,7 +220,7 @@
       }
     });
 
-    // If speed isn’t in rows, try outside box
+    // If speed isn't in rows, try outside box
     if (speedFph == null) {
       const any = pick(SEL.heroAttr.speedText);
       speedText = any.value || speedText;
@@ -279,9 +280,10 @@
         <span id="tla-chip-hero"  style="padding:2px 6px;border-radius:999px;background:#333">Hero</span>
         <span id="tla-chip-rall"  style="padding:2px 6px;border-radius:999px;background:#333">Rally</span>
       </div>
-      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" id="tla-buttons">
         <button id="tla-btn-scrape" style="padding:2px 6px;border-radius:6px;border:1px solid #555;background:#1f6feb;color:#fff;cursor:pointer">Force scrape</button>
         <button id="tla-btn-copy" style="padding:2px 6px;border-radius:6px;border:1px solid #555;background:#444;color:#fff;cursor:pointer">Copy JSON</button>
+        <button id="tla-btn-ai" style="padding:2px 6px;border-radius:6px;border:1px solid #555;background:#4fc3f7;color:#000;cursor:pointer;font-weight:bold">🤖 AI Analysis</button>
       </div>
       <div id="tla-msg" style="margin-top:6px;opacity:.8"></div>
     `;
@@ -294,6 +296,7 @@
         .then(() => showMsg("Copied payload to clipboard"))
         .catch(() => showMsg("Copy failed"));
     });
+    $("#tla-btn-ai", el)?.addEventListener("click", () => requestAIAnalysis());
 
     return el;
   }
@@ -381,6 +384,95 @@
       window.clearInterval(timer);
       timer = undefined;
     }
+  }
+
+  // ---------- AI Integration ----------
+  let aiRecommendations: any = null;
+
+  async function requestAIAnalysis() {
+    if (!lastPayload) {
+      showMsg("No data to analyze");
+      return;
+    }
+    
+    try {
+      showMsg("Requesting AI analysis...");
+      const response = await chrome.runtime.sendMessage({
+        type: 'ANALYZE_GAME_STATE',
+        payload: lastPayload
+      });
+      
+      if (response.error) {
+        showMsg(`AI Error: ${response.error}`);
+        return;
+      }
+      
+      aiRecommendations = response;
+      renderAIRecommendations();
+      showMsg("AI analysis complete");
+    } catch (error) {
+      console.error('[TLA] AI request failed:', error);
+      showMsg("AI request failed");
+    }
+  }
+
+  function renderAIRecommendations() {
+    if (!aiRecommendations || !aiRecommendations.recommendations) return;
+    
+    // Create or update AI panel
+    let aiPanel = document.getElementById('tla-ai-panel') as HTMLDivElement | null;
+    if (!aiPanel) {
+      aiPanel = document.createElement('div');
+      aiPanel.id = 'tla-ai-panel';
+      aiPanel.style.cssText = `
+        position: fixed;
+        top: 120px;
+        right: 8px;
+        width: 280px;
+        z-index: 2147483646;
+        font: 12px/1.4 system-ui, sans-serif;
+        color: #eee;
+        background: rgba(0, 0, 0, 0.85);
+        padding: 10px;
+        border-radius: 8px;
+        backdrop-filter: blur(4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      `;
+      document.documentElement.appendChild(aiPanel);
+    }
+    
+    const recs = aiRecommendations.recommendations.slice(0, 3);
+    aiPanel.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h3 style="margin:0; font-size:14px; color:#4fc3f7;">🤖 AI Assistant</h3>
+        <button id="tla-ai-close" style="background:none; border:none; color:#999; cursor:pointer; font-size:16px;">×</button>
+      </div>
+      ${recs.map((rec: any, i: number) => `
+        <div style="margin-bottom:8px; padding:8px; background:rgba(255,255,255,0.05); border-radius:6px; border-left:3px solid ${
+          rec.urgency === 'high' ? '#ff5252' : rec.urgency === 'medium' ? '#ffa726' : '#66bb6a'
+        };">
+          <div style="font-weight:bold; color:#fff; margin-bottom:4px;">
+            ${i + 1}. ${rec.action}
+          </div>
+          <div style="font-size:11px; color:#aaa; margin-bottom:2px;">
+            ${rec.reason}
+          </div>
+          <div style="font-size:11px; color:#4fc3f7;">
+            → ${rec.benefit}
+          </div>
+        </div>
+      `).join('')}
+      ${aiRecommendations.warnings?.length ? `
+        <div style="margin-top:8px; padding:6px; background:rgba(255,82,82,0.2); border-radius:4px; font-size:11px; color:#ff8a80;">
+          ⚠️ ${aiRecommendations.warnings.join(', ')}
+        </div>
+      ` : ''}
+    `;
+    
+    // Add close button handler
+    document.getElementById('tla-ai-close')?.addEventListener('click', () => {
+      aiPanel?.remove();
+    });
   }
 
   // restart on SPA-like nav changes
