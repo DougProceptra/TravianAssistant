@@ -1,12 +1,8 @@
 // packages/extension/src/options/index.ts
-console.log("[TLA] Options page loaded");
+console.log("[TLA] Options page v0.3.1 loaded");
 
 // Load saved settings on page load
-chrome.storage.local.get(['apiKey', 'profile'], (result) => {
-  if (result.apiKey) {
-    (document.getElementById('apiKey') as HTMLInputElement).value = result.apiKey;
-  }
-  
+chrome.storage.local.get(['profile'], (result) => {
   if (result.profile) {
     const p = result.profile;
     setValue('tribe', p.tribe);
@@ -39,13 +35,6 @@ function showStatus(message: string, isError = false) {
 
 // Save settings
 document.getElementById('saveBtn')?.addEventListener('click', () => {
-  const apiKey = getValue('apiKey');
-  
-  if (!apiKey) {
-    showStatus('Please enter your API key', true);
-    return;
-  }
-  
   const profile = {
     tribe: getValue('tribe'),
     style: getValue('style'),
@@ -60,50 +49,33 @@ document.getElementById('saveBtn')?.addEventListener('click', () => {
     }
   };
   
-  chrome.storage.local.set({ apiKey, profile }, () => {
-    // Notify background script
-    chrome.runtime.sendMessage({ 
-      type: 'SET_API_KEY', 
-      payload: apiKey 
-    });
+  chrome.storage.local.set({ profile }, () => {
     showStatus('Settings saved successfully!');
   });
 });
 
-// Test connection
+// Test connection to proxy
 document.getElementById('testBtn')?.addEventListener('click', async () => {
   showStatus('Testing AI connection...');
   
-  const testState = {
-    page: 'test',
-    resources: { 
-      data: { 
-        wood: 1000, 
-        clay: 1000, 
-        iron: 1000, 
-        crop: 1000,
-        cap: 10000,
-        gran: 8000
-      } 
-    },
-    build: { data: { items: [] } }
-  };
-  
   try {
     const response = await chrome.runtime.sendMessage({
-      type: 'ANALYZE_GAME_STATE',
-      payload: testState
+      type: 'TEST_CONNECTION'
     });
     
-    if (response.error) {
-      showStatus(`Connection failed: ${response.error}`, true);
-    } else if (response.recommendations) {
-      showStatus('AI connection successful! Ready to analyze your game.');
+    console.log('[TLA Options] Test response:', response);
+    
+    if (response.success) {
+      showStatus('✅ AI connection successful! Ready to analyze your game.');
+    } else if (response.error) {
+      showStatus(`❌ Connection failed: ${response.error}`, true);
     } else {
-      showStatus('Unexpected response from AI', true);
+      showStatus('⚠️ Unexpected response from AI', true);
     }
   } catch (error) {
-    showStatus('Failed to connect to AI service', true);
-    console.error('[TLA] Test error:', error);
+    showStatus('❌ Failed to connect to AI service', true);
+    console.error('[TLA Options] Test error:', error);
   }
 });
+
+console.log('[TLA Options] Ready');
