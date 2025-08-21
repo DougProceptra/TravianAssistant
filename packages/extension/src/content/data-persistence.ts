@@ -192,6 +192,37 @@ export class DataPersistence {
     });
   }
 
+  /**
+   * Get the latest cached snapshot for a specific village
+   */
+  public async getLatestVillageSnapshot(villageId: string): Promise<VillageData | null> {
+    if (!this.db) await this.initialize();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction(['villageSnapshots'], 'readonly');
+      const store = transaction.objectStore('villageSnapshots');
+      const index = store.index('villageId');
+      const range = IDBKeyRange.only(villageId);
+      const request = index.openCursor(range, 'prev'); // Get latest for this village
+      
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          console.log('[TLA DB] Found cached data for village:', villageId);
+          resolve(cursor.value.data);
+        } else {
+          console.log('[TLA DB] No cached data for village:', villageId);
+          resolve(null);
+        }
+      };
+      
+      request.onerror = () => {
+        console.error('[TLA DB] Failed to retrieve village snapshot');
+        reject(request.error);
+      };
+    });
+  }
+
   public async getLatestAccountSnapshot(): Promise<{
     villages: Map<string, VillageData>;
     aggregates: AccountAggregates;
