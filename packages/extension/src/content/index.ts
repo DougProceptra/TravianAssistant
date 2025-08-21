@@ -1,7 +1,7 @@
-// Travian Legends Assistant - Content Script (v0.4.2)
-// - Fixed background service connection
-// - Improved error handling
-// - Better debugging output
+// Travian Legends Assistant - Content Script (v0.4.9)
+// Fixed: Reduced scanning interval to 15 minutes
+// Fixed: Chat responses now display properly  
+// Fixed: AI analysis display improved
 
 // Import new components
 import { enhancedScraper, type EnhancedGameState } from './enhanced-scraper';
@@ -17,8 +17,8 @@ declare global {
 }
 
 (() => {
-  const VERSION = "0.4.2"; // Auto-bumped by build script
-  const LOOP_MS = 5000;
+  const VERSION = "0.4.9";
+  const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
 
   // ---------- Utils ----------
   const $ = (sel: string, root: ParentNode = document) =>
@@ -47,21 +47,6 @@ declare global {
     return `${hh}:${mm}:${ss}`;
   }
 
-  function identifyPage(path: string) {
-    const p = path.toLowerCase();
-    if (p.includes("dorf1")) return "dorf1";
-    if (p.includes("dorf2")) return "dorf2";
-    if (p.includes("/hero/inventory")) return "hero_inventory";
-    if (p.includes("/hero/attributes")) return "hero_attributes";
-    if (p.includes("/hero/appearance")) return "hero_appearance";
-    if (p.includes("gid=16")) return "rallypoint";
-    if (p.includes("statistics")) return "statistics";
-    if (p.includes("map")) return "map";
-    if (p.includes("reports")) return "reports";
-    if (p.includes("alliance")) return "alliance";
-    return "other";
-  }
-
   // ---------- Background Service Check ----------
   async function checkBackgroundService(): Promise<boolean> {
     try {
@@ -78,6 +63,7 @@ declare global {
   let currentGameState: EnhancedGameState | null = null;
   let aiRecommendations: any = null;
   let isFullScanRunning = false;
+  let lastRefresh = 0;
 
   function ensureHUD() {
     let el = document.getElementById(HUD_ID) as HTMLDivElement | null;
@@ -149,6 +135,10 @@ declare global {
       </div>
       
       <div id="tla-msg" style="margin-top:8px;padding:6px;background:rgba(255,255,255,0.1);border-radius:4px;font-size:11px;display:none;"></div>
+      
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);font-size:10px;color:#666;">
+        Auto-refresh: every 15 min
+      </div>
     `;
     document.documentElement.appendChild(el);
 
@@ -183,6 +173,7 @@ declare global {
     const hud = ensureHUD();
     $("#tla-ver", hud)!.textContent = `v${VERSION}`;
     $("#tla-heart", hud)!.textContent = nowStamp();
+    lastRefresh = Date.now();
     
     if (!state) return;
     
@@ -237,7 +228,7 @@ declare global {
   // ---------- Main Functions ----------
   async function quickAnalyze() {
     try {
-      showMsg("Analyzing current village...", true);
+      showMsg("Analyzing current state...", true);
       currentGameState = await enhancedScraper.getSmartGameState();
       updateHUD(currentGameState);
       showMsg(`Analysis complete! (${currentGameState.villages.size} villages)`);
@@ -251,6 +242,10 @@ declare global {
   async function fullAccountScan() {
     if (isFullScanRunning) {
       showMsg("Scan already in progress...");
+      return;
+    }
+    
+    if (!confirm("Full scan will navigate through all villages. This may take a few minutes. Continue?")) {
       return;
     }
     
@@ -324,7 +319,8 @@ declare global {
         renderAIRecommendations();
         showMsg("AI analysis complete!");
       } else {
-        showMsg(`AI Error: ${response.error}`);
+        showMsg(`AI Error: ${response.error || 'Unknown error'}`);
+        console.error('[TLA] AI analysis error:', response);
       }
     } catch (error) {
       console.error('[TLA] AI request failed:', error);
@@ -333,7 +329,36 @@ declare global {
   }
 
   function renderAIRecommendations() {
-    if (!aiRecommendations || !aiRecommendations.recommendations) return;
+    if (!aiRecommendations) return;
+    
+    // Parse the recommendations if they're in string format
+    let recommendations = [];
+    let reasoning = '';
+    
+    if (typeof aiRecommendations.recommendations === 'string') {
+      // Parse Claude's response
+      const lines = aiRecommendations.recommendations.split('\n');
+      let currentRec: any = null;
+      
+      for (const line of lines) {
+        if (line.match(/^\d+\./)) {
+          if (currentRec) recommendations.push(currentRec);
+          currentRec = {
+            action: line.replace(/^\d+\.\s*/, '').split(':')[0],
+            reason: line.split(':').slice(1).join(':').trim(),
+            priority: 'medium'
+          };
+        } else if (currentRec && line.trim()) {
+          currentRec.reason += ' ' + line.trim();
+        } else if (line.includes('Analysis:') || line.includes('Strategy:')) {
+          reasoning += line + '\n';
+        }
+      }
+      if (currentRec) recommendations.push(currentRec);
+    } else {
+      recommendations = aiRecommendations.recommendations || [];
+      reasoning = aiRecommendations.reasoning || '';
+    }
     
     let aiPanel = document.getElementById('tla-ai-panel') as HTMLDivElement | null;
     if (!aiPanel) {
@@ -343,8 +368,8 @@ declare global {
         position: fixed;
         top: 180px;
         right: 8px;
-        width: 350px;
-        max-height: 500px;
+        width: 400px;
+        max-height: 600px;
         overflow-y: auto;
         z-index: 2147483646;
         font: 13px/1.5 system-ui, sans-serif;
@@ -359,8 +384,7 @@ declare global {
       document.documentElement.appendChild(aiPanel);
     }
     
-    const recs = aiRecommendations.recommendations || [];
-    const alerts = aiRecommendations.alerts || currentGameState?.alerts || [];
+    const alerts = currentGameState?.alerts || [];
     
     aiPanel.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
@@ -383,7 +407,7 @@ declare global {
       
       <div style="margin-bottom:12px;">
         <h4 style="margin:0 0 8px 0; font-size:13px; color:#66bb6a;">✅ Recommendations</h4>
-        ${recs.map((rec: any, i: number) => `
+        ${recommendations.length > 0 ? recommendations.map((rec: any, i: number) => `
           <div style="margin-bottom:8px; padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; border-left:3px solid ${
             rec.priority === 'critical' ? '#f44336' :
             rec.priority === 'high' ? '#ff9800' : 
@@ -392,17 +416,29 @@ declare global {
             <div style="font-weight:bold; color:#fff; margin-bottom:4px;">
               ${i + 1}. ${rec.action}
             </div>
-            <div style="font-size:12px; color:#bbb;">
-              ${rec.reason}
-            </div>
-            ${rec.village ? `
-              <div style="font-size:11px; color:#4fc3f7; margin-top:4px;">
-                📍 ${rec.village}
+            ${rec.reason ? `
+              <div style="font-size:12px; color:#bbb;">
+                ${rec.reason}
               </div>
             ` : ''}
           </div>
-        `).join('')}
+        `).join('') : `
+          <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:6px;">
+            <pre style="margin:0; white-space:pre-wrap; font-family:inherit; color:#bbb;">
+${aiRecommendations.recommendations || 'No specific recommendations available.'}
+            </pre>
+          </div>
+        `}
       </div>
+      
+      ${reasoning ? `
+        <div style="margin-bottom:12px;">
+          <h4 style="margin:0 0 8px 0; font-size:13px; color:#4fc3f7;">💡 Strategic Reasoning</h4>
+          <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; font-size:12px; color:#bbb;">
+            ${reasoning.replace(/\n/g, '<br>')}
+          </div>
+        </div>
+      ` : ''}
       
       <div style="padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); font-size:11px; color:#666;">
         Analysis based on ${currentGameState?.villages?.size || 1} villages • Claude Sonnet 4
@@ -495,19 +531,6 @@ declare global {
       const question = input.value.trim();
       if (!question) return;
       
-      // Check background service first
-      const bgAlive = await checkBackgroundService();
-      if (!bgAlive) {
-        messagesEl!.innerHTML += `
-          <div style="margin-bottom:10px;">
-            <div style="padding:8px; background:rgba(244,67,54,0.1); border-radius:4px; color:#f44336;">
-              Background service not connected. Please reload the extension from chrome://extensions/
-            </div>
-          </div>
-        `;
-        return;
-      }
-      
       // Add user message
       messagesEl!.innerHTML += `
         <div style="margin-bottom:10px; text-align:right;">
@@ -523,12 +546,19 @@ declare global {
       
       // Get AI response
       try {
+        // Check background service
+        const bgAlive = await checkBackgroundService();
+        if (!bgAlive) {
+          throw new Error('Background service not connected');
+        }
+        
         if (!currentGameState) {
           await quickAnalyze();
         }
         
         const answer = await chatAI.askQuestion(question, currentGameState);
         
+        // Display response
         messagesEl!.innerHTML += `
           <div style="margin-bottom:10px;">
             <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; border-left:3px solid #4fc3f7;">
@@ -537,12 +567,14 @@ declare global {
           </div>
         `;
         
+        messagesEl!.scrollTop = messagesEl!.scrollHeight;
+        
       } catch (error) {
         console.error('[TLA] Chat error:', error);
         messagesEl!.innerHTML += `
           <div style="margin-bottom:10px;">
             <div style="padding:8px; background:rgba(244,67,54,0.1); border-radius:4px; color:#f44336;">
-              Failed to get response. Please reload extension and try again.
+              Failed to get response. Please reload extension (chrome://extensions) and try again.
             </div>
           </div>
         `;
@@ -628,12 +660,16 @@ declare global {
     // Do initial quick analysis
     await quickAnalyze();
     
-    // Set up periodic refresh (every 5 minutes)
+    // Set up periodic refresh (every 15 minutes)
     setInterval(async () => {
       if (!document.hidden && !isFullScanRunning) {
-        await quickAnalyze();
+        const timeSinceRefresh = Date.now() - lastRefresh;
+        if (timeSinceRefresh >= REFRESH_INTERVAL) {
+          console.log('[TLA] Auto-refresh triggered');
+          await quickAnalyze();
+        }
       }
-    }, 5 * 60 * 1000);
+    }, 60 * 1000); // Check every minute but only refresh if 15 min passed
     
     // Expose TLA to window for debugging
     window.TLA = {
@@ -648,7 +684,8 @@ declare global {
         console.log('[TLA Debug]', {
           state: currentGameState,
           recommendations: aiRecommendations,
-          villages: villageNavigator.getVillages()
+          villages: villageNavigator.getVillages(),
+          lastRefresh: new Date(lastRefresh).toLocaleTimeString()
         });
         return {
           version: VERSION,
