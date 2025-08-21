@@ -1,14 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Travian Legends Assistant",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "AI-powered strategic advisor for Travian Legends with multi-village support",
   "permissions": [
     "storage"
   ],
   "host_permissions": [
     "*://*.travian.com/*",
-    "https://travian-proxy-simple.vercel.app/*"
+    "https://travian-proxy-simple.vercel.app/*",
+    "http://localhost:*/*",
+    "https://*.replit.app/*",
+    "https://*.repl.co/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -26,6 +29,7 @@
   ],
   "options_page": "src/options/index.html",
   "action": {
-    "default_title": "TLA v0.4.2"
+    "default_title": "TLA v0.4.3 - Click to open settings",
+    "default_popup": "src/options/index.html"
   }
 }

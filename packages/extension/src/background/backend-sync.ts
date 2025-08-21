@@ -1,14 +1,16 @@
 // Backend Sync Service
-// Connects extension to local SQLite backend
+// Connects extension to backend (local or remote)
+// v0.4.3 - Configurable backend URL for Replit/cloud deployment
 
 import { EnhancedGameState } from '../content/enhanced-scraper';
 
 class BackendSync {
-  private apiUrl: string = 'http://localhost:3001/api';
-  private wsUrl: string = 'ws://localhost:3002';
+  private apiUrl: string = '';
+  private wsUrl: string = '';
   private ws: WebSocket | null = null;
   private accountId: string = '';
   private syncInterval: number | null = null;
+  private isEnabled: boolean = false;
   
   constructor() {
     this.initialize();
@@ -17,10 +19,33 @@ class BackendSync {
   private async initialize() {
     console.log('[TLA Backend] Initializing backend sync');
     
-    // Get or create account ID
-    const stored = await chrome.storage.local.get(['accountId', 'serverUrl']);
+    // Get backend URL from storage (can be configured in options)
+    const stored = await chrome.storage.sync.get(['backendUrl', 'backendEnabled']);
     
-    if (!stored.accountId) {
+    // Default to disabled if not configured
+    this.isEnabled = stored.backendEnabled || false;
+    
+    if (!this.isEnabled) {
+      console.log('[TLA Backend] Backend sync disabled');
+      return;
+    }
+    
+    // Use configured URL or fallback to localhost
+    const baseUrl = stored.backendUrl || 'http://localhost:3001';
+    this.apiUrl = `${baseUrl}/api`;
+    
+    // Convert HTTP to WS for WebSocket
+    const wsBase = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+    // If using Replit or other services, WebSocket might be on same port
+    this.wsUrl = wsBase.includes('replit') ? wsBase : `${wsBase.replace(':3001', ':3002')}`;
+    
+    console.log('[TLA Backend] Using API URL:', this.apiUrl);
+    console.log('[TLA Backend] Using WebSocket URL:', this.wsUrl);
+    
+    // Get or create account ID
+    const accountStored = await chrome.storage.local.get(['accountId', 'serverUrl']);
+    
+    if (!accountStored.accountId) {
       // Generate account ID from server URL
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const url = tabs[0]?.url || '';
@@ -35,19 +60,21 @@ class BackendSync {
       // Create account in backend
       await this.createAccount(hostname);
     } else {
-      this.accountId = stored.accountId;
+      this.accountId = accountStored.accountId;
     }
     
-    // Connect WebSocket
-    this.connectWebSocket();
-    
-    // Start periodic sync (every 5 minutes)
-    this.startPeriodicSync();
+    // Only connect WebSocket if backend is enabled
+    if (this.isEnabled) {
+      this.connectWebSocket();
+      this.startPeriodicSync();
+    }
     
     console.log('[TLA Backend] Initialized with account:', this.accountId);
   }
   
   private async createAccount(serverUrl: string) {
+    if (!this.isEnabled) return;
+    
     try {
       const response = await fetch(`${this.apiUrl}/account`, {
         method: 'POST',
@@ -68,6 +95,8 @@ class BackendSync {
   }
   
   private connectWebSocket() {
+    if (!this.isEnabled) return;
+    
     try {
       this.ws = new WebSocket(this.wsUrl);
       
@@ -99,8 +128,11 @@ class BackendSync {
       };
       
       this.ws.onclose = () => {
-        console.log('[TLA Backend] WebSocket disconnected, reconnecting in 5s...');
-        setTimeout(() => this.connectWebSocket(), 5000);
+        console.log('[TLA Backend] WebSocket disconnected');
+        if (this.isEnabled) {
+          console.log('[TLA Backend] Will retry in 30 seconds...');
+          setTimeout(() => this.connectWebSocket(), 30000);
+        }
       };
       
     } catch (error) {
@@ -109,6 +141,10 @@ class BackendSync {
   }
   
   public async syncGameState(gameState: EnhancedGameState): Promise<any> {
+    if (!this.isEnabled) {
+      return { success: false, error: 'Backend sync disabled' };
+    }
+    
     if (!this.accountId) {
       console.error('[TLA Backend] No account ID');
       return { success: false, error: 'No account ID' };
@@ -154,7 +190,7 @@ class BackendSync {
   }
   
   public async getAccountOverview(): Promise<any> {
-    if (!this.accountId) {
+    if (!this.isEnabled || !this.accountId) {
       return null;
     }
     
@@ -174,6 +210,8 @@ class BackendSync {
   }
   
   public async getVillageHistory(villageId: string, hours: number = 24): Promise<any[]> {
+    if (!this.isEnabled) return [];
+    
     try {
       const dbVillageId = `${this.accountId}_${villageId}`;
       const response = await fetch(`${this.apiUrl}/history/${dbVillageId}?hours=${hours}`);
@@ -191,6 +229,8 @@ class BackendSync {
   }
   
   public async resolveAlert(alertId: number): Promise<boolean> {
+    if (!this.isEnabled) return false;
+    
     try {
       const response = await fetch(`${this.apiUrl}/alert/${alertId}/resolve`, {
         method: 'PATCH'
@@ -205,6 +245,8 @@ class BackendSync {
   }
   
   private startPeriodicSync() {
+    if (!this.isEnabled) return;
+    
     // Clear existing interval
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
@@ -217,6 +259,8 @@ class BackendSync {
   }
   
   private async requestFreshSync() {
+    if (!this.isEnabled) return;
+    
     // Send message to content script to collect fresh data
     const tabs = await chrome.tabs.query({ url: '*://*.travian.com/*' });
     
@@ -224,6 +268,39 @@ class BackendSync {
       chrome.tabs.sendMessage(tabs[0].id!, {
         type: 'REQUEST_FRESH_SYNC'
       });
+    }
+  }
+  
+  // Method to update backend URL
+  public async updateBackendUrl(url: string, enabled: boolean = true) {
+    await chrome.storage.sync.set({ 
+      backendUrl: url,
+      backendEnabled: enabled 
+    });
+    
+    // Reinitialize with new URL
+    this.isEnabled = enabled;
+    if (enabled) {
+      const baseUrl = url;
+      this.apiUrl = `${baseUrl}/api`;
+      const wsBase = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+      this.wsUrl = wsBase.includes('replit') ? wsBase : `${wsBase.replace(':3001', ':3002')}`;
+      
+      // Reconnect WebSocket
+      if (this.ws) {
+        this.ws.close();
+      }
+      this.connectWebSocket();
+    } else {
+      // Disable backend
+      if (this.ws) {
+        this.ws.close();
+        this.ws = null;
+      }
+      if (this.syncInterval) {
+        clearInterval(this.syncInterval);
+        this.syncInterval = null;
+      }
     }
   }
 }
