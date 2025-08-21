@@ -100,8 +100,8 @@ export class EnhancedScraper {
 
     console.log('[TLA Scraper] Starting full account scrape...');
     
-    // Collect data from all villages
-    const allVillagesData = await villageNavigator.collectAllVillagesData(
+    // FIX: Use the correct function name - collectAllVillagesManual
+    const allVillagesData = await villageNavigator.collectAllVillagesManual(
       () => this.scrapeCurrentVillage()
     );
     
@@ -126,17 +126,19 @@ export class EnhancedScraper {
     // First, get current village data quickly
     const currentVillage = this.scrapeCurrentVillage();
     
-    // Get cached account data if available
-    const cachedAccount = await dataStore.getLatestAccountSnapshot();
+    // For now, just build state with current village until we integrate overview scraper
+    const villages = new Map<string, VillageData>();
+    villages.set(currentVillage.villageId, currentVillage);
     
-    if (cachedAccount && this.shouldUseCachedData()) {
-      // Update only current village in the cached data
-      cachedAccount.villages.set(currentVillage.villageId, currentVillage);
-      return this.buildEnhancedState(cachedAccount.villages);
-    }
+    // Add detected villages with placeholder data
+    const detectedVillages = villageNavigator.getVillages();
+    detectedVillages.forEach((village, id) => {
+      if (!villages.has(id)) {
+        villages.set(id, village);
+      }
+    });
     
-    // If no cache or too old, do full scrape
-    return this.scrapeFullAccount(true);
+    return this.buildEnhancedState(villages);
   }
 
   private async buildEnhancedState(villages: Map<string, VillageData>): Promise<EnhancedGameState> {
@@ -271,17 +273,9 @@ export class EnhancedScraper {
   }
 
   private schedulePeriodicScraping() {
-    // Schedule full scrape every 30 minutes
-    setInterval(async () => {
-      console.log('[TLA Scraper] Running scheduled full account scrape');
-      await this.scrapeFullAccount(true);
-    }, this.FULL_SCRAPE_INTERVAL);
-    
-    // Clean old data daily
-    setInterval(async () => {
-      console.log('[TLA Scraper] Cleaning old data');
-      await dataStore.cleanOldData(7); // Keep 7 days
-    }, 24 * 60 * 60 * 1000);
+    // Disable automatic scraping for now to avoid navigation issues
+    // Will re-enable once overview scraper is integrated
+    console.log('[TLA Scraper] Automatic scraping disabled - use manual collection');
   }
 
   private shouldUseCachedData(): boolean {
