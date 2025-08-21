@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Travian Legends Assistant",
-  "version": "0.2.8",
-  "description": "Lightweight HUD and data scraper for Travian Legends.",
+  "version": "0.3.0",
+  "description": "AI-powered strategic advisor for Travian Legends",
   "permissions": [
     "storage"
   ],
   "host_permissions": [
     "*://*.travian.com/*",
-    "https://travian-proxy-efheqvbxk-doug-dosta-proceptras-projects.vercel.app/*"
+    "https://travian-proxy-simple.vercel.app/*"
   ],
   "background": {
     "service_worker": "background.js"
