@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TravianAssistant with Backend",
-  "version": "0.4.4",
+  "version": "0.4.7",
   "description": "AI-powered strategic advisor for Travian Legends with backend sync",
   "permissions": [
     "storage",
@@ -20,9 +20,15 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.travian.com/*"],
-      "js": ["content.js"],
-      "css": ["content.css"],
+      "matches": [
+        "*://*.travian.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -42,8 +48,13 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["content.css", "*.png"],
-      "matches": ["*://*.travian.com/*"]
+      "resources": [
+        "content.css",
+        "*.png"
+      ],
+      "matches": [
+        "*://*.travian.com/*"
+      ]
     }
   ]
 }
