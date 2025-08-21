@@ -1,9 +1,10 @@
 // packages/extension/src/background.ts
-// Background service that uses Vercel proxy for API calls
+// Background service with backend sync integration
+
+import { backendSync } from './background/backend-sync';
 
 console.log('[TLA BG] Background service starting...');
 
-// THE URL THAT ACTUALLY WORKS!!!
 const PROXY_URL = 'https://travian-proxy-simple.vercel.app/api/proxy';
 
 class BackgroundService {
@@ -57,31 +58,70 @@ class BackgroundService {
       case 'ANALYZE_GAME_STATE':
         try {
           const gameState = request.payload || request.state;
+          
+          // First sync to backend
+          const syncResult = await backendSync.syncGameState(gameState);
+          
+          // Then get AI analysis
           const analysis = await this.analyzeGame(gameState);
-          return { success: true, ...analysis };
-        } catch (error: any) {
-          return { success: false, error: error.message };
-        }
-
-      case 'ANALYZE_NOW':
-        try {
-          const analysis = await this.analyzeGame(request.state);
-          return { success: true, analysis };
+          
+          // Combine alerts from backend and AI recommendations
+          return { 
+            success: true, 
+            ...analysis,
+            alerts: syncResult.alerts || [],
+            backendSync: syncResult.success
+          };
         } catch (error: any) {
           return { success: false, error: error.message };
         }
 
       case 'ASK_QUESTION':
         try {
-          const answer = await this.callProxy(request.question);
+          // Get fresh context from backend
+          const overview = await backendSync.getAccountOverview();
+          const contextualPrompt = this.addBackendContext(request.question, overview);
+          
+          const answer = await this.callProxy(contextualPrompt);
           return { success: true, answer };
         } catch (error: any) {
           return { success: false, error: error.message };
         }
 
-      case 'STATE_UPDATE':
-        // Store state for analysis
-        return { success: true };
+      case 'SYNC_TO_BACKEND':
+        try {
+          const result = await backendSync.syncGameState(request.gameState);
+          return result;
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
+
+      case 'GET_ACCOUNT_OVERVIEW':
+        try {
+          const overview = await backendSync.getAccountOverview();
+          return { success: true, data: overview };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
+
+      case 'GET_VILLAGE_HISTORY':
+        try {
+          const history = await backendSync.getVillageHistory(
+            request.villageId, 
+            request.hours || 24
+          );
+          return { success: true, data: history };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
+
+      case 'RESOLVE_ALERT':
+        try {
+          const resolved = await backendSync.resolveAlert(request.alertId);
+          return { success: resolved };
+        } catch (error: any) {
+          return { success: false, error: error.message };
+        }
 
       default:
         return { success: true };
@@ -98,7 +138,7 @@ class BackgroundService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',  // Updated to Sonnet 4!
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
           messages: [{
             role: 'user',
@@ -140,17 +180,18 @@ Return ONLY a valid JSON object with this exact structure:
     {
       "action": "Specific action to take",
       "reason": "Why this is important now",
-      "priority": "high"
+      "priority": "critical",
+      "village": "Village name if specific to one village"
     },
     {
       "action": "Another specific action",
       "reason": "Why this matters",
-      "priority": "medium"
+      "priority": "high"
     },
     {
       "action": "Third action",
       "reason": "Why to do this",
-      "priority": "low"
+      "priority": "medium"
     }
   ]
 }`;
@@ -168,23 +209,40 @@ Return ONLY a valid JSON object with this exact structure:
       return {
         recommendations: [
           { 
-            action: 'Proxy is working!', 
-            reason: 'Successfully connected to Claude AI', 
+            action: 'Check your resource production', 
+            reason: 'Ensure steady growth', 
             priority: 'high' 
           },
           {
-            action: 'Test the extension',
-            reason: 'Load extension and visit Travian',
+            action: 'Review building queue',
+            reason: 'Optimize construction order',
             priority: 'medium'
           },
           {
-            action: 'Celebrate',
-            reason: 'After 8 hours, it finally works!',
+            action: 'Scout nearby villages',
+            reason: 'Identify opportunities',
             priority: 'low'
           }
         ]
       };
     }
+  }
+
+  private addBackendContext(question: string, overview: any): string {
+    if (!overview) {
+      return question;
+    }
+    
+    const context = `
+CONTEXT FROM DATABASE:
+- Villages: ${overview.villages?.length || 0}
+- Total Population: ${overview.aggregates?.totalPopulation || 0}
+- Total Production: Wood +${overview.aggregates?.totalProduction?.wood || 0}, Clay +${overview.aggregates?.totalProduction?.clay || 0}, Iron +${overview.aggregates?.totalProduction?.iron || 0}, Crop +${overview.aggregates?.totalProduction?.crop || 0}
+- Active Alerts: ${overview.alerts?.length || 0}
+
+`;
+    
+    return context + question;
   }
 }
 
