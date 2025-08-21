@@ -1,163 +1,239 @@
 # TravianAssistant Session Context
-*Last Updated: August 21, 2025 - Evening*
+*Last Updated: August 21, 2025 - 3:30 PM PST*
 
-## ✅ WORKING COMPONENTS
+## 🚨 CRITICAL START-OF-SESSION CHECKLIST
+1. **DO NOT** touch Vercel proxy - it's working perfectly at `https://travian-proxy-simple.vercel.app/api/proxy`
+2. **ALWAYS** rebuild extension after pulling: `cd packages/extension && pnpm build`
+3. **Version should be 0.4.12+** (auto-increments on build)
+4. **Git conflicts**: Use `git stash` before pulling if manifest.json has local changes
 
-### Vercel Proxy - FULLY FUNCTIONAL
-- **URL**: `https://travian-proxy-simple.vercel.app/api/proxy`
-- **Status**: Working correctly, no changes needed
-- **Model**: Claude Sonnet 4 (claude-sonnet-4-20250514)
-- **Note**: This proxy is stable and functional - DO NOT CHANGE
+## 📁 PROJECT STRUCTURE & RESOURCES
 
-## 🎯 Current Priority
-**FOCUS**: Stabilize HUD/Scanner, then integrate Resource Bar approach
-**Version Issue**: Still showing 0.4.2 (needs rebuild)
-**Key Discovery**: Resource Bar extension gets all village data WITHOUT navigation!
+### Repository Location
+- **Replit**: `/home/runner/workspace/`
+- **GitHub**: `https://github.com/DougProceptra/TravianAssistant`
+- **Main Branch**: `main` (all work happens here)
 
-## 🔴 Critical Issues
-
-### 1. Version Mismatch
-- **Problem**: Console shows v0.4.2 instead of v0.4.9
-- **Impact**: Old code running, fixes not applied
-- **Solution**: Need to rebuild: `cd packages/extension && pnpm build`
-
-### 2. Full Scan Incomplete
-- **Behavior**: Scanned village 000, moved to 001, then stopped
-- **Expected**: Should scan all 6 villages
-- **Status**: Investigating why it stops after second village
-
-### 3. Background Service Disconnecting
+### Key Files
 ```
-Error: Could not establish connection. Receiving end does not exist.
+packages/extension/
+├── manifest.json           # Version auto-bumps on build
+├── src/
+│   ├── background.ts      # Service worker - handles API calls
+│   └── content/
+│       ├── index.ts       # Main content script (HUD, orchestration)
+│       ├── enhanced-scraper.ts    # Multi-village data collection
+│       ├── village-navigator.ts   # Village switching (DANGEROUS)
+│       ├── village-overview-scraper.ts  # NEW: Safe data collection
+│       ├── data-persistence.ts    # IndexedDB storage
+│       └── conversational-ai.ts   # Chat interface
 ```
-- **Impact**: AI features not working
-- **Solution**: Need to reload extension properly
 
-## 💡 Resource Bar Discovery
+### Available Tools & Services
+- **Vercel Proxy**: Working at `https://travian-proxy-simple.vercel.app/api/proxy`
+- **Claude API**: Sonnet 4 model via proxy
+- **Chrome Extension**: Manifest V3 with service worker
+- **IndexedDB**: For local data persistence
+- **Replit Backend**: Available but not currently used
 
-The Resource Bar extension successfully:
-- Shows **total production** from ALL villages: `216W + 210Y + 210V + 100 Air`
-- Shows **time to storage full**: `15:36:34`
-- Gets data from all 6 villages **WITHOUT navigation**
-- Updates in real-time
+## 🎮 GAME CONTEXT
 
-### Possible Techniques Resource Bar Uses:
-1. **Game API/AJAX interception** - Catching village data from game's own calls
-2. **Network request monitoring** - Intercepting HTTP responses
-3. **Village overview parsing** - Using game's built-in overview feature
-4. **Local storage/cookies** - Reading game's stored data
+### Server & Account
+- **Server**: lusobr.x2.lusobrasileiro.travian.com
+- **Tribe**: Egyptians
+- **Villages**: 6 total
+  - 000: 24488 (Capital)
+  - 001: 20985
+  - 002: 21104
+  - 003: 21214
+  - 004: 27828
+  - 005: 20522
 
-## 📋 Next Session Action Plan
+### Resource Bar Extension Discovery
+**CRITICAL**: Doug has another extension "Resource Bar" that successfully:
+- Shows total production from ALL villages without navigation
+- Displays: `216W + 210Y + 210V + 100 Air` 
+- Shows time to storage overflow
+- **Doug has the code and will provide it**
 
-### Phase 1: Stabilize Current Build
-1. **Fix version issue**
-   ```bash
-   cd packages/extension
-   pnpm build
-   # Reload in Chrome
-   ```
+## 💻 DOUG'S DEVELOPMENT PREFERENCES
 
-2. **Verify basic functions**
-   - [ ] HUD shows v0.4.9
-   - [ ] Quick Analyze works (current village only)
-   - [ ] 6 villages detected correctly
-   - [ ] No auto-navigation occurring
+### Communication Style
+- **Be Direct**: No fluff, get to the point
+- **Show Progress**: Regular status updates
+- **Admit Uncertainty**: Say "I don't know" rather than guess
+- **Time Estimates**: Be realistic, multiply by 3 for safety
 
-3. **Verify proxy connection**
-   - [ ] Check service worker registration
-   - [ ] Test connection to Claude proxy (already working)
-   - [ ] Verify API responses
+### Code Approach
+- **Research First**: Always check docs/web search before coding
+- **One Step at a Time**: Single clear actions, not multiple options
+- **Test Everything**: Verify each change works
+- **Safety First**: Never auto-navigate or interrupt gameplay
 
-### Phase 2: Analyze Resource Bar Code
-1. **Extract key components**
-   - How it gets village data
-   - Network interception methods
-   - Data aggregation approach
+### Available Resources
+- Doug can provide Resource Bar extension code
+- Doug has full access to Replit and GitHub
+- Doug actively plays the game and will test
+- Doug has programming knowledge - explain technical details
 
-2. **Identify game endpoints**
-   - Village data API calls
-   - Update frequencies
-   - Authentication/session handling
+## 🔴 CURRENT ISSUES & STATUS
 
-3. **Document the approach**
-   - Create implementation plan
-   - List required changes
-   - Estimate effort
+### Working ✅
+- **Vercel Proxy**: Fully functional, no changes needed
+- **Village Detection**: All 6 villages found correctly
+- **Quick Analyze**: Gets current village + cached data (safe)
+- **AI Integration**: Works when background service connected
+- **Chat Interface**: Works when background service connected
 
-### Phase 3: Implement Safe Data Collection
-1. **Replace navigation-based scanning**
-   - Use Resource Bar's technique
-   - No village switching needed
-   - Real-time updates
+### Broken ❌
+- **Version Display**: Shows 0.4.2 instead of current (build issue)
+- **Full Scan**: Stops after 2nd village (navigation broken)
+- **Background Service**: Disconnects frequently
+- **Auto-refresh**: Set to 15 minutes but may still trigger unwanted actions
 
-2. **Update HUD display**
-   - Show total production like Resource Bar
-   - Add storage overflow timers
-   - Display all villages summary
+### Safety Concerns ⚠️
+- **Navigation is DANGEROUS**: Can interrupt attacks, builds, etc.
+- **Full Scan**: Has double confirmation but still risky
+- **Auto-refresh**: Should only update current village
 
-## 🐛 Known Issues Summary
+## 🎯 IMMEDIATE PRIORITIES
 
-| Issue | Severity | Status |
-|-------|----------|--------|
-| Version shows 0.4.2 | HIGH | Need rebuild |
-| Full scan stops at village 2 | MEDIUM | Investigating |
-| Background service disconnects | HIGH | Need reload |
-| Auto-navigation risk | CRITICAL | Partially fixed |
+### 1. Stabilize Current Build
+```bash
+# In Replit terminal
+git stash  # Save local changes
+git pull origin main
+cd packages/extension
+pnpm build
+# Version will auto-increment (probably to 0.4.13)
+```
 
-## 📊 Current Stats
-- **Villages Detected**: 6 ✅
-- **Villages in HUD**: 6 ✅  
-- **Quick Analyze**: Working (cached data)
-- **Full Scan**: Broken (stops early)
-- **AI Analysis**: Working when background service connected
-- **Chat**: Working when background service connected
-- **Vercel Proxy**: FULLY FUNCTIONAL ✅
+### 2. Get Resource Bar Code
+- Doug will provide the extension files
+- Focus on understanding their data collection method
+- This is the KEY to solving everything
 
-## 🔧 Debug Info
+### 3. Implement Safe Data Collection
+- Use Resource Bar's approach (no navigation)
+- Update village-overview-scraper.ts
+- Remove dangerous navigation code
 
-Current village IDs:
-- 000: 24488
-- 001: 20985
-- 002: 21104
-- 003: 21214
-- 004: 27828
-- 005: 20522
+## 🛠️ TECHNICAL DECISIONS & LEARNINGS
 
-Console commands for debugging:
+### What We've Learned
+1. **Chrome Manifest V3 blocks direct API calls** - Must use proxy
+2. **Vercel proxy works perfectly** - Don't change it
+3. **Navigation is dangerous** - Interrupts gameplay
+4. **Resource Bar has the solution** - Gets all data without navigation
+5. **Build script auto-increments version** - Causes git conflicts
+
+### Architecture Decisions
+- **Proxy Pattern**: Chrome Extension → Vercel Proxy → Claude API
+- **Service Worker**: Background script for API calls
+- **Content Script**: Injected into Travian pages
+- **IndexedDB**: Local storage for village history
+
+### API Configuration
 ```javascript
-// Check version (should be 0.4.9)
-window.TLA.version
+// Working proxy configuration
+const PROXY_URL = "https://travian-proxy-simple.vercel.app/api/proxy";
+const MODEL = "claude-sonnet-4-20250514";
+```
 
-// Get village list
-window.TLA.navigator.getVillages()
+## 📊 DEBUG COMMANDS
+
+### Browser Console (on Travian page)
+```javascript
+// Check version
+window.TLA.version  // Should be 0.4.12+
+
+// Check villages detected
+window.TLA.navigator.getVillages()  // Should show Map with 6 villages
 
 // Test background service
-await window.TLA.testBg()
+await window.TLA.testBg()  // Should return true
 
 // Get current state
-window.TLA.debug()
+window.TLA.debug()  // Full debug info
+
+// Check scraper
+window.TLA.scraper  // Enhanced scraper instance
 ```
 
-## 🎯 Success Criteria for Next Session
+### Chrome Extension Page
+- URL: `chrome://extensions`
+- Find TravianAssistant
+- Click "Reload" after building
+- Check "Errors" if any issues
 
-1. **Stable HUD** - Version 0.4.9, no crashes
-2. **Safe scanning** - No unwanted navigation
-3. **Resource Bar analysis** - Understand their approach
-4. **Implementation plan** - Clear path to safe data collection
+## 🚀 NEXT SESSION GAME PLAN
 
-## 💡 Key Insight
+### Phase 1: Stabilization (30 min)
+1. Sync git and rebuild extension
+2. Verify version shows correctly
+3. Test basic functionality
+4. Ensure no auto-navigation
 
-**Resource Bar proves it's possible to get all village data without navigation.**
-This is the breakthrough we need - we've been approaching the problem wrong.
-Instead of navigating to each village, we should intercept the game's own data.
+### Phase 2: Resource Bar Analysis (1 hour)
+1. Get Resource Bar code from Doug
+2. Identify data collection method
+3. Find the API endpoints it uses
+4. Document the approach
 
-## ⚠️ DO NOT FORGET
+### Phase 3: Implementation (2 hours)
+1. Port Resource Bar's method to our extension
+2. Update village-overview-scraper.ts
+3. Remove dangerous navigation code
+4. Test with all 6 villages
 
-1. **REBUILD the extension** before testing anything
-2. **Resource Bar code is priority** - it has the solution
-3. **No auto-navigation** - safety first
-4. **Document everything** - for future sessions
-5. **Vercel proxy is working** - don't change it
+### Success Metrics
+- [ ] All village data without navigation
+- [ ] Total production displayed like Resource Bar
+- [ ] Storage overflow warnings
+- [ ] No gameplay interruptions
+- [ ] Stable background service
+
+## ⚠️ CRITICAL WARNINGS
+
+### NEVER DO THESE
+- ❌ Don't change Vercel proxy - it's working
+- ❌ Don't auto-navigate between villages
+- ❌ Don't guess - research first
+- ❌ Don't claim high confidence without testing
+- ❌ Don't provide multiple "try this" options
+
+### ALWAYS DO THESE
+- ✅ Rebuild after pulling from git
+- ✅ Test in browser before claiming success
+- ✅ Use Resource Bar as the reference implementation
+- ✅ Prioritize gameplay safety over features
+- ✅ Document all changes in session context
+
+## 📝 COMMUNICATION NOTES FOR AI
+
+When starting a new session:
+1. **First**: Read this entire document
+2. **Second**: Ask Doug for Resource Bar code if not provided
+3. **Third**: Check current git status and sync
+4. **Fourth**: Rebuild and test current state
+5. **Then**: Proceed with implementation
+
+Doug's time is valuable. Be efficient, accurate, and honest. If something isn't working after 2-3 attempts, stop and reassess rather than continuing to guess.
+
+## 🔄 SESSION HANDOFF NOTES
+
+### What Just Happened
+- Fixed village detection (6 villages now show)
+- Added safety measures to prevent auto-navigation
+- Discovered Resource Bar has the solution we need
+- Set up 15-minute refresh (but still needs work)
+- Identified that navigation is the core problem
+
+### Key Insight
+**Resource Bar proves we don't need navigation**. It gets all village data through the game's own API/network calls. This is the breakthrough - we've been solving the wrong problem. Stop trying to navigate, start intercepting data.
+
+### Next Critical Step
+**GET THE RESOURCE BAR CODE** - Everything depends on understanding how it works.
 
 ---
-*Next Session: Analyze Resource Bar → Implement safe data collection → Achieve feature parity*
+*Remember: The goal is to enhance gameplay, not interrupt it. Resource Bar has already solved this - we just need to learn from it.*
