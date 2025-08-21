@@ -1,6 +1,6 @@
 // Backend Sync Service
 // Connects extension to backend (local or remote)
-// v0.4.4 - Configured for Replit deployment
+// v0.4.5 - Updated for workspace.dougdostal.repl.co
 
 import { EnhancedGameState } from '../content/enhanced-scraper';
 
@@ -30,8 +30,8 @@ class BackendSync {
       return;
     }
     
-    // Use configured URL or YOUR REPLIT URL as default
-    const baseUrl = stored.backendUrl || 'https://TravianAssistant.dougdostal.replit.dev';
+    // Use configured URL or YOUR ACTUAL REPLIT URL as default
+    const baseUrl = stored.backendUrl || 'https://workspace.dougdostal.repl.co';
     this.apiUrl = `${baseUrl}/api`;
     
     // Convert HTTP to WS for WebSocket
