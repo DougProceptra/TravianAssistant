@@ -1,4 +1,5 @@
-// Village Navigation and Multi-Village Data Collection
+// Village Navigation - Fixed to prevent endless loop
+// Only navigates when explicitly requested via "Collect All Villages" button
 
 export interface VillageData {
   villageId: string;
@@ -24,6 +25,7 @@ export interface VillageData {
 export class VillageNavigator {
   private villages: Map<string, VillageData> = new Map();
   private currentVillageId: string = '';
+  private isCollecting: boolean = false; // Prevent multiple collections
   
   constructor() {
     console.log('[TLA Navigator] Village navigator initialized');
@@ -125,7 +127,101 @@ export class VillageNavigator {
     return this.villages;
   }
   
-  public async switchToVillage(villageId: string): Promise<boolean> {
+  /**
+   * Manually triggered collection of all villages
+   * Only runs when explicitly requested by user
+   */
+  public async collectAllVillagesManual(
+    scrapeFunction: () => VillageData
+  ): Promise<Map<string, VillageData>> {
+    console.log('[TLA Navigator] Manual village collection requested');
+    
+    // Prevent multiple simultaneous collections
+    if (this.isCollecting) {
+      console.log('[TLA Navigator] Collection already in progress');
+      return new Map();
+    }
+    
+    this.isCollecting = true;
+    
+    try {
+      // Make sure we have villages detected
+      if (this.villages.size === 0) {
+        this.detectVillages();
+      }
+      
+      const allData = new Map<string, VillageData>();
+      const villageIds = Array.from(this.villages.keys());
+      
+      // If no villages found, just scrape current
+      if (villageIds.length === 0) {
+        console.log('[TLA Navigator] No villages found, scraping current page only');
+        const currentData = scrapeFunction();
+        allData.set(currentData.villageId, currentData);
+        return allData;
+      }
+      
+      console.log(`[TLA Navigator] Will collect data from ${villageIds.length} villages`);
+      
+      // Save starting village to return to it
+      const startingVillageId = this.currentVillageId;
+      
+      // Collect data from each village
+      for (let i = 0; i < villageIds.length; i++) {
+        const villageId = villageIds[i];
+        
+        try {
+          // Switch to village if not current
+          if (villageId !== this.currentVillageId) {
+            console.log(`[TLA Navigator] Switching to village ${i + 1}/${villageIds.length}: ${villageId}...`);
+            const switched = await this.switchToVillage(villageId);
+            if (!switched) {
+              console.error(`[TLA Navigator] Failed to switch to village ${villageId}`);
+              continue;
+            }
+          }
+          
+          // Wait for page to stabilize
+          await this.wait(1500);
+          
+          // Scrape village data
+          const villageData = scrapeFunction();
+          allData.set(villageId, villageData);
+          
+          const villageName = this.villages.get(villageId)?.villageName || 'Unknown';
+          console.log(`[TLA Navigator] Collected data for ${villageName} (${villageId})`);
+          
+          // Don't spam the server
+          await this.wait(2000);
+          
+        } catch (error) {
+          console.error(`[TLA Navigator] Error collecting data for village ${villageId}:`, error);
+        }
+      }
+      
+      // Return to starting village
+      if (startingVillageId && startingVillageId !== this.currentVillageId) {
+        console.log(`[TLA Navigator] Returning to starting village ${startingVillageId}`);
+        await this.switchToVillage(startingVillageId);
+      }
+      
+      console.log(`[TLA Navigator] Manual collection complete: ${allData.size} villages`);
+      return allData;
+      
+    } finally {
+      this.isCollecting = false;
+    }
+  }
+  
+  /**
+   * Collect data only for current village
+   */
+  public collectCurrentVillage(scrapeFunction: () => VillageData): VillageData {
+    console.log('[TLA Navigator] Collecting current village data only');
+    return scrapeFunction();
+  }
+  
+  private async switchToVillage(villageId: string): Promise<boolean> {
     console.log(`[TLA Navigator] Switching to village ${villageId}`);
     
     // Find the village link
@@ -148,72 +244,21 @@ export class VillageNavigator {
     return true;
   }
   
-  public async collectAllVillagesData(
-    scrapeFunction: () => VillageData
-  ): Promise<Map<string, VillageData>> {
-    console.log('[TLA Navigator] Starting multi-village data collection');
-    
-    // Make sure we have villages detected
-    if (this.villages.size === 0) {
-      this.detectVillages();
-    }
-    
-    const allData = new Map<string, VillageData>();
-    const villageIds = Array.from(this.villages.keys());
-    
-    // If still no villages found, just scrape current
-    if (villageIds.length === 0) {
-      console.log('[TLA Navigator] No villages found, scraping current page only');
-      const currentData = scrapeFunction();
-      allData.set(currentData.villageId, currentData);
-      return allData;
-    }
-    
-    console.log(`[TLA Navigator] Will collect data from ${villageIds.length} villages`);
-    
-    // Multi-village: navigate and scrape each
-    for (const villageId of villageIds) {
-      try {
-        // Switch to village if not current
-        if (villageId !== this.currentVillageId) {
-          console.log(`[TLA Navigator] Switching to village ${villageId}...`);
-          const switched = await this.switchToVillage(villageId);
-          if (!switched) {
-            console.error(`[TLA Navigator] Failed to switch to village ${villageId}`);
-            continue;
-          }
-        }
-        
-        // Wait a bit for page to stabilize
-        await this.wait(1000);
-        
-        // Scrape village data
-        const villageData = scrapeFunction();
-        allData.set(villageId, villageData);
-        
-        const villageName = this.villages.get(villageId)?.villageName || 'Unknown';
-        console.log(`[TLA Navigator] Collected data for ${villageName} (${villageId})`);
-        
-        // Don't spam the server
-        await this.wait(2000);
-        
-      } catch (error) {
-        console.error(`[TLA Navigator] Error collecting data for village ${villageId}:`, error);
-      }
-    }
-    
-    console.log(`[TLA Navigator] Collected data from ${allData.size} villages`);
-    return allData;
-  }
-  
   private async waitForPageLoad(): Promise<void> {
     return new Promise(resolve => {
       if (document.readyState === 'complete') {
         resolve();
       } else {
-        window.addEventListener('load', () => resolve(), { once: true });
+        const listener = () => {
+          window.removeEventListener('load', listener);
+          resolve();
+        };
+        window.addEventListener('load', listener);
         // Timeout after 10 seconds
-        setTimeout(() => resolve(), 10000);
+        setTimeout(() => {
+          window.removeEventListener('load', listener);
+          resolve();
+        }, 10000);
       }
     });
   }
