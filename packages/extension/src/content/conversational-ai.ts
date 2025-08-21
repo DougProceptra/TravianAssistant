@@ -57,7 +57,7 @@ export class ConversationalAI {
    * Build a strategic prompt with full game context
    */
   private buildStrategicPrompt(question: string, gameState: any): string {
-    const isMultiVillage = gameState.villages && gameState.villages.size > 0;
+    const isMultiVillage = gameState?.villages && gameState.villages.size > 0;
     
     return `You are an expert Travian Legends strategic advisor. The player has asked you a specific question about their game strategy.
 
@@ -90,19 +90,19 @@ Be conversational but precise. If they ask about troop building, tell them exact
 - Rank: ${gameState.aggregates?.rank || 'Unknown'}
 
 TOTAL PRODUCTION:
-- Wood: ${gameState.aggregates?.totalProduction.wood}/hour
-- Clay: ${gameState.aggregates?.totalProduction.clay}/hour  
-- Iron: ${gameState.aggregates?.totalProduction.iron}/hour
-- Crop: ${gameState.aggregates?.totalProduction.crop}/hour (Net: ${gameState.aggregates?.totalProduction.cropNet}/hour)
+- Wood: ${gameState.aggregates?.totalProduction?.wood || 0}/hour
+- Clay: ${gameState.aggregates?.totalProduction?.clay || 0}/hour  
+- Iron: ${gameState.aggregates?.totalProduction?.iron || 0}/hour
+- Crop: ${gameState.aggregates?.totalProduction?.crop || 0}/hour (Net: ${gameState.aggregates?.totalProduction?.cropNet || 0}/hour)
 
 TOTAL RESOURCES:
-- Wood: ${gameState.aggregates?.totalResources.wood}
-- Clay: ${gameState.aggregates?.totalResources.clay}
-- Iron: ${gameState.aggregates?.totalResources.iron}
-- Crop: ${gameState.aggregates?.totalResources.crop}
+- Wood: ${gameState.aggregates?.totalResources?.wood || 0}
+- Clay: ${gameState.aggregates?.totalResources?.clay || 0}
+- Iron: ${gameState.aggregates?.totalResources?.iron || 0}
+- Crop: ${gameState.aggregates?.totalResources?.crop || 0}
 
 VILLAGES DETAIL:
-${villages.map(v => `${v.villageName}: Pop ${v.population || 'N/A'}, Resources (${v.resources.wood}/${v.resources.clay}/${v.resources.iron}/${v.resources.crop})`).join('\n')}
+${villages.map(v => `${v.villageName}: Pop ${v.population || 'N/A'}, Resources (${v.resources?.wood || 0}/${v.resources?.clay || 0}/${v.resources?.iron || 0}/${v.resources?.crop || 0})`).join('\n')}
 
 CURRENT ALERTS:
 ${gameState.alerts?.map((a: any) => `- [${a.severity}] ${a.message}`).join('\n') || 'None'}`;
@@ -113,10 +113,10 @@ ${gameState.alerts?.map((a: any) => `- [${a.severity}] ${a.message}`).join('\n')
    */
   private formatSingleVillageContext(gameState: any): string {
     return `CURRENT VILLAGE:
-- Resources: Wood ${gameState.resources?.wood}, Clay ${gameState.resources?.clay}, Iron ${gameState.resources?.iron}, Crop ${gameState.resources?.crop}
-- Production: +${gameState.production?.wood}/+${gameState.production?.clay}/+${gameState.production?.iron}/+${gameState.production?.crop} per hour
-- Buildings: ${gameState.buildings?.length || 0} constructed
-- Troops: ${gameState.troops?.length || 0} units`;
+- Resources: Wood ${gameState?.resources?.wood || 0}, Clay ${gameState?.resources?.clay || 0}, Iron ${gameState?.resources?.iron || 0}, Crop ${gameState?.resources?.crop || 0}
+- Production: +${gameState?.production?.wood || 0}/+${gameState?.production?.clay || 0}/+${gameState?.production?.iron || 0}/+${gameState?.production?.crop || 0} per hour
+- Buildings: ${gameState?.buildings?.length || 0} constructed
+- Troops: ${gameState?.troops?.length || 0} units`;
   }
 
   /**
@@ -200,10 +200,22 @@ ${gameState.alerts?.map((a: any) => `- [${a.severity}] ${a.message}`).join('\n')
   public getSuggestedQuestions(gameState: any): string[] {
     const suggestions: string[] = [];
     
+    // Handle null or undefined game state
+    if (!gameState) {
+      return [
+        "What should I build first?",
+        "How can I increase resource production?",
+        "When should I build troops?",
+        "What's the best strategy for beginners?",
+        "How do I expand to more villages?"
+      ];
+    }
+    
     // Resource-based suggestions
     if (gameState.aggregates?.totalResources) {
       const totalRes = gameState.aggregates.totalResources;
-      if (totalRes.wood + totalRes.clay + totalRes.iron > 10000) {
+      const total = (totalRes.wood || 0) + (totalRes.clay || 0) + (totalRes.iron || 0);
+      if (total > 10000) {
         suggestions.push("What should I build with my current resources?");
       }
     }
@@ -249,8 +261,8 @@ export class StrategicCalculators {
     hasEnoughResources: boolean;
   } {
     // This would need actual CP calculation based on buildings
-    const currentCP = gameState.aggregates?.culturePoints || 0;
-    const villageCount = gameState.villages?.size || 1;
+    const currentCP = gameState?.aggregates?.culturePoints || 0;
+    const villageCount = gameState?.villages?.size || 1;
     
     // Simplified CP requirements (would need actual formula)
     const cpNeeded = this.getCPRequirement(villageCount + 1);
@@ -266,12 +278,12 @@ export class StrategicCalculators {
       crop: 1600
     };
     
-    const currentRes = gameState.aggregates?.totalResources || gameState.resources;
+    const currentRes = gameState?.aggregates?.totalResources || gameState?.resources || { wood: 0, clay: 0, iron: 0, crop: 0 };
     const hasEnoughResources = 
-      currentRes.wood >= resourcesNeeded.wood &&
-      currentRes.clay >= resourcesNeeded.clay &&
-      currentRes.iron >= resourcesNeeded.iron &&
-      currentRes.crop >= resourcesNeeded.crop;
+      (currentRes.wood || 0) >= resourcesNeeded.wood &&
+      (currentRes.clay || 0) >= resourcesNeeded.clay &&
+      (currentRes.iron || 0) >= resourcesNeeded.iron &&
+      (currentRes.crop || 0) >= resourcesNeeded.crop;
     
     return {
       culturePointsNeeded: cpNeeded,
@@ -297,12 +309,12 @@ export class StrategicCalculators {
   } {
     // This would need troop cost data for each tribe
     const troopCosts = this.getTroopCosts(troopType);
-    const currentRes = gameState.aggregates?.totalResources || gameState.resources;
+    const currentRes = gameState?.aggregates?.totalResources || gameState?.resources || { wood: 0, clay: 0, iron: 0, crop: 0 };
     
-    const maxByWood = Math.floor(currentRes.wood / troopCosts.wood);
-    const maxByClay = Math.floor(currentRes.clay / troopCosts.clay);
-    const maxByIron = Math.floor(currentRes.iron / troopCosts.iron);
-    const maxByCrop = Math.floor(currentRes.crop / troopCosts.crop);
+    const maxByWood = Math.floor((currentRes.wood || 0) / troopCosts.wood);
+    const maxByClay = Math.floor((currentRes.clay || 0) / troopCosts.clay);
+    const maxByIron = Math.floor((currentRes.iron || 0) / troopCosts.iron);
+    const maxByCrop = Math.floor((currentRes.crop || 0) / troopCosts.crop);
     
     const maxTroops = Math.min(maxByWood, maxByClay, maxByIron, maxByCrop);
     
@@ -346,7 +358,7 @@ export class StrategicCalculators {
    */
   private static estimateCPProduction(gameState: any): number {
     // Simplified - would calculate based on buildings
-    const villageCount = gameState.villages?.size || 1;
+    const villageCount = gameState?.villages?.size || 1;
     return villageCount * 100; // Rough estimate
   }
 
