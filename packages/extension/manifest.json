@@ -1,35 +1,49 @@
 {
   "manifest_version": 3,
-  "name": "Travian Legends Assistant",
-  "version": "0.4.3",
-  "description": "AI-powered strategic advisor for Travian Legends with multi-village support",
+  "name": "TravianAssistant with Backend",
+  "version": "0.4.4",
+  "description": "AI-powered strategic advisor for Travian Legends with backend sync",
   "permissions": [
-    "storage"
+    "storage",
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "*://*.travian.com/*",
     "https://travian-proxy-simple.vercel.app/*",
-    "http://localhost:*/*",
-    "https://*.replit.app/*",
-    "https://*.repl.co/*"
+    "https://TravianAssistant.dougdostal.replit.dev/*",
+    "wss://TravianAssistant.dougdostal.replit.dev/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
-      "matches": [
-        "*://*.travian.com/*"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_end"
+      "matches": ["*://*.travian.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
     }
   ],
-  "options_page": "src/options/index.html",
   "action": {
-    "default_title": "TLA v0.4.3 - Click to open settings",
-    "default_popup": "src/options/index.html"
-  }
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["content.css", "*.png"],
+      "matches": ["*://*.travian.com/*"]
+    }
+  ]
 }
