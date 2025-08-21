@@ -1,113 +1,153 @@
 # TravianAssistant Session Context
-*Last Updated: August 21, 2025 - 3:00 PM PST*
+*Last Updated: August 21, 2025 - 3:15 PM PST*
 
-## 🎯 Current Status
-**Version**: 0.4.9
-**Safety**: FIXED - No more dangerous auto-navigation
-**Villages**: Correctly detects all 6 villages
+## 🎯 Current Priority
+**FOCUS**: Stabilize HUD/Scanner, then integrate Resource Bar approach
+**Version Issue**: Still showing 0.4.2 (needs rebuild)
+**Key Discovery**: Resource Bar extension gets all village data WITHOUT navigation!
 
-## 🔒 CRITICAL SAFETY FIXES (Just Implemented)
+## 🔴 Critical Issues
 
-### What Was Wrong
-- Extension was auto-navigating between villages
-- Could interrupt critical game operations (attacks, builds, etc.)
-- Full scan was looping endlessly through villages
-- Version showing as 0.4.2 instead of 0.4.9 (old code running)
+### 1. Version Mismatch
+- **Problem**: Console shows v0.4.2 instead of v0.4.9
+- **Impact**: Old code running, fixes not applied
+- **Solution**: Need to rebuild: `cd packages/extension && pnpm build`
 
-### What's Fixed ✅
-1. **NO Automatic Navigation** - Completely removed
-2. **Double Confirmation** for Full Scan - Warns about interruption
-3. **Smart State** - Uses cached data, no navigation needed
-4. **Safe Auto-Refresh** - Every 15 minutes, current village only
+### 2. Full Scan Incomplete
+- **Behavior**: Scanned village 000, moved to 001, then stopped
+- **Expected**: Should scan all 6 villages
+- **Status**: Investigating why it stops after second village
 
-## 📊 Feature Status
+### 3. Background Service Disconnecting
+```
+Error: Could not establish connection. Receiving end does not exist.
+```
+- **Impact**: AI features not working
+- **Solution**: Need to reload extension properly
 
-### Working ✅
-- **Village Detection**: All 6 villages found correctly
-- **Quick Analyze**: Safe, uses cached data for other villages
-- **AI Integration**: Claude Sonnet 4 analysis working
-- **Chat Interface**: Questions and responses display properly
-- **Data Persistence**: IndexedDB storing village history
-- **15-minute Refresh**: Only current village (safe)
+## 💡 Resource Bar Discovery
 
-### Needs Testing 🧪
-- **Full Scan**: Now has double confirmation - test carefully
-- **Cached Data**: Should show data from previous scans
-- **AI Recommendations**: Should parse and display better
-- **Chat Responses**: Should show in chat window
+The Resource Bar extension successfully:
+- Shows **total production** from ALL villages: `216W + 210Y + 210V + 100 Air`
+- Shows **time to storage full**: `15:36:34`
+- Gets data from all 6 villages **WITHOUT navigation**
+- Updates in real-time
 
-## 🛡️ Safety Modes
+### Possible Techniques Resource Bar Uses:
+1. **Game API/AJAX interception** - Catching village data from game's own calls
+2. **Network request monitoring** - Intercepting HTTP responses
+3. **Village overview parsing** - Using game's built-in overview feature
+4. **Local storage/cookies** - Reading game's stored data
 
-### Quick Analyze (SAFE)
-- Only scrapes current village
-- Uses cached data for other villages
-- No navigation required
-- Can run anytime
+## 📋 Next Session Action Plan
 
-### Full Scan (DANGEROUS)
-- Requires TWO confirmations
-- Will navigate through all villages
-- Returns to starting village when done
-- DO NOT run during critical operations
+### Phase 1: Stabilize Current Build
+1. **Fix version issue**
+   ```bash
+   cd packages/extension
+   pnpm build
+   # Reload in Chrome
+   ```
 
-### Auto-Refresh (SAFE)
-- Every 15 minutes
-- Current village only
-- No navigation
+2. **Verify basic functions**
+   - [ ] HUD shows v0.4.9
+   - [ ] Quick Analyze works (current village only)
+   - [ ] 6 villages detected correctly
+   - [ ] No auto-navigation occurring
 
-## 🐛 Known Issues
-1. Console shows version 0.4.2 - need to rebuild and reload
-2. Going to rally point during scan (should be fixed now)
+3. **Fix background service**
+   - [ ] Check service worker registration
+   - [ ] Verify API key is set
+   - [ ] Test connection to Claude proxy
 
-## 📝 Testing Checklist
+### Phase 2: Analyze Resource Bar Code
+1. **Extract key components**
+   - How it gets village data
+   - Network interception methods
+   - Data aggregation approach
 
-- [ ] Pull latest code: `git pull origin main`
-- [ ] Rebuild: `cd packages/extension && pnpm build`
-- [ ] Reload extension in Chrome
-- [ ] Verify version shows 0.4.9 in HUD
-- [ ] Test Quick Analyze - should be instant and safe
-- [ ] Test Full Scan - should show TWO warnings
-- [ ] Check auto-refresh isn't navigating villages
-- [ ] Test AI analysis display
-- [ ] Test chat responses showing
+2. **Identify game endpoints**
+   - Village data API calls
+   - Update frequencies
+   - Authentication/session handling
 
-## 🔧 Debug Commands
+3. **Document the approach**
+   - Create implementation plan
+   - List required changes
+   - Estimate effort
 
-In browser console:
+### Phase 3: Implement Safe Data Collection
+1. **Replace navigation-based scanning**
+   - Use Resource Bar's technique
+   - No village switching needed
+   - Real-time updates
+
+2. **Update HUD display**
+   - Show total production like Resource Bar
+   - Add storage overflow timers
+   - Display all villages summary
+
+## 🐛 Known Issues Summary
+
+| Issue | Severity | Status |
+|-------|----------|--------|
+| Version shows 0.4.2 | HIGH | Need rebuild |
+| Full scan stops at village 2 | MEDIUM | Investigating |
+| Background service disconnects | HIGH | Need reload |
+| Auto-navigation risk | CRITICAL | Partially fixed |
+
+## 📊 Current Stats
+- **Villages Detected**: 6 ✅
+- **Villages in HUD**: 6 ✅  
+- **Quick Analyze**: Working (cached data)
+- **Full Scan**: Broken (stops early)
+- **AI Analysis**: Not working (background service issue)
+- **Chat**: Not working (background service issue)
+
+## 🔧 Debug Info
+
+Current village IDs:
+- 000: 24488
+- 001: 20985
+- 002: 21104
+- 003: 21214
+- 004: 27828
+- 005: 20522
+
+Console commands for debugging:
 ```javascript
-// Check version
+// Check version (should be 0.4.9)
 window.TLA.version
-
-// Check current state
-window.TLA.debug()
 
 // Get village list
 window.TLA.navigator.getVillages()
 
-// Check background service
+// Test background service
 await window.TLA.testBg()
+
+// Get current state
+window.TLA.debug()
 ```
 
-## 💡 Key Insights
+## 🎯 Success Criteria for Next Session
 
-1. **Navigation is Dangerous** - Can interrupt game operations
-2. **Caching is Essential** - Avoid navigation by using cached data
-3. **User Control Required** - Never auto-navigate without permission
-4. **Game's Overview Better** - Should use village overview popup instead
+1. **Stable HUD** - Version 0.4.9, no crashes
+2. **Safe scanning** - No unwanted navigation
+3. **Resource Bar analysis** - Understand their approach
+4. **Implementation plan** - Clear path to safe data collection
 
-## 🚀 Next Steps
+## 💡 Key Insight
 
-1. **Test Safety Fixes** - Ensure no unwanted navigation
-2. **Implement Overview Scraper** - Use game's built-in popup
-3. **Improve Caching** - Better historical data usage
-4. **Add Settings** - Let users control refresh intervals
+**Resource Bar proves it's possible to get all village data without navigation.**
+This is the breakthrough we need - we've been approaching the problem wrong.
+Instead of navigating to each village, we should intercept the game's own data.
 
-## ⚠️ Critical Reminders
+## ⚠️ DO NOT FORGET
 
-- **NEVER** auto-navigate without explicit permission
-- **ALWAYS** warn before full scan
-- **TEST** during non-critical game moments
-- **REBUILD** extension after pulling changes
+1. **REBUILD the extension** before testing anything
+2. **Resource Bar code is priority** - it has the solution
+3. **No auto-navigation** - safety first
+4. **Document everything** - for future sessions
 
 ---
-*Safety First: The extension should enhance gameplay, not interrupt it!*
+*Next Session: Analyze Resource Bar → Implement safe data collection → Achieve feature parity*
