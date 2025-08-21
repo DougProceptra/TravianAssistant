@@ -2,10 +2,14 @@
   "name": "travian-assistant-backend",
   "version": "1.0.0",
   "description": "Backend server for TravianAssistant Chrome Extension",
-  "main": "server.js",
+  "main": "start.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "node start.js",
+    "start:prod": "NODE_ENV=production node start.js",
+    "start:sqlite": "USE_SQLITE=true node start.js",
+    "dev": "nodemon start.js",
+    "server": "node server.js",
+    "server:sqlite": "node server-sqlite.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -21,7 +25,8 @@
     "cors": "^2.8.5",
     "ws": "^8.14.2",
     "dotenv": "^16.3.1",
-    "mongoose": "^7.5.0"
+    "mongoose": "^7.5.0",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
