@@ -3,8 +3,9 @@
 
 ## 🚨 MANDATORY SESSION START PROTOCOL
 
-### STEP 1: Read & Understand
+### STEP 1: Read Core Documentation
 - [ ] Read this ENTIRE document before doing ANYTHING else
+- [ ] **CRITICAL**: Read `/docs/APPLICATION_DESIGN_V2.md` for complete implementation details
 - [ ] Note the current version (should be 0.4.12+)
 - [ ] Understand what's working vs broken
 - [ ] Review Doug's preferences and requirements
@@ -15,7 +16,12 @@
 - [ ] **File Attachments**: Check what files Doug has attached to this conversation
 - [ ] **Context Tools**: You have access to Doug's memory/context storage
 
-### STEP 3: Sync & Verify State
+### STEP 3: Review Design Documents
+- [ ] **PRIMARY REFERENCE**: `/docs/APPLICATION_DESIGN_V2.md` - Complete technical design
+- [ ] This file (SESSION_CONTEXT.md) - Quick reference and session notes
+- [ ] Check for any new documents in `/docs/` folder
+
+### STEP 4: Sync & Verify State
 ```bash
 # Run these commands in Replit terminal
 cd /home/runner/workspace
@@ -25,18 +31,34 @@ git log --oneline -5
 - [ ] Check for uncommitted changes
 - [ ] Verify latest commit matches GitHub
 
-### STEP 4: Update This Document
+### STEP 5: Update This Document
 - [ ] Add timestamp of session start
 - [ ] Note any immediate issues found
 - [ ] Update throughout session with progress
 - [ ] Commit changes regularly
 
-### STEP 5: Update Doug's Context Memory
+### STEP 6: Update Doug's Context Memory
 Use the context tool to store:
 - [ ] Any new preferences Doug expresses
 - [ ] Technical decisions made
 - [ ] Problems encountered and solutions
 - [ ] Progress on features
+
+## 📚 ESSENTIAL DOCUMENTATION
+
+### Primary Technical Reference
+**`/docs/APPLICATION_DESIGN_V2.md`** - The complete implementation guide
+- Full architecture details with code examples
+- Phase-by-phase implementation plan
+- All technical specifications
+- Safety features and testing strategy
+
+### Quick Reference (This File)
+**`SESSION_CONTEXT.md`** - Session management and quick notes
+- Current status and issues
+- Doug's preferences
+- Quick commands
+- Session logs
 
 ## 🎯 MAJOR BREAKTHROUGH - Resource Bar Analysis Complete
 
@@ -64,6 +86,7 @@ The Resource Bar extension (10,000+ lines analyzed) gets ALL village data WITHOU
    - Always available on every page
 
 ### Implementation Strategy (NEW)
+**See `/docs/APPLICATION_DESIGN_V2.md` for complete implementation details**
 
 #### Phase 1: Remove Dangerous Code (IMMEDIATE)
 - [ ] Delete `village-navigator.ts`
@@ -123,6 +146,14 @@ packages/extension/
 │       └── enhanced-scraper.ts       # UPDATE: Current page only
 ```
 
+### Documentation Files
+```
+docs/
+├── APPLICATION_DESIGN_V2.md    # MAIN TECHNICAL REFERENCE
+├── DEVELOPMENT_PLAN.md         # Original plan (partially outdated)
+└── resource_bar_code           # Resource Bar extension analysis
+```
+
 ## 🎮 GAME CONTEXT
 
 ### Server & Account
@@ -161,6 +192,8 @@ packages/extension/
 ## 🔧 TECHNICAL DECISIONS
 
 ### NEW Architecture (Post Resource Bar Analysis)
+**Full details in `/docs/APPLICATION_DESIGN_V2.md`**
+
 ```
 Data Collection (Safe):
 ├── Overview Parser (dorf3.php)
@@ -210,9 +243,10 @@ Object.keys(localStorage).filter(k => k.includes('village'))
 ## 🚀 NEXT STEPS (PRIORITY ORDER)
 
 ### Immediate (Today)
-1. **Safety First**: Remove all navigation code
-2. **Rebuild**: Version 0.4.13+ without dangerous features
-3. **Test**: Verify no unwanted navigation
+1. **Read Design Doc**: Review `/docs/APPLICATION_DESIGN_V2.md` thoroughly
+2. **Safety First**: Remove all navigation code
+3. **Rebuild**: Version 2.0.0 without dangerous features
+4. **Test**: Verify no unwanted navigation
 
 ### Tomorrow
 1. **Implement Overview Parser**: Get all village data safely
@@ -237,6 +271,7 @@ Object.keys(localStorage).filter(k => k.includes('village'))
 - **TEST everything in console first**
 - **VERIFY no gameplay impact**
 - **DOCUMENT all changes**
+- **FOLLOW the design in `/docs/APPLICATION_DESIGN_V2.md`**
 
 ## 📝 SESSION LOG
 
@@ -244,10 +279,11 @@ Object.keys(localStorage).filter(k => k.includes('village'))
 - Analyzed 10,000+ lines of Resource Bar code
 - Discovered overview page contains all data
 - Identified safe data collection methods
-- Created new architecture plan
-- Updated documentation
+- Created comprehensive design document: `/docs/APPLICATION_DESIGN_V2.md`
+- Updated session context with design doc reference
 
 ### [Next Session Date]
+- [ ] Read `/docs/APPLICATION_DESIGN_V2.md` first
 - [ ] Remove navigation code
 - [ ] Implement overview parser
 - [ ] Test safe data collection
@@ -264,7 +300,10 @@ Instead of navigating to each village (dangerous), we should:
 
 This is exactly how Resource Bar works - and it's brilliant!
 
+**All implementation details are in `/docs/APPLICATION_DESIGN_V2.md`**
+
 ---
 *Remember: The goal is to enhance gameplay, not interrupt it.*
 *Navigation was the problem. Overview parsing is the solution.*
+*ALWAYS refer to `/docs/APPLICATION_DESIGN_V2.md` for implementation details.*
 *KEEP THIS DOCUMENT UPDATED THROUGHOUT YOUR SESSION*
