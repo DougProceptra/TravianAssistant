@@ -1,16 +1,9 @@
-// Village Navigation Controller for Multi-Village Data Collection
-// Handles programmatic switching between villages and data aggregation
-
-export interface Village {
-  id: string;
-  name: string;
-  coordinates: { x: number; y: number };
-  isActive: boolean;
-}
+// Village Navigation and Multi-Village Data Collection
 
 export interface VillageData {
   villageId: string;
   villageName: string;
+  coordinates?: string;
   resources: {
     wood: number;
     clay: number;
@@ -29,173 +22,155 @@ export interface VillageData {
 }
 
 export class VillageNavigator {
-  private villages: Village[] = [];
-  private currentVillageId: string | null = null;
+  private villages: Map<string, VillageData> = new Map();
+  private currentVillageId: string = '';
   
   constructor() {
-    this.initialize();
+    console.log('[TLA Navigator] Village navigator initialized');
+    this.detectVillages();
   }
-
-  private async initialize() {
-    // Detect village switcher and extract village list
-    await this.detectVillages();
-  }
-
-  private async detectVillages(): Promise<Village[]> {
-    // Travian village switcher is typically in .villageList or similar
-    const villageElements = document.querySelectorAll('#sidebarBoxVillagelist .villageList li');
+  
+  private detectVillages(): void {
+    // Find village switcher
+    const villageSwitcher = document.querySelector('#sidebarBoxVillagelist');
+    if (!villageSwitcher) {
+      console.log('[TLA Navigator] No village switcher found - single village account');
+      return;
+    }
     
-    this.villages = Array.from(villageElements).map(el => {
-      const link = el.querySelector('a');
-      const coordsMatch = link?.textContent?.match(/\((-?\d+)\|(-?\d+)\)/);
+    // Parse all villages from the switcher
+    const villageLinks = villageSwitcher.querySelectorAll('.villageList a');
+    villageLinks.forEach(link => {
+      const href = link.getAttribute('href') || '';
+      const villageId = this.extractVillageId(href);
+      const villageName = link.querySelector('.name')?.textContent?.trim() || 'Unknown';
       
-      return {
-        id: link?.getAttribute('href')?.match(/newdid=(\d+)/)?.[1] || '',
-        name: link?.querySelector('.name')?.textContent?.trim() || '',
-        coordinates: {
-          x: parseInt(coordsMatch?.[1] || '0'),
-          y: parseInt(coordsMatch?.[2] || '0')
-        },
-        isActive: el.classList.contains('active')
-      };
-    }).filter(v => v.id);
-
-    // Store current village
-    this.currentVillageId = this.villages.find(v => v.isActive)?.id || null;
+      if (villageId && !this.villages.has(villageId)) {
+        this.villages.set(villageId, {
+          villageId,
+          villageName,
+          resources: { wood: 0, clay: 0, iron: 0, crop: 0 },
+          production: { wood: 0, clay: 0, iron: 0, crop: 0 },
+          buildings: [],
+          troops: [],
+          timestamp: 0
+        });
+      }
+    });
     
-    console.log('[TLA] Detected villages:', this.villages);
+    // Detect current village
+    const activeVillage = villageSwitcher.querySelector('.active a');
+    if (activeVillage) {
+      const href = activeVillage.getAttribute('href') || '';
+      this.currentVillageId = this.extractVillageId(href);
+    }
+    
+    console.log(`[TLA Navigator] Found ${this.villages.size} villages`);
+  }
+  
+  private extractVillageId(href: string): string {
+    const match = href.match(/newdid=(\d+)/);
+    return match ? match[1] : '';
+  }
+  
+  public getCurrentVillageId(): string {
+    if (!this.currentVillageId) {
+      // Try to detect from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      this.currentVillageId = urlParams.get('newdid') || '0';
+    }
+    return this.currentVillageId;
+  }
+  
+  public getVillages(): Map<string, VillageData> {
     return this.villages;
   }
-
+  
   public async switchToVillage(villageId: string): Promise<boolean> {
-    if (this.currentVillageId === villageId) {
-      console.log('[TLA] Already in village:', villageId);
-      return true;
-    }
-
-    console.log('[TLA] Switching to village:', villageId);
+    console.log(`[TLA Navigator] Switching to village ${villageId}`);
     
     // Find the village link
     const villageLink = document.querySelector(`a[href*="newdid=${villageId}"]`) as HTMLAnchorElement;
     
     if (!villageLink) {
-      console.error('[TLA] Village link not found for:', villageId);
+      console.error(`[TLA Navigator] Village ${villageId} not found`);
       return false;
     }
-
-    // Create a promise that resolves when the page updates
-    return new Promise((resolve) => {
-      // Listen for AJAX completion or page change
-      const observer = new MutationObserver((mutations) => {
-        // Check if village switch completed by looking for active class change
-        const activeVillage = document.querySelector('.villageList li.active a');
-        if (activeVillage?.getAttribute('href')?.includes(`newdid=${villageId}`)) {
-          observer.disconnect();
-          this.currentVillageId = villageId;
-          console.log('[TLA] Village switch complete:', villageId);
-          
-          // Wait a bit for data to fully load
-          setTimeout(() => resolve(true), 1000);
-        }
-      });
-
-      // Start observing
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class']
-      });
-
-      // Trigger the village switch
-      villageLink.click();
-
-      // Timeout fallback
-      setTimeout(() => {
-        observer.disconnect();
-        console.warn('[TLA] Village switch timeout');
-        resolve(false);
-      }, 10000);
-    });
+    
+    // Click the link to switch villages
+    villageLink.click();
+    
+    // Wait for page to load
+    await this.waitForPageLoad();
+    
+    // Update current village
+    this.currentVillageId = villageId;
+    
+    return true;
   }
-
+  
   public async collectAllVillagesData(
     scrapeFunction: () => VillageData
   ): Promise<Map<string, VillageData>> {
+    console.log('[TLA Navigator] Starting multi-village data collection');
+    
     const allData = new Map<string, VillageData>();
+    const villageIds = Array.from(this.villages.keys());
     
-    // Ensure we have the village list
-    if (this.villages.length === 0) {
-      await this.detectVillages();
+    // If single village, just scrape current
+    if (villageIds.length === 0) {
+      const currentData = scrapeFunction();
+      allData.set(currentData.villageId, currentData);
+      return allData;
     }
-
-    console.log('[TLA] Starting multi-village data collection for', this.villages.length, 'villages');
     
-    for (const village of this.villages) {
+    // Multi-village: navigate and scrape each
+    for (const villageId of villageIds) {
       try {
-        // Switch to village
-        const switched = await this.switchToVillage(village.id);
-        
-        if (!switched) {
-          console.error('[TLA] Failed to switch to village:', village.name);
-          continue;
+        // Switch to village if not current
+        if (villageId !== this.currentVillageId) {
+          const switched = await this.switchToVillage(villageId);
+          if (!switched) {
+            console.error(`[TLA Navigator] Failed to switch to village ${villageId}`);
+            continue;
+          }
         }
-
-        // Wait for page to stabilize
-        await this.waitForPageLoad();
         
-        // Collect data using provided scrape function
-        const data = scrapeFunction();
-        data.villageId = village.id;
-        data.villageName = village.name;
-        data.timestamp = Date.now();
+        // Wait a bit for page to stabilize
+        await this.wait(1000);
         
-        allData.set(village.id, data);
-        console.log('[TLA] Collected data for village:', village.name);
+        // Scrape village data
+        const villageData = scrapeFunction();
+        allData.set(villageId, villageData);
+        
+        console.log(`[TLA Navigator] Collected data for ${villageData.villageName}`);
         
         // Don't spam the server
-        await this.delay(1500);
+        await this.wait(2000);
         
       } catch (error) {
-        console.error('[TLA] Error collecting data for village:', village.name, error);
+        console.error(`[TLA Navigator] Error collecting data for village ${villageId}:`, error);
       }
     }
-
-    console.log('[TLA] Multi-village collection complete. Collected:', allData.size, 'villages');
+    
+    console.log(`[TLA Navigator] Collected data from ${allData.size} villages`);
     return allData;
   }
-
+  
   private async waitForPageLoad(): Promise<void> {
     return new Promise(resolve => {
-      // Wait for key elements to be present
-      const checkInterval = setInterval(() => {
-        const resourcesLoaded = document.querySelector('#l1');
-        const buildingsLoaded = document.querySelector('.buildingSlot');
-        
-        if (resourcesLoaded && buildingsLoaded) {
-          clearInterval(checkInterval);
-          resolve();
-        }
-      }, 100);
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        clearInterval(checkInterval);
+      if (document.readyState === 'complete') {
         resolve();
-      }, 5000);
+      } else {
+        window.addEventListener('load', () => resolve(), { once: true });
+        // Timeout after 10 seconds
+        setTimeout(() => resolve(), 10000);
+      }
     });
   }
-
-  private delay(ms: number): Promise<void> {
+  
+  private wait(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  public getVillages(): Village[] {
-    return this.villages;
-  }
-
-  public getCurrentVillageId(): string | null {
-    return this.currentVillageId;
   }
 }
 
