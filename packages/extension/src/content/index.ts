@@ -1,15 +1,15 @@
-// Travian Legends Assistant - Content Script (v0.4.9)
-// Fixed: Reduced scanning interval to 15 minutes
-// Fixed: Chat responses now display properly  
-// Fixed: AI analysis display improved
+// Travian Legends Assistant - Content Script (v0.5.0)
+// REFACTORED: Now uses safe scraping (overview page + AJAX interception)
+// No more dangerous navigation through villages!
 
-// Import new components
-import { enhancedScraper, type EnhancedGameState } from './enhanced-scraper';
-import { villageNavigator } from './village-navigator';
+// Import new safe scraping components
+import { safeScraper, type SafeGameState } from './safe-scraper';
+import { overviewParser } from './overview-parser';
+import { ajaxInterceptor } from './ajax-interceptor';
 import { dataStore } from './data-persistence';
 import { chatAI, StrategicCalculators } from './conversational-ai';
 
-// Make TLA globally available immediately
+// Make TLA globally available
 declare global {
   interface Window {
     TLA: any;
@@ -17,27 +17,12 @@ declare global {
 }
 
 (() => {
-  const VERSION = "0.4.9";
+  const VERSION = "0.5.0";
   const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
 
   // ---------- Utils ----------
   const $ = (sel: string, root: ParentNode = document) =>
     root.querySelector<HTMLElement>(sel) || null;
-  const $all = (sel: string, root: ParentNode = document) =>
-    Array.from(root.querySelectorAll<HTMLElement>(sel));
-
-  const txt = (el: Element | null | undefined) =>
-    (el?.textContent || "").trim() || undefined;
-
-  const toNum = (s?: string) => {
-    if (!s) return undefined;
-    const cleaned = s.replace(/[^\d.,]/g, "").replace(/\u202F|\u00A0/g, "");
-    const m = cleaned.match(/[\d.,]+/g);
-    if (!m) return undefined;
-    const last = m[m.length - 1].replace(/,/g, "");
-    const n = Number(last);
-    return isFinite(n) ? n : undefined;
-  };
 
   function nowStamp() {
     const d = new Date();
@@ -60,9 +45,8 @@ declare global {
 
   // ---------- HUD ----------
   const HUD_ID = "tla-hud";
-  let currentGameState: EnhancedGameState | null = null;
+  let currentGameState: SafeGameState | null = null;
   let aiRecommendations: any = null;
-  let isFullScanRunning = false;
   let lastRefresh = 0;
 
   function ensureHUD() {
@@ -88,9 +72,13 @@ declare global {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
         <div><b>TLA</b> <span id="tla-ver"></span></div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span id="tla-villages" style="color:#4fc3f7;font-weight:bold">1 village</span>
+          <span id="tla-villages" style="color:#4fc3f7;font-weight:bold">-- villages</span>
           <span id="tla-heart" title="last update" style="opacity:0.7">--:--:--</span>
         </div>
+      </div>
+      
+      <div id="tla-safe-mode" style="padding:4px 6px;margin-bottom:8px;background:rgba(76,175,80,0.2);border-radius:4px;font-size:11px;color:#4caf50;">
+        ✅ Safe Mode: No navigation required
       </div>
       
       <div id="tla-bg-status" style="display:none;padding:4px 6px;margin-bottom:8px;background:rgba(244,67,54,0.2);border-radius:4px;font-size:11px;color:#f44336;">
@@ -99,17 +87,17 @@ declare global {
       
       <div id="tla-alerts" style="margin-bottom:8px;display:none;"></div>
       
-      <div id="tla-stats" style="margin-bottom:8px;padding:6px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:11px;display:none;">
+      <div id="tla-stats" style="margin-bottom:8px;padding:6px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:11px;">
         <div id="tla-total-prod" style="margin-bottom:4px;"></div>
         <div id="tla-total-res"></div>
       </div>
       
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-        <button id="tla-btn-quick" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #555;background:#2d7d46;color:#fff;cursor:pointer;font-weight:bold;">
-          🔄 Quick Analyze
+        <button id="tla-btn-refresh" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #555;background:#2d7d46;color:#fff;cursor:pointer;font-weight:bold;">
+          🔄 Refresh Data
         </button>
-        <button id="tla-btn-full" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #555;background:#1e88e5;color:#fff;cursor:pointer;font-weight:bold;">
-          📊 Full Scan
+        <button id="tla-btn-overview" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #555;background:#1e88e5;color:#fff;cursor:pointer;font-weight:bold;">
+          📊 Overview Page
         </button>
       </div>
       
@@ -137,14 +125,14 @@ declare global {
       <div id="tla-msg" style="margin-top:8px;padding:6px;background:rgba(255,255,255,0.1);border-radius:4px;font-size:11px;display:none;"></div>
       
       <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);font-size:10px;color:#666;">
-        Auto-refresh: every 15 min
+        Auto-refresh: every 15 min • AJAX monitoring active
       </div>
     `;
     document.documentElement.appendChild(el);
 
     // Wire buttons
-    $("#tla-btn-quick", el)?.addEventListener("click", quickAnalyze);
-    $("#tla-btn-full", el)?.addEventListener("click", fullAccountScan);
+    $("#tla-btn-refresh", el)?.addEventListener("click", refreshData);
+    $("#tla-btn-overview", el)?.addEventListener("click", goToOverview);
     $("#tla-btn-ai", el)?.addEventListener("click", requestAIAnalysis);
     $("#tla-btn-chat", el)?.addEventListener("click", openChatInterface);
     $("#tla-btn-export", el)?.addEventListener("click", exportData);
@@ -169,7 +157,7 @@ declare global {
     }
   }
 
-  function updateHUD(state: EnhancedGameState | null) {
+  function updateHUD(state: SafeGameState | null) {
     const hud = ensureHUD();
     $("#tla-ver", hud)!.textContent = `v${VERSION}`;
     $("#tla-heart", hud)!.textContent = nowStamp();
@@ -178,8 +166,8 @@ declare global {
     if (!state) return;
     
     // Update village count
-    const villageCount = state.villages?.size || 1;
-    $("#tla-villages", hud)!.textContent = `${villageCount} village${villageCount > 1 ? 's' : ''}`;
+    const villageCount = state.villages?.length || 0;
+    $("#tla-villages", hud)!.textContent = `${villageCount} village${villageCount !== 1 ? 's' : ''}`;
     
     // Show alerts if any
     const alertsEl = $("#tla-alerts", hud)!;
@@ -202,88 +190,51 @@ declare global {
       alertsEl.style.display = "none";
     }
     
-    // Show aggregated stats if multi-village
+    // Show aggregated stats
     const statsEl = $("#tla-stats", hud)!;
-    if (state.aggregates && villageCount > 1) {
-      statsEl.style.display = "block";
+    if (state.totals) {
       $("#tla-total-prod", statsEl)!.innerHTML = `
         <strong>Total Production:</strong> 
-        <span style="color:#8bc34a">+${state.aggregates.totalProduction.wood}</span>/
-        <span style="color:#ff9800">+${state.aggregates.totalProduction.clay}</span>/
-        <span style="color:#9e9e9e">+${state.aggregates.totalProduction.iron}</span>/
-        <span style="color:#fdd835">+${state.aggregates.totalProduction.crop}</span> /hr
+        <span style="color:#8bc34a">+${state.totals.production.wood}</span>/
+        <span style="color:#ff9800">+${state.totals.production.clay}</span>/
+        <span style="color:#9e9e9e">+${state.totals.production.iron}</span>/
+        <span style="color:#fdd835">+${state.totals.production.crop}</span> /hr
+        ${state.totals.production.cropNet < 0 ? 
+          `<span style="color:#f44336"> (Net: ${state.totals.production.cropNet})</span>` : ''}
       `;
       $("#tla-total-res", statsEl)!.innerHTML = `
         <strong>Total Resources:</strong> 
-        ${Math.floor((state.aggregates.totalResources.wood + 
-                      state.aggregates.totalResources.clay + 
-                      state.aggregates.totalResources.iron + 
-                      state.aggregates.totalResources.crop) / 1000)}k
+        ${Math.floor((state.totals.resources.wood + 
+                      state.totals.resources.clay + 
+                      state.totals.resources.iron + 
+                      state.totals.resources.crop) / 1000)}k
+        • Pop: ${state.totals.population}
       `;
-    } else {
-      statsEl.style.display = "none";
     }
   }
 
   // ---------- Main Functions ----------
-  async function quickAnalyze() {
+  async function refreshData() {
     try {
-      showMsg("Analyzing current state...", true);
-      currentGameState = await enhancedScraper.getSmartGameState();
+      showMsg("Fetching all village data...", true);
+      currentGameState = await safeScraper.refresh();
       updateHUD(currentGameState);
-      showMsg(`Analysis complete! (${currentGameState.villages.size} villages)`);
-      console.log('[TLA] Quick analysis:', currentGameState);
+      showMsg(`Data refreshed! (${currentGameState.villages.length} villages)`);
+      console.log('[TLA] Safe refresh complete:', currentGameState);
     } catch (error) {
-      console.error('[TLA] Quick analyze failed:', error);
-      showMsg("Analysis failed - see console");
+      console.error('[TLA] Refresh failed:', error);
+      showMsg("Refresh failed - see console");
     }
   }
 
-  async function fullAccountScan() {
-    if (isFullScanRunning) {
-      showMsg("Scan already in progress...");
-      return;
-    }
-    
-    if (!confirm("Full scan will navigate through all villages. This may take a few minutes. Continue?")) {
-      return;
-    }
-    
-    try {
-      isFullScanRunning = true;
-      const fullBtn = document.getElementById("tla-btn-full") as HTMLButtonElement;
-      if (fullBtn) {
-        fullBtn.disabled = true;
-        fullBtn.textContent = "⏳ Scanning...";
-      }
-      
-      showMsg("Starting full account scan...", true);
-      currentGameState = await enhancedScraper.scrapeFullAccount(true);
-      updateHUD(currentGameState);
-      
-      const villageCount = currentGameState.villages.size;
-      showMsg(`Full scan complete! ${villageCount} villages analyzed`);
-      console.log('[TLA] Full account scan:', currentGameState);
-      
-      // Auto-trigger AI analysis after full scan
-      setTimeout(() => requestAIAnalysis(), 1000);
-      
-    } catch (error) {
-      console.error('[TLA] Full scan failed:', error);
-      showMsg("Full scan failed - see console");
-    } finally {
-      isFullScanRunning = false;
-      const fullBtn = document.getElementById("tla-btn-full") as HTMLButtonElement;
-      if (fullBtn) {
-        fullBtn.disabled = false;
-        fullBtn.textContent = "📊 Full Scan";
-      }
-    }
+  function goToOverview() {
+    // Navigate to overview page
+    window.location.href = '/dorf3.php';
   }
 
   async function requestAIAnalysis() {
-    if (!currentGameState) {
-      showMsg("Run analysis first!");
+    if (!currentGameState || currentGameState.villages.length === 0) {
+      showMsg("Refresh data first!");
       return;
     }
     
@@ -298,18 +249,9 @@ declare global {
     try {
       showMsg("Getting AI recommendations...", true);
       
-      // Convert Map to serializable format
-      const serializableState = {
-        ...currentGameState,
-        villages: Array.from(currentGameState.villages.entries()).map(([id, village]) => ({
-          id,
-          ...village
-        }))
-      };
-      
       const response = await chrome.runtime.sendMessage({
         type: 'ANALYZE_GAME_STATE',
-        state: serializableState
+        state: currentGameState
       });
       
       console.log('[TLA] AI response:', response);
@@ -331,7 +273,7 @@ declare global {
   function renderAIRecommendations() {
     if (!aiRecommendations) return;
     
-    // Parse the recommendations if they're in string format
+    // Parse the recommendations
     let recommendations = [];
     let reasoning = '';
     
@@ -399,7 +341,7 @@ declare global {
             <div style="padding:6px 8px; margin-bottom:4px; background:rgba(255,152,0,0.1); border-radius:4px; font-size:12px; border-left:3px solid ${
               alert.severity === 'critical' ? '#f44336' : '#ff9800'
             };">
-              ${alert.message}
+              ${alert.villageName}: ${alert.message}
             </div>
           `).join('')}
         </div>
@@ -431,17 +373,8 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
         `}
       </div>
       
-      ${reasoning ? `
-        <div style="margin-bottom:12px;">
-          <h4 style="margin:0 0 8px 0; font-size:13px; color:#4fc3f7;">💡 Strategic Reasoning</h4>
-          <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; font-size:12px; color:#bbb;">
-            ${reasoning.replace(/\n/g, '<br>')}
-          </div>
-        </div>
-      ` : ''}
-      
       <div style="padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); font-size:11px; color:#666;">
-        Analysis based on ${currentGameState?.villages?.size || 1} villages • Claude Sonnet 4
+        Analysis based on ${currentGameState?.villages?.length || 0} villages • Claude Sonnet 4
       </div>
     `;
     
@@ -477,7 +410,12 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
       flex-direction: column;
     `;
     
-    const suggestions = chatAI.getSuggestedQuestions(currentGameState);
+    const suggestions = [
+      "What should I build next?",
+      "When will my resources overflow?",
+      "How many troops do I need for defense?",
+      "What's my biggest bottleneck?"
+    ];
     
     chatPanel.innerHTML = `
       <div style="padding:14px; border-bottom:1px solid rgba(255,255,255,0.1);">
@@ -493,16 +431,14 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
           <div style="font-size:12px; color:#bbb;">Ask me anything about your game strategy.</div>
         </div>
         
-        ${suggestions.length > 0 ? `
-          <div style="margin-bottom:10px;">
-            <div style="font-size:11px; color:#888; margin-bottom:6px;">Suggested questions:</div>
-            ${suggestions.map(q => `
-              <button class="tla-suggestion" style="display:block; width:100%; text-align:left; padding:6px 8px; margin-bottom:4px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#4fc3f7; cursor:pointer; font-size:12px;">
-                ${q}
-              </button>
-            `).join('')}
-          </div>
-        ` : ''}
+        <div style="margin-bottom:10px;">
+          <div style="font-size:11px; color:#888; margin-bottom:6px;">Suggested questions:</div>
+          ${suggestions.map(q => `
+            <button class="tla-suggestion" style="display:block; width:100%; text-align:left; padding:6px 8px; margin-bottom:4px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#4fc3f7; cursor:pointer; font-size:12px;">
+              ${q}
+            </button>
+          `).join('')}
+        </div>
       </div>
       
       <div style="padding:14px; border-top:1px solid rgba(255,255,255,0.1);">
@@ -546,35 +482,39 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
       
       // Get AI response
       try {
-        // Check background service
         const bgAlive = await checkBackgroundService();
         if (!bgAlive) {
           throw new Error('Background service not connected');
         }
         
         if (!currentGameState) {
-          await quickAnalyze();
+          await refreshData();
         }
         
-        const answer = await chatAI.askQuestion(question, currentGameState);
+        const response = await chrome.runtime.sendMessage({
+          type: 'CHAT_MESSAGE',
+          message: question,
+          state: currentGameState
+        });
         
-        // Display response
-        messagesEl!.innerHTML += `
-          <div style="margin-bottom:10px;">
-            <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; border-left:3px solid #4fc3f7;">
-              ${answer.replace(/\n/g, '<br>')}
+        if (response.success) {
+          messagesEl!.innerHTML += `
+            <div style="margin-bottom:10px;">
+              <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; border-left:3px solid #4fc3f7;">
+                ${response.answer.replace(/\n/g, '<br>')}
+              </div>
             </div>
-          </div>
-        `;
-        
-        messagesEl!.scrollTop = messagesEl!.scrollHeight;
+          `;
+        } else {
+          throw new Error(response.error || 'Failed to get response');
+        }
         
       } catch (error) {
         console.error('[TLA] Chat error:', error);
         messagesEl!.innerHTML += `
           <div style="margin-bottom:10px;">
             <div style="padding:8px; background:rgba(244,67,54,0.1); border-radius:4px; color:#f44336;">
-              Failed to get response. Please reload extension (chrome://extensions) and try again.
+              Error: ${error}
             </div>
           </div>
         `;
@@ -623,12 +563,7 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
       return;
     }
     
-    const stateCopy = {
-      ...currentGameState,
-      villages: Array.from(currentGameState.villages.entries())
-    };
-    
-    navigator.clipboard.writeText(JSON.stringify(stateCopy, null, 2))
+    navigator.clipboard.writeText(JSON.stringify(currentGameState, null, 2))
       .then(() => showMsg("Copied to clipboard!"))
       .catch(() => showMsg("Copy failed"));
   }
@@ -642,7 +577,10 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
 
   // ---------- Initialize ----------
   async function initialize() {
-    console.log('[TLA] v' + VERSION + ' initializing...');
+    console.log('[TLA] v' + VERSION + ' initializing (SAFE MODE)...');
+    
+    // Initialize safe scraper
+    await safeScraper.initialize();
     
     // Check background service
     const bgAlive = await checkBackgroundService();
@@ -657,38 +595,45 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
     // Ensure HUD
     ensureHUD();
     
-    // Do initial quick analysis
-    await quickAnalyze();
+    // Do initial data collection
+    await refreshData();
+    
+    // Subscribe to state updates
+    safeScraper.onStateUpdate((state) => {
+      currentGameState = state;
+      updateHUD(state);
+      console.log('[TLA] State updated:', state);
+    });
     
     // Set up periodic refresh (every 15 minutes)
     setInterval(async () => {
-      if (!document.hidden && !isFullScanRunning) {
+      if (!document.hidden) {
         const timeSinceRefresh = Date.now() - lastRefresh;
         if (timeSinceRefresh >= REFRESH_INTERVAL) {
           console.log('[TLA] Auto-refresh triggered');
-          await quickAnalyze();
+          await refreshData();
         }
       }
-    }, 60 * 1000); // Check every minute but only refresh if 15 min passed
+    }, 60 * 1000); // Check every minute
     
     // Expose TLA to window for debugging
     window.TLA = {
       version: VERSION,
       state: () => currentGameState,
-      scraper: enhancedScraper,
-      navigator: villageNavigator,
-      dataStore: dataStore,
-      chat: chatAI,
+      scraper: safeScraper,
+      overviewParser,
+      ajaxInterceptor,
+      dataStore,
       testBg: checkBackgroundService,
       debug: () => {
         console.log('[TLA Debug]', {
           state: currentGameState,
           recommendations: aiRecommendations,
-          villages: villageNavigator.getVillages(),
           lastRefresh: new Date(lastRefresh).toLocaleTimeString()
         });
         return {
           version: VERSION,
+          safeMode: true,
           state: currentGameState,
           recommendations: aiRecommendations,
           backgroundAlive: checkBackgroundService()
@@ -696,8 +641,9 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
       }
     };
     
-    console.log('[TLA] Ready! Use window.TLA.debug() in console for info.');
-    console.log('[TLA] Version:', VERSION);
+    console.log('[TLA] Ready! SAFE MODE active - no navigation required');
+    console.log('[TLA] Data collection via overview page + AJAX interception');
+    console.log('[TLA] Use window.TLA.debug() for info');
   }
 
   // Start when DOM is ready
