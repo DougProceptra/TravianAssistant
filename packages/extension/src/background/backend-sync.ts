@@ -1,6 +1,6 @@
 // Backend Sync Service
 // Connects extension to backend (local or remote)
-// v0.4.3 - Configurable backend URL for Replit/cloud deployment
+// v0.4.4 - Configured for Replit deployment
 
 import { EnhancedGameState } from '../content/enhanced-scraper';
 
@@ -22,22 +22,22 @@ class BackendSync {
     // Get backend URL from storage (can be configured in options)
     const stored = await chrome.storage.sync.get(['backendUrl', 'backendEnabled']);
     
-    // Default to disabled if not configured
-    this.isEnabled = stored.backendEnabled || false;
+    // Default to ENABLED with your Replit URL
+    this.isEnabled = stored.backendEnabled !== false; // Default true
     
     if (!this.isEnabled) {
       console.log('[TLA Backend] Backend sync disabled');
       return;
     }
     
-    // Use configured URL or fallback to localhost
-    const baseUrl = stored.backendUrl || 'http://localhost:3001';
+    // Use configured URL or YOUR REPLIT URL as default
+    const baseUrl = stored.backendUrl || 'https://TravianAssistant.dougdostal.replit.dev';
     this.apiUrl = `${baseUrl}/api`;
     
     // Convert HTTP to WS for WebSocket
     const wsBase = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
-    // If using Replit or other services, WebSocket might be on same port
-    this.wsUrl = wsBase.includes('replit') ? wsBase : `${wsBase.replace(':3001', ':3002')}`;
+    // Replit uses same port for both HTTP and WebSocket
+    this.wsUrl = wsBase;
     
     console.log('[TLA Backend] Using API URL:', this.apiUrl);
     console.log('[TLA Backend] Using WebSocket URL:', this.wsUrl);
@@ -98,13 +98,14 @@ class BackendSync {
     if (!this.isEnabled) return;
     
     try {
+      console.log('[TLA Backend] Connecting to WebSocket:', this.wsUrl);
       this.ws = new WebSocket(this.wsUrl);
       
       this.ws.onopen = () => {
         console.log('[TLA Backend] WebSocket connected');
-        // Register account
+        // Authenticate with backend
         this.ws?.send(JSON.stringify({
-          type: 'register',
+          type: 'auth',
           accountId: this.accountId
         }));
       };
@@ -154,12 +155,13 @@ class BackendSync {
       // Convert Map to array for JSON serialization
       const villages = Array.from(gameState.villages.values());
       
-      const response = await fetch(`${this.apiUrl}/sync`, {
+      const response = await fetch(`${this.apiUrl}/villages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           accountId: this.accountId,
-          villages,
+          village: villages[0], // Send first village for now
+          villages, // Also send all villages
           timestamp: gameState.timestamp
         })
       });
@@ -171,13 +173,11 @@ class BackendSync {
       const result = await response.json();
       console.log('[TLA Backend] Sync complete:', result);
       
-      // Return alerts for display
+      // Return success for display
       return {
         success: true,
-        alerts: result.alerts || [],
-        stats: {
-          villagesUpdated: result.villagesUpdated || 0
-        }
+        message: result.message || 'Data synced',
+        timestamp: result.timestamp
       };
       
     } catch (error) {
@@ -195,7 +195,7 @@ class BackendSync {
     }
     
     try {
-      const response = await fetch(`${this.apiUrl}/account/${this.accountId}`);
+      const response = await fetch(`${this.apiUrl}/villages/${this.accountId}`);
       
       if (!response.ok) {
         throw new Error(`Failed to get account: ${response.status}`);
@@ -206,6 +206,18 @@ class BackendSync {
     } catch (error) {
       console.error('[TLA Backend] Failed to get account overview:', error);
       return null;
+    }
+  }
+  
+  public async testConnection(): Promise<boolean> {
+    try {
+      const response = await fetch(`${this.apiUrl}/health`);
+      const data = await response.json();
+      console.log('[TLA Backend] Health check:', data);
+      return data.status === 'healthy';
+    } catch (error) {
+      console.error('[TLA Backend] Health check failed:', error);
+      return false;
     }
   }
   
@@ -284,7 +296,7 @@ class BackendSync {
       const baseUrl = url;
       this.apiUrl = `${baseUrl}/api`;
       const wsBase = baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
-      this.wsUrl = wsBase.includes('replit') ? wsBase : `${wsBase.replace(':3001', ':3002')}`;
+      this.wsUrl = wsBase;
       
       // Reconnect WebSocket
       if (this.ws) {
