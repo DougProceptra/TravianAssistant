@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TravianAssistant</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    h2 { 
+      margin: 0 0 10px 0;
+      color: #1e3c72;
+    }
+    .status { 
+      margin: 10px 0; 
+    }
+    .backend-status { 
+      padding: 5px; 
+      border-radius: 3px;
+      background: #f0f0f0;
+      margin-top: 5px;
+    }
+    .connected { 
+      background: #d4edda; 
+      color: #155724; 
+    }
+    .disconnected { 
+      background: #f8d7da; 
+      color: #721c24; 
+    }
+    button {
+      background: #2a5298;
+      color: white;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    button:hover {
+      background: #1e3c72;
+    }
+    .version {
+      font-size: 11px;
+      color: #666;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>TravianAssistant</h2>
+  <div class="status">
+    <strong>Backend Status:</strong>
+    <div class="backend-status" id="backend-status">Checking...</div>
+  </div>
+  <div style="margin-top: 15px;">
+    <button id="open-options">Settings</button>
+    <button id="sync-now">Sync Now</button>
+  </div>
+  <div class="version">Version 0.4.6</div>
+  <script src="popup.js"></script>
+</body>
+</html>
