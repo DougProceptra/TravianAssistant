@@ -1,157 +1,121 @@
 # TravianAssistant Session Context
-*Last Updated: August 21, 2025 - Multi-Village Issue Identified*
+*Last Updated: August 21, 2025 - 1:00 PM PST*
 
 ## 🎯 Current Focus
-**Working on**: Multi-village data collection not working
-**Version**: 0.4.6
-**Priority**: Fix village navigation to collect all 6 villages
+**Issue Identified**: Village selector is wrong - looking for `#sidebarBoxVillagelist` but actual villages are in different DOM structure
+**Version**: 0.4.6  
+**Priority**: Fix village selector to detect all 6 villages
 
-## 📊 Session Status
-- **Backend**: ✅ Running at https://workspace.dougdostal.repl.co
-- **Extension**: ✅ Working but only shows 1 village
-- **AI Integration**: ✅ Claude Sonnet 4 responding
-- **Issue**: ⚠️ Only analyzing current village, not all 6
+## 📊 Current Status
 
-## ✅ Today's Achievements (August 21, 2025)
+### What's Working ✅
+- Vercel proxy at `https://travian-proxy-simple.vercel.app/api/proxy`
+- Claude Sonnet 4 integration via proxy
+- Backend at `https://workspace.dougdostal.repl.co`
+- Extension basic functionality (single village)
+- AI recommendations for current village
 
-### 1. Fixed Backend Port Conflict
-- Removed hardcoded port 3002 for WebSocket
-- WebSocket now shares same port as HTTP server
-- Server running successfully on Replit
-
-### 2. Added Missing Extension Files
-- Created `content.css` for HUD styles
-- Created `popup.html` and `popup.js` for extension popup
-- Created `options.html` for settings page
-- Updated `vite.config.ts` to copy all public files
-
-### 3. Updated Backend URL
-- Changed from `TravianAssistant.dougdostal.replit.dev`
-- To: `workspace.dougdostal.repl.co`
-- Extension now connects to correct backend
-
-## 🐛 Current Issue: Multi-Village Support
-
-### The Problem
-- User has 6 villages in Travian
-- Extension only shows "1 village" in HUD
-- Only current active village is being analyzed
-- Village switcher is a clickable list (not dropdown)
-
-### What Should Happen
-1. "Full Scan" button should navigate through all villages
-2. Collect data from each village
-3. Show aggregated stats in HUD
-4. Display "6 villages" with total production/resources
-
-### Code Status
-- ✅ Multi-village code exists in `enhanced-scraper.ts`
-- ✅ `village-navigator.ts` has navigation logic
-- ❌ Navigation not being triggered properly
-- ❌ Full scan only happens every 30 minutes automatically
-
-### Screenshot Evidence
-- Villages panel shows "Villages 6/6"
-- List includes villages with different coordinates
-- Each village clickable to switch
-- HUD only reflects current village
-
-## 🚀 Working Features
-
-### Extension Features
-- ✅ Quick Analyze - Analyzes current village
-- ✅ Full Scan - Should analyze all villages (needs fix)
-- ✅ AI Analysis - Gets Claude recommendations
-- ✅ Ask Question - Chat interface with Claude
-- ✅ Export/Copy data functions
-- ✅ Backend sync to SQLite
-
-### Backend Features
-- ✅ HTTP API on port 3001
-- ✅ WebSocket on same port
-- ✅ SQLite database persistence
-- ✅ Health endpoint working
-- ✅ Village data storage
-
-## 🔧 Technical Architecture
-
-### URLs and Endpoints
-- **Backend API**: https://workspace.dougdostal.repl.co
-- **Health Check**: https://workspace.dougdostal.repl.co/api/health
-- **WebSocket**: wss://workspace.dougdostal.repl.co
-- **Vercel Proxy**: https://travian-proxy-simple.vercel.app (for Claude)
-
-### File Structure
-```
-TravianAssistant/
-├── packages/extension/
-│   ├── dist/                 # Built extension
-│   ├── public/              # Static files (icons, HTML, CSS)
-│   └── src/
-│       ├── background.ts    # Service worker
-│       ├── popup.ts         # Popup script
-│       └── content/
-│           ├── index.ts     # Main HUD and logic
-│           ├── enhanced-scraper.ts  # Multi-village scraping
-│           └── village-navigator.ts # Village switching
-├── backend/
-│   ├── server-sqlite.js    # Main backend (fixed port issue)
-│   └── start.js            # Starter script
-└── api/
-    └── anthropic.js        # Vercel proxy
-```
-
-## 📝 Next Steps
-
-### Immediate Priority
-1. Debug why `villageNavigator.collectAllVillagesData()` isn't working
-2. Check if village clicking is being simulated properly
-3. Ensure "Full Scan" button triggers navigation
-4. Test with console commands to force multi-village scan
-
-### Testing Commands
+### The Problem 🐛
+The village navigator is using the wrong selector:
 ```javascript
-// Force full account scan
+// WRONG - Looking for this:
+const villageSwitcher = document.querySelector('#sidebarBoxVillagelist');
+
+// NEED TO FIND - Actual structure from screenshot:
+// Villages are in a panel with "Villages 6/6" header
+// Each village is a clickable list item with coordinates
+```
+
+Villages visible in screenshot:
+1. First Capital (92|173)
+2. Village 2 (91|172)
+3. Village 3 (92|174)
+4. Village 4 (90|172)
+5. Village 5 (92|172)
+6. Village 6 (90|174)
+
+## 🔧 Root Cause Analysis
+
+### Why Only 1 Village Shows
+1. `villageNavigator.detectVillages()` can't find the village list
+2. Returns early thinking it's a single-village account
+3. Never populates the villages Map
+4. `collectAllVillagesData()` has nothing to iterate through
+
+### Code Flow
+```
+detectVillages() → Can't find #sidebarBoxVillagelist
+                 → Logs "No village switcher found - single village account"
+                 → villages Map stays empty
+                 → Full scan only gets current village
+```
+
+## 🚀 Fix Strategy
+
+### Step 1: Identify Correct Selectors
+Need to inspect the actual DOM to find:
+- Container for village list
+- Individual village elements
+- Active village indicator
+- Village ID extraction method
+
+### Step 2: Update village-navigator.ts
+```typescript
+// Fix the detectVillages() method with correct selectors
+const villageSwitcher = document.querySelector('[actual-selector]');
+```
+
+### Step 3: Test Multi-Village Navigation
+- Ensure all 6 villages are detected
+- Verify switching between villages works
+- Confirm data collection from each village
+
+## 📝 Debug Commands
+
+```javascript
+// Check what villages are found
+window.TLA.navigator.getVillages()
+
+// Force detection refresh
+window.TLA.navigator.detectVillages()
+
+// Try full scan
 window.TLA.scraper.scrapeFullAccount(true)
 
 // Check current state
 window.TLA.debug()
-
-// See how many villages detected
-window.TLA.navigator.getVillages()
 ```
 
-## 💡 Important Notes
+## 🔍 Next Actions
 
-### Development Workflow
-- All changes via Git commits (Doug's preference)
-- Pull in Replit: `git pull origin main`
-- Build extension: `cd packages/extension && pnpm build`
-- Reload extension in Chrome after building
+1. **Immediate**: Use browser DevTools to inspect village list DOM
+2. **Find**: Correct selectors for village panel
+3. **Update**: `village-navigator.ts` with correct selectors
+4. **Test**: Full scan with all 6 villages
+5. **Verify**: Aggregated stats show correctly
 
-### Known Constraints
-- Chrome Manifest V3 blocks direct API calls (hence proxy)
-- Village switcher is clickable list, not dropdown
-- Full scan takes time (need to visit each village)
-- 30-minute auto-scan interval may be too long
+## 💡 Notes for Next Session
 
-## 📈 Progress Tracking
+- Vercel deployment is working fine (previous session was mistaken)
+- Backend is at `workspace.dougdostal.repl.co` not the old URL
+- Extension version 0.4.6 has all the multi-village code
+- Just need to fix the DOM selectors
+
+## 📈 Progress
 ```
-Backend Setup:    ████████████ 100% Complete
-Extension Core:   ████████████ 100% Complete
-AI Integration:   ████████████ 100% Complete
-Multi-Village:    ████░░░░░░░░ 30% Needs Fix
-UI Polish:        ████████░░░░ 70% Working
+Infrastructure:   ████████████ 100% Complete
+Single Village:   ████████████ 100% Working
+Multi-Village:    ████░░░░░░░░ 40% Selector Issue
+AI Integration:   ████████████ 100% Working
+Data Persistence: ████████████ 100% Working
 ```
 
-## 🔗 Resources
-- **GitHub**: https://github.com/DougProceptra/TravianAssistant
-- **Replit**: https://replit.com/@dougdostal/workspace
-- **Extension ID**: Check chrome://extensions
-- **Claude Model**: Sonnet 4 via proxy
-
-## ✨ Summary
-Extension is functional with AI integration working perfectly. Backend is running and storing data. Main issue is multi-village collection not navigating through all 6 villages. This is the next priority to fix.
+## 🎯 Success Criteria
+- [ ] All 6 villages detected in navigator
+- [ ] Full scan visits each village
+- [ ] HUD shows "6 villages"
+- [ ] Aggregated production/resources displayed
+- [ ] AI recommendations consider all villages
 
 ---
-*Session Context Updated: Focus on fixing multi-village navigation*
+*Key Learning: Always verify DOM selectors match the actual game HTML structure*
