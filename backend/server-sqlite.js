@@ -6,6 +6,7 @@ const cors = require('cors');
 const Database = require('better-sqlite3');
 const WebSocket = require('ws');
 const path = require('path');
+const http = require('http');
 require('dotenv').config();
 
 const app = express();
@@ -74,8 +75,11 @@ db.exec(`
 
 console.log('Database initialized');
 
-// WebSocket server for real-time updates
-const wss = new WebSocket.Server({ port: 3002 });
+// Create HTTP server
+const server = http.createServer(app);
+
+// WebSocket server using the same port as HTTP
+const wss = new WebSocket.Server({ server });
 const clients = new Map();
 
 wss.on('connection', (ws) => {
@@ -112,6 +116,47 @@ function broadcastToAccount(accountId, data) {
 
 // API Routes
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  const IS_REPLIT = process.env.REPL_ID || process.env.REPLIT_DB_URL;
+  const IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
+  
+  res.json({ 
+    status: 'healthy', 
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    environment: IS_PRODUCTION ? 'production' : 'development',
+    platform: IS_REPLIT ? 'replit' : 'local',
+    database: 'sqlite',
+    uptime: process.uptime()
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  const IS_REPLIT = process.env.REPL_ID || process.env.REPLIT_DB_URL;
+  const baseUrl = IS_REPLIT 
+    ? `https://${process.env.REPL_SLUG || 'workspace'}.${process.env.REPL_OWNER || 'dougdostal'}.repl.co`
+    : `http://localhost:${PORT}`;
+    
+  res.json({ 
+    message: 'TravianAssistant Backend API (SQLite)',
+    version: '1.0.0',
+    environment: {
+      platform: IS_REPLIT ? 'replit' : 'local',
+      mode: process.env.NODE_ENV || 'development',
+      port: PORT
+    },
+    endpoints: {
+      health: '/api/health',
+      account: '/api/account',
+      sync: '/api/sync',
+      history: '/api/history/:villageId',
+      websocket: baseUrl.replace('https://', 'wss://').replace('http://', 'ws://')
+    }
+  });
+});
+
 // Create or update account
 app.post('/api/account', (req, res) => {
   const { accountId, serverUrl, accountName, tribe } = req.body;
@@ -135,21 +180,22 @@ app.post('/api/account', (req, res) => {
   }
 });
 
-// Sync game data
-app.post('/api/sync', (req, res) => {
-  const { accountId, villages, timestamp } = req.body;
+// Sync game data (compatible with extension's backend-sync.ts)
+app.post('/api/villages', (req, res) => {
+  const { accountId, village, villages, timestamp } = req.body;
   
-  if (!accountId || !villages) {
-    return res.status(400).json({ error: 'Missing required data' });
+  if (!accountId) {
+    return res.status(400).json({ error: 'Missing accountId' });
   }
   
   try {
     const alerts = [];
+    const villagesToProcess = villages || (village ? [village] : []);
     
     // Start transaction
     const transaction = db.transaction(() => {
       // Process each village
-      for (const village of villages) {
+      for (const v of villagesToProcess) {
         // Upsert village
         const villageStmt = db.prepare(`
           INSERT INTO villages (id, account_id, village_id, name, coordinates)
@@ -159,13 +205,13 @@ app.post('/api/sync', (req, res) => {
             coordinates = excluded.coordinates
         `);
         
-        const villageDbId = `${accountId}_${village.villageId}`;
+        const villageDbId = `${accountId}_${v.villageId || v.id}`;
         villageStmt.run(
           villageDbId,
           accountId,
-          village.villageId,
-          village.villageName || 'Unknown',
-          village.coordinates || ''
+          v.villageId || v.id,
+          v.villageName || v.name || 'Unknown',
+          v.coordinates || ''
         );
         
         // Store snapshot
@@ -176,33 +222,35 @@ app.post('/api/sync', (req, res) => {
         
         snapshotStmt.run(
           villageDbId,
-          JSON.stringify(village.resources || {}),
-          JSON.stringify(village.production || {}),
-          JSON.stringify(village.buildings || []),
-          JSON.stringify(village.troops || []),
-          village.population || 0
+          JSON.stringify(v.resources || {}),
+          JSON.stringify(v.production || {}),
+          JSON.stringify(v.buildings || []),
+          JSON.stringify(v.troops || []),
+          v.population || 0
         );
         
         // Check for alerts
-        const villageAlerts = checkForAlerts(village, accountId);
+        const villageAlerts = checkForAlerts(v, accountId);
         alerts.push(...villageAlerts);
       }
       
       // Store alerts
-      const alertStmt = db.prepare(`
-        INSERT INTO alerts (account_id, type, severity, message, village_id, data)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      
-      for (const alert of alerts) {
-        alertStmt.run(
-          accountId,
-          alert.type,
-          alert.severity,
-          alert.message,
-          alert.villageId || null,
-          JSON.stringify(alert.data || {})
-        );
+      if (alerts.length > 0) {
+        const alertStmt = db.prepare(`
+          INSERT INTO alerts (account_id, type, severity, message, village_id, data)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        
+        for (const alert of alerts) {
+          alertStmt.run(
+            accountId,
+            alert.type,
+            alert.severity,
+            alert.message,
+            alert.villageId || null,
+            JSON.stringify(alert.data || {})
+          );
+        }
       }
     });
     
@@ -211,14 +259,16 @@ app.post('/api/sync', (req, res) => {
     // Broadcast updates via WebSocket
     broadcastToAccount(accountId, {
       type: 'data_synced',
-      timestamp,
-      villageCount: villages.length,
+      timestamp: timestamp || new Date().toISOString(),
+      villageCount: villagesToProcess.length,
       alertCount: alerts.length
     });
     
     res.json({
       success: true,
-      villagesUpdated: villages.length,
+      message: 'Village data received',
+      timestamp: timestamp || new Date().toISOString(),
+      villagesUpdated: villagesToProcess.length,
       alerts: alerts.filter(a => a.severity === 'critical' || a.severity === 'high')
     });
     
@@ -228,17 +278,13 @@ app.post('/api/sync', (req, res) => {
   }
 });
 
-// Get account overview
-app.get('/api/account/:accountId', (req, res) => {
+// Get villages for account (compatible with extension)
+app.get('/api/villages/:accountId', (req, res) => {
   const { accountId } = req.params;
   
   try {
     // Get account info
     const account = db.prepare('SELECT * FROM accounts WHERE id = ?').get(accountId);
-    
-    if (!account) {
-      return res.status(404).json({ error: 'Account not found' });
-    }
     
     // Get villages
     const villages = db.prepare('SELECT * FROM villages WHERE account_id = ?').all(accountId);
@@ -272,19 +318,18 @@ app.get('/api/account/:accountId', (req, res) => {
       LIMIT 10
     `).all(accountId);
     
-    // Calculate aggregates
-    const aggregates = calculateAggregates(snapshots);
-    
     res.json({
+      accountId,
       account,
       villages,
       snapshots,
       alerts,
-      aggregates
+      count: villages.length,
+      source: 'sqlite'
     });
     
   } catch (error) {
-    console.error('Get account error:', error);
+    console.error('Get villages error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -357,8 +402,8 @@ function checkForAlerts(village, accountId) {
           alerts.push({
             type: 'overflow',
             severity: hoursToOverflow < 1 ? 'critical' : 'high',
-            message: `${village.villageName}: ${resource} will overflow in ${Math.round(hoursToOverflow * 60)} minutes`,
-            villageId: village.villageId,
+            message: `${village.villageName || village.name}: ${resource} will overflow in ${Math.round(hoursToOverflow * 60)} minutes`,
+            villageId: village.villageId || village.id,
             data: { resource, hoursToOverflow }
           });
         }
@@ -378,8 +423,8 @@ function checkForAlerts(village, accountId) {
         alerts.push({
           type: 'starvation',
           severity: hoursToStarvation < 2 ? 'critical' : 'high',
-          message: `${village.villageName}: Crop will run out in ${Math.round(hoursToStarvation * 60)} minutes`,
-          villageId: village.villageId,
+          message: `${village.villageName || village.name}: Crop will run out in ${Math.round(hoursToStarvation * 60)} minutes`,
+          villageId: village.villageId || village.id,
           data: { hoursToStarvation }
         });
       }
@@ -410,15 +455,50 @@ function calculateAggregates(snapshots) {
   return aggregates;
 }
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Backend server running on http://localhost:${PORT}`);
-  console.log(`WebSocket server running on ws://localhost:3002`);
+// Start server with WebSocket on same port
+server.listen(PORT, '0.0.0.0', () => {
+  const IS_REPLIT = process.env.REPL_ID || process.env.REPLIT_DB_URL;
+  const IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
+  
+  console.log('\n========================================');
+  console.log('🚀 TravianAssistant SQLite Backend Started');
+  console.log('========================================');
+  console.log(`📍 Environment: ${IS_PRODUCTION ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+  console.log(`🖥️ Platform: ${IS_REPLIT ? 'Replit' : 'Local'}`);
+  console.log(`🔌 Port: ${PORT}`);
+  console.log(`💾 Database: SQLite (travian.db)`);
+  
+  if (IS_REPLIT) {
+    const replName = process.env.REPL_SLUG || 'workspace';
+    const replOwner = process.env.REPL_OWNER || 'dougdostal';
+    console.log(`\n🌐 Access URLs:`);
+    console.log(`   HTTP API: https://${replName}.${replOwner}.repl.co`);
+    console.log(`   Health: https://${replName}.${replOwner}.repl.co/api/health`);
+    console.log(`   WebSocket: wss://${replName}.${replOwner}.repl.co`);
+  } else {
+    console.log(`\n🌐 Access URLs:`);
+    console.log(`   HTTP API: http://localhost:${PORT}`);
+    console.log(`   Health: http://localhost:${PORT}/api/health`);
+    console.log(`   WebSocket: ws://localhost:${PORT}`);
+  }
+  console.log('========================================\n');
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\nShutting down gracefully...');
   db.close();
-  process.exit(0);
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGTERM', () => {
+  console.log('\nShutting down gracefully...');
+  db.close();
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
