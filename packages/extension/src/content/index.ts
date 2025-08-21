@@ -1,11 +1,17 @@
-// packages/extension/src/content/index.ts
-// Travian Legends Assistant - Content Script (v0.3.1)
-// - Works with proxy at travian-proxy-simple.vercel.app
-// - Claude Sonnet 4 integration
-// - Clean HUD with AI recommendations
+// Travian Legends Assistant - Content Script (v0.4.0)
+// - Multi-village data collection
+// - IndexedDB persistence with 7-day history
+// - Conversational AI interface
+// - Enhanced scraping with alerts
+
+// Import new components
+import { enhancedScraper, type EnhancedGameState } from './enhanced-scraper';
+import { villageNavigator } from './village-navigator';
+import { dataStore } from './data-persistence';
+import { chatAI, StrategicCalculators } from './conversational-ai';
 
 (() => {
-  const VERSION = "0.3.1"; // Updated to match manifest!
+  const VERSION = "0.4.0"; // Updated for multi-village support!
   const LOOP_MS = 5000;
 
   // ---------- Utils ----------
@@ -27,20 +33,6 @@
     return isFinite(n) ? n : undefined;
   };
 
-  function pick(selectors: string[], root: ParentNode = document): { value?: string; sel?: string } {
-    for (const s of selectors) {
-      const el = $(s, root);
-      const v = txt(el);
-      if (v) return { value: v, sel: s };
-    }
-    return {};
-  }
-
-  function pickNum(selectors: string[], root: ParentNode = document) {
-    const p = pick(selectors, root);
-    return { value: toNum(p.value), sel: p.sel };
-  }
-
   function nowStamp() {
     const d = new Date();
     const hh = d.getHours().toString().padStart(2, "0");
@@ -57,146 +49,19 @@
     if (p.includes("/hero/attributes")) return "hero_attributes";
     if (p.includes("/hero/appearance")) return "hero_appearance";
     if (p.includes("gid=16")) return "rallypoint";
+    if (p.includes("statistics")) return "statistics";
+    if (p.includes("map")) return "map";
+    if (p.includes("reports")) return "reports";
+    if (p.includes("alliance")) return "alliance";
     return "other";
-  }
-
-  // ---------- Selectors ----------
-  const SEL = {
-    res: {
-      wood: ["#l1 .value", "#l1.value", ".r1 .value", "#stockBar .r1 .value"],
-      clay: ["#l2 .value", "#l2.value", ".r2 .value", "#stockBar .r2 .value"],
-      iron: ["#l3 .value", "#l3.value", ".r3 .value", "#stockBar .r3 .value"],
-      crop: ["#l4 .value", "#l4.value", ".r4 .value", "#stockBar .r4 .value"],
-      cap: ["#stockBar .warehouse .capacity .value", "#stockBar .warehouse .value"],
-      gran: ["#stockBar .granary .capacity .value", "#stockBar .granary .value"],
-      gold: [".ajaxReplaceableGoldAmount", "#topBar .gold .value"],
-      silver: [".ajaxReplaceableSilverAmount", "#topBar .silver .value"],
-    },
-    build: {
-      rows: ".buildingList li, .boxes.buildingList li",
-      name: [".name", ".title", ".building"],
-      timer: [".contract .value", ".timer", ".countdown"],
-    },
-    heroAttr: {
-      statsRow: ".stats .progressBar",
-      rowLabel: ".name",
-      rowValue: ".value",
-      rowPrimaryFill: ".bar .filling.primary",
-      speedText: ".value, .speedValue, .fieldsPerHour",
-    },
-    rally: {
-      blocks: ".movements .tr, .incoming .tr",
-    },
-  } as const;
-
-  // ---------- Scrapers ----------
-  type Used = Record<string, string | undefined>;
-  type GroupResult<T> = { ok: boolean; used: Used; data: T; errors?: string[] };
-
-  function scrapeResources(): GroupResult<{
-    wood?: number; clay?: number; iron?: number; crop?: number;
-    cap?: number; gran?: number; gold?: number; silver?: number;
-  }> {
-    const used: Used = {};
-    const errors: string[] = [];
-    const w = pickNum(SEL.res.wood); used.wood = w.sel;
-    const c = pickNum(SEL.res.clay); used.clay = c.sel;
-    const i = pickNum(SEL.res.iron); used.iron = i.sel;
-    const r = pickNum(SEL.res.crop); used.crop = r.sel;
-    const cap = pickNum(SEL.res.cap); used.cap = cap.sel;
-    const gran = pickNum(SEL.res.gran); used.gran = gran.sel;
-    const gold = pickNum(SEL.res.gold); used.gold = gold.sel;
-    const silver = pickNum(SEL.res.silver); used.silver = silver.sel;
-
-    const data = {
-      wood: w.value, clay: c.value, iron: i.value, crop: r.value,
-      cap: cap.value, gran: gran.value, gold: gold.value, silver: silver.value,
-    };
-    Object.entries(data).forEach(([k, v]) => { if (typeof v !== "number") errors.push(`missing:${k}`); });
-    return { ok: errors.length === 0, used, data, errors };
-  }
-
-  function scrapeBuild(): GroupResult<{ items: Array<{ name?: string; timeText?: string }> }> {
-    const used: Used = {};
-    const rows = $all(SEL.build.rows);
-    if (!rows.length) {
-      return { ok: false, used, data: { items: [] }, errors: ["no-rows"] };
-    }
-    const items = rows.map((row) => {
-      const namePick = pick(SEL.build.name, row);
-      const tPick = pick(SEL.build.timer, row);
-      return { name: namePick.value, timeText: tPick.value };
-    });
-    used.rows = SEL.build.rows;
-    return { ok: items.length > 0, used, data: { items } };
-  }
-
-  function scrapeHeroAttributes(): GroupResult<{
-    health?: { pct?: number; text?: string };
-    experience?: { pct?: number; text?: string };
-    speed?: { fieldsPerHour?: number; text?: string };
-  }> {
-    const used: Used = {};
-    const errors: string[] = [];
-    const rows = $all(SEL.heroAttr.statsRow);
-    used.statsRow = SEL.heroAttr.statsRow;
-
-    const pctFromRow = (row: HTMLElement | null) => {
-      if (!row) return undefined;
-      const pri = $(SEL.heroAttr.rowPrimaryFill, row);
-      const read = (el: HTMLElement | null) => {
-        const style = el?.getAttribute("style") || "";
-        const m = style.match(/width:\s*([\d.]+)%/);
-        return m ? Number(m[1]) : undefined;
-      };
-      return read(pri);
-    };
-
-    let healthPct: number | undefined;
-    let healthText: string | undefined;
-    let expPct: number | undefined;
-    let expText: string | undefined;
-    let speedFph: number | undefined;
-    let speedText: string | undefined;
-
-    rows.forEach((row) => {
-      const label = txt($(SEL.heroAttr.rowLabel, row))?.toLowerCase() || "";
-      const raw = txt($(SEL.heroAttr.rowValue, row));
-      if (label.includes("health")) {
-        healthPct = pctFromRow(row);
-        healthText = raw;
-      } else if (label.includes("experience")) {
-        expPct = pctFromRow(row);
-        expText = raw;
-      } else if (label.includes("speed")) {
-        speedText = raw || txt($(SEL.heroAttr.speedText, row));
-        speedFph = toNum(speedText);
-      }
-    });
-
-    const data = {
-      health: { pct: healthPct, text: healthText },
-      experience: { pct: expPct, text: expText },
-      speed: { fieldsPerHour: speedFph, text: speedText },
-    };
-
-    if (healthPct == null) errors.push("hero.health.missing");
-    if (expPct == null) errors.push("hero.exp.missing");
-    if (speedFph == null) errors.push("hero.speed.missing");
-
-    return { ok: errors.length === 0, used, data, errors };
-  }
-
-  function scrapeRally(): GroupResult<{ incomingCount?: number }> {
-    const used: Used = {};
-    const blocks = $all(SEL.rally.blocks);
-    used.blocks = SEL.rally.blocks;
-    const count = blocks.length || undefined;
-    return { ok: typeof count === "number", used, data: { incomingCount: count } };
   }
 
   // ---------- HUD ----------
   const HUD_ID = "tla-hud";
+  let currentGameState: EnhancedGameState | null = null;
+  let aiRecommendations: any = null;
+  let isFullScanRunning = false;
+
   function ensureHUD() {
     let el = document.getElementById(HUD_ID) as HTMLDivElement | null;
     if (el) return el;
@@ -209,157 +74,218 @@
     el.style.zIndex = "2147483647";
     el.style.font = "12px/1.3 system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
     el.style.color = "#eee";
-    el.style.background = "rgba(0,0,0,.65)";
-    el.style.padding = "8px 10px";
-    el.style.borderRadius = "8px";
-    el.style.backdropFilter = "blur(2px)";
-    el.style.boxShadow = "0 2px 8px rgba(0,0,0,.35)";
-    el.style.minWidth = "220px";
+    el.style.background = "rgba(0,0,0,.75)";
+    el.style.padding = "10px 12px";
+    el.style.borderRadius = "10px";
+    el.style.backdropFilter = "blur(4px)";
+    el.style.boxShadow = "0 4px 12px rgba(0,0,0,.4)";
+    el.style.minWidth = "280px";
+    el.style.maxWidth = "350px";
     el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-        <div><b>TLA</b> <span id="tla-ver"></span> — <span id="tla-page"></span></div>
-        <div id="tla-heart" title="last scrape">--:--:--</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+        <div><b>TLA</b> <span id="tla-ver"></span></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="tla-villages" style="color:#4fc3f7;font-weight:bold">1 village</span>
+          <span id="tla-heart" title="last update" style="opacity:0.7">--:--:--</span>
+        </div>
       </div>
-      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
-        <span id="tla-chip-res"   style="padding:2px 6px;border-radius:999px;background:#333">Res</span>
-        <span id="tla-chip-build" style="padding:2px 6px;border-radius:999px;background:#333">Build</span>
-        <span id="tla-chip-hero"  style="padding:2px 6px;border-radius:999px;background:#333">Hero</span>
-        <span id="tla-chip-rall"  style="padding:2px 6px;border-radius:999px;background:#333">Rally</span>
+      
+      <div id="tla-alerts" style="margin-bottom:8px;display:none;"></div>
+      
+      <div id="tla-stats" style="margin-bottom:8px;padding:6px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:11px;display:none;">
+        <div id="tla-total-prod" style="margin-bottom:4px;"></div>
+        <div id="tla-total-res"></div>
       </div>
-      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap" id="tla-buttons">
-        <button id="tla-btn-scrape" style="padding:2px 6px;border-radius:6px;border:1px solid #555;background:#1f6feb;color:#fff;cursor:pointer">Force scrape</button>
-        <button id="tla-btn-copy" style="padding:2px 6px;border-radius:6px;border:1px solid #555;background:#444;color:#fff;cursor:pointer">Copy JSON</button>
-        <button id="tla-btn-ai" style="padding:2px 6px;border-radius:6px;border:1px solid #555;background:#4fc3f7;color:#000;cursor:pointer;font-weight:bold">🤖 AI Analysis</button>
+      
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button id="tla-btn-quick" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #555;background:#2d7d46;color:#fff;cursor:pointer;font-weight:bold;">
+          🔄 Quick Analyze
+        </button>
+        <button id="tla-btn-full" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #555;background:#1e88e5;color:#fff;cursor:pointer;font-weight:bold;">
+          📊 Full Scan
+        </button>
       </div>
-      <div id="tla-msg" style="margin-top:6px;opacity:.8"></div>
+      
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button id="tla-btn-ai" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #555;background:#4fc3f7;color:#000;cursor:pointer;font-weight:bold;">
+          🤖 AI Analysis
+        </button>
+        <button id="tla-btn-chat" style="flex:1;padding:6px 10px;border-radius:6px;border:1px solid #555;background:#9c27b0;color:#fff;cursor:pointer;font-weight:bold;">
+          💬 Ask Question
+        </button>
+      </div>
+      
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button id="tla-btn-export" style="flex:1;padding:4px 8px;border-radius:4px;border:1px solid #444;background:#333;color:#aaa;cursor:pointer;font-size:11px;">
+          💾 Export
+        </button>
+        <button id="tla-btn-copy" style="flex:1;padding:4px 8px;border-radius:4px;border:1px solid #444;background:#333;color:#aaa;cursor:pointer;font-size:11px;">
+          📋 Copy
+        </button>
+        <button id="tla-btn-clear" style="flex:1;padding:4px 8px;border-radius:4px;border:1px solid #444;background:#333;color:#aaa;cursor:pointer;font-size:11px;">
+          🗑️ Clear
+        </button>
+      </div>
+      
+      <div id="tla-msg" style="margin-top:8px;padding:6px;background:rgba(255,255,255,0.1);border-radius:4px;font-size:11px;display:none;"></div>
     `;
     document.documentElement.appendChild(el);
 
-    // wire buttons
-    $("#tla-btn-scrape", el)?.addEventListener("click", () => runOnce(true));
-    $("#tla-btn-copy", el)?.addEventListener("click", () => {
-      navigator.clipboard.writeText(JSON.stringify(lastPayload, null, 2))
-        .then(() => showMsg("Copied payload to clipboard"))
-        .catch(() => showMsg("Copy failed"));
-    });
-    $("#tla-btn-ai", el)?.addEventListener("click", () => requestAIAnalysis());
+    // Wire buttons
+    $("#tla-btn-quick", el)?.addEventListener("click", quickAnalyze);
+    $("#tla-btn-full", el)?.addEventListener("click", fullAccountScan);
+    $("#tla-btn-ai", el)?.addEventListener("click", requestAIAnalysis);
+    $("#tla-btn-chat", el)?.addEventListener("click", openChatInterface);
+    $("#tla-btn-export", el)?.addEventListener("click", exportData);
+    $("#tla-btn-copy", el)?.addEventListener("click", copyGameState);
+    $("#tla-btn-clear", el)?.addEventListener("click", clearOldData);
 
     return el;
   }
 
-  function setChip(id: string, ok: boolean) {
-    const chip = document.getElementById(id);
-    if (!chip) return;
-    chip.textContent = chip.textContent?.split(" ")[0] + (ok ? " ✔︎" : " ✖︎");
-    chip.setAttribute("style",
-      `padding:2px 6px;border-radius:999px;background:${ok ? "#264d00" : "#5a0000"};color:#fff`);
-  }
-
-  function showMsg(s: string) {
+  function showMsg(s: string, persist = false) {
     const el = document.getElementById("tla-msg");
     if (!el) return;
     el.textContent = s;
-    setTimeout(() => { if (el.textContent === s) el.textContent = ""; }, 3000);
+    el.style.display = "block";
+    if (!persist) {
+      setTimeout(() => {
+        if (el.textContent === s) {
+          el.style.display = "none";
+          el.textContent = "";
+        }
+      }, 3000);
+    }
   }
 
-  // ---------- Main loop ----------
-  let lastPayload: any = null;
-  let timer: number | undefined;
-
-  function buildPayload() {
-    const page = identifyPage(location.pathname + location.search);
-    const res = scrapeResources();
-    const build = scrapeBuild();
-    const hero = page === "hero_attributes" ? scrapeHeroAttributes() : { ok: false, used: {}, data: {}, errors: ["not-on-hero-attributes"] };
-    const rally = page === "rallypoint" ? scrapeRally() : { ok: false, used: {}, data: {}, errors: ["not-on-rallypoint"] };
-
-    return {
-      version: VERSION,
-      page,
-      at: new Date().toISOString(),
-      resources: res,
-      build,
-      hero,
-      rally,
-      url: location.href
-    };
-  }
-
-  function renderHUD(payload: any) {
+  function updateHUD(state: EnhancedGameState | null) {
     const hud = ensureHUD();
-    const page = payload.page;
     $("#tla-ver", hud)!.textContent = `v${VERSION}`;
-    $("#tla-page", hud)!.textContent = page;
     $("#tla-heart", hud)!.textContent = nowStamp();
-
-    setChip("tla-chip-res",  !!payload.resources?.ok);
-    setChip("tla-chip-build",!!payload.build?.ok);
-    setChip("tla-chip-hero", !!payload.hero?.ok);
-    setChip("tla-chip-rall", !!payload.rally?.ok);
+    
+    if (!state) return;
+    
+    // Update village count
+    const villageCount = state.villages?.size || 1;
+    $("#tla-villages", hud)!.textContent = `${villageCount} village${villageCount > 1 ? 's' : ''}`;
+    
+    // Show alerts if any
+    const alertsEl = $("#tla-alerts", hud)!;
+    if (state.alerts && state.alerts.length > 0) {
+      alertsEl.style.display = "block";
+      alertsEl.innerHTML = state.alerts.slice(0, 3).map(alert => `
+        <div style="padding:4px 6px;margin-bottom:4px;background:${
+          alert.severity === 'critical' ? 'rgba(244,67,54,0.2)' :
+          alert.severity === 'high' ? 'rgba(255,152,0,0.2)' :
+          'rgba(255,235,59,0.2)'
+        };border-radius:4px;font-size:11px;border-left:3px solid ${
+          alert.severity === 'critical' ? '#f44336' :
+          alert.severity === 'high' ? '#ff9800' :
+          '#ffeb3b'
+        };">
+          ${alert.message}
+        </div>
+      `).join('');
+    } else {
+      alertsEl.style.display = "none";
+    }
+    
+    // Show aggregated stats if multi-village
+    const statsEl = $("#tla-stats", hud)!;
+    if (state.aggregates && villageCount > 1) {
+      statsEl.style.display = "block";
+      $("#tla-total-prod", statsEl)!.innerHTML = `
+        <strong>Total Production:</strong> 
+        <span style="color:#8bc34a">+${state.aggregates.totalProduction.wood}</span>/
+        <span style="color:#ff9800">+${state.aggregates.totalProduction.clay}</span>/
+        <span style="color:#9e9e9e">+${state.aggregates.totalProduction.iron}</span>/
+        <span style="color:#fdd835">+${state.aggregates.totalProduction.crop}</span> /hr
+      `;
+      $("#tla-total-res", statsEl)!.innerHTML = `
+        <strong>Total Resources:</strong> 
+        ${Math.floor((state.aggregates.totalResources.wood + 
+                      state.aggregates.totalResources.clay + 
+                      state.aggregates.totalResources.iron + 
+                      state.aggregates.totalResources.crop) / 1000)}k
+      `;
+    } else {
+      statsEl.style.display = "none";
+    }
   }
 
-  function runOnce(manual = false) {
+  // ---------- Main Functions ----------
+  async function quickAnalyze() {
     try {
-      lastPayload = buildPayload();
-      renderHUD(lastPayload);
-      if (manual) showMsg("Scrape completed");
-      // Expose for console
-      (window as any).TLA = (window as any).TLA || {};
-      (window as any).TLA.state = lastPayload;
-      (window as any).TLA.debug = () => {
-        console.log("[TLA DEBUG]", lastPayload);
-        return lastPayload;
-      };
-    } catch (err) {
-      console.error("[TLA] run error:", err);
-      showMsg("Scrape failed (see console)");
+      showMsg("Analyzing current village...", true);
+      currentGameState = await enhancedScraper.getSmartGameState();
+      updateHUD(currentGameState);
+      showMsg(`Analysis complete! (${currentGameState.villages.size} villages)`);
+      console.log('[TLA] Quick analysis:', currentGameState);
+    } catch (error) {
+      console.error('[TLA] Quick analyze failed:', error);
+      showMsg("Analysis failed - see console");
     }
   }
 
-  function startLoop() {
-    stopLoop();
-    runOnce(false);
-    timer = window.setInterval(() => {
-      if (document.hidden) return;
-      runOnce(false);
-    }, LOOP_MS);
-  }
-
-  function stopLoop() {
-    if (timer) {
-      window.clearInterval(timer);
-      timer = undefined;
-    }
-  }
-
-  // ---------- AI Integration (FIXED!) ----------
-  let aiRecommendations: any = null;
-
-  async function requestAIAnalysis() {
-    if (!lastPayload) {
-      showMsg("No data to analyze");
+  async function fullAccountScan() {
+    if (isFullScanRunning) {
+      showMsg("Scan already in progress...");
       return;
     }
     
     try {
-      showMsg("Requesting AI analysis...");
-      console.log('[TLA] Sending game state to background:', lastPayload);
+      isFullScanRunning = true;
+      const fullBtn = document.getElementById("tla-btn-full") as HTMLButtonElement;
+      if (fullBtn) {
+        fullBtn.disabled = true;
+        fullBtn.textContent = "⏳ Scanning...";
+      }
+      
+      showMsg("Starting full account scan...", true);
+      currentGameState = await enhancedScraper.scrapeFullAccount(true);
+      updateHUD(currentGameState);
+      
+      const villageCount = currentGameState.villages.size;
+      showMsg(`Full scan complete! ${villageCount} villages analyzed`);
+      console.log('[TLA] Full account scan:', currentGameState);
+      
+      // Auto-trigger AI analysis after full scan
+      setTimeout(() => requestAIAnalysis(), 1000);
+      
+    } catch (error) {
+      console.error('[TLA] Full scan failed:', error);
+      showMsg("Full scan failed - see console");
+    } finally {
+      isFullScanRunning = false;
+      const fullBtn = document.getElementById("tla-btn-full") as HTMLButtonElement;
+      if (fullBtn) {
+        fullBtn.disabled = false;
+        fullBtn.textContent = "📊 Full Scan";
+      }
+    }
+  }
+
+  async function requestAIAnalysis() {
+    if (!currentGameState) {
+      showMsg("Run analysis first!");
+      return;
+    }
+    
+    try {
+      showMsg("Getting AI recommendations...", true);
       
       const response = await chrome.runtime.sendMessage({
         type: 'ANALYZE_GAME_STATE',
-        state: lastPayload  // Use 'state' as background.ts expects
+        state: currentGameState
       });
       
-      console.log('[TLA] Got response from background:', response);
-      
-      if (!response.success || response.error) {
-        showMsg(`Error: ${response.error || 'Analysis failed'}`);
-        return;
+      if (response.success) {
+        aiRecommendations = response;
+        renderAIRecommendations();
+        showMsg("AI analysis complete!");
+      } else {
+        showMsg(`AI Error: ${response.error}`);
       }
-      
-      aiRecommendations = response;
-      renderAIRecommendations();
-      showMsg("AI analysis complete!");
     } catch (error) {
       console.error('[TLA] AI request failed:', error);
       showMsg("Failed to connect to AI");
@@ -367,95 +293,309 @@
   }
 
   function renderAIRecommendations() {
-    if (!aiRecommendations || !aiRecommendations.recommendations) {
-      console.error('[TLA] No recommendations to render:', aiRecommendations);
-      return;
-    }
+    if (!aiRecommendations || !aiRecommendations.recommendations) return;
     
-    // Create or update AI panel
     let aiPanel = document.getElementById('tla-ai-panel') as HTMLDivElement | null;
     if (!aiPanel) {
       aiPanel = document.createElement('div');
       aiPanel.id = 'tla-ai-panel';
       aiPanel.style.cssText = `
         position: fixed;
-        top: 120px;
+        top: 180px;
         right: 8px;
-        width: 320px;
+        width: 350px;
+        max-height: 500px;
+        overflow-y: auto;
         z-index: 2147483646;
         font: 13px/1.5 system-ui, sans-serif;
         color: #eee;
-        background: rgba(0, 0, 0, 0.9);
-        padding: 12px;
-        border-radius: 8px;
-        backdrop-filter: blur(8px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        background: rgba(0, 0, 0, 0.95);
+        padding: 14px;
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.6);
         border: 1px solid rgba(79, 195, 247, 0.3);
       `;
       document.documentElement.appendChild(aiPanel);
     }
     
     const recs = aiRecommendations.recommendations || [];
-    const validRecs = recs.filter((r: any) => r && r.action);
+    const alerts = aiRecommendations.alerts || currentGameState?.alerts || [];
     
     aiPanel.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <h3 style="margin:0; font-size:15px; color:#4fc3f7;">🤖 AI Assistant</h3>
-        <div>
-          <span style="font-size:10px; color:#666;">Sonnet 4</span>
-          <button id="tla-ai-close" style="background:none; border:none; color:#999; cursor:pointer; font-size:18px; margin-left:8px;">×</button>
-        </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h3 style="margin:0; font-size:16px; color:#4fc3f7;">🤖 AI Strategic Analysis</h3>
+        <button id="tla-ai-close" style="background:none; border:none; color:#999; cursor:pointer; font-size:20px;">×</button>
       </div>
-      ${validRecs.length > 0 ? validRecs.map((rec: any, i: number) => `
-        <div style="margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; border-left:3px solid ${
-          rec.priority === 'high' ? '#ff5252' : 
-          rec.priority === 'medium' ? '#ffa726' : '#66bb6a'
-        };">
-          <div style="font-weight:bold; color:#fff; margin-bottom:4px;">
-            ${i + 1}. ${rec.action || 'Unknown action'}
-          </div>
-          <div style="font-size:12px; color:#bbb; margin-bottom:4px;">
-            ${rec.reason || 'No reason provided'}
-          </div>
-          ${rec.benefit ? `
-            <div style="font-size:11px; color:#4fc3f7;">
-              → ${rec.benefit}
+      
+      ${alerts.length > 0 ? `
+        <div style="margin-bottom:12px;">
+          <h4 style="margin:0 0 8px 0; font-size:13px; color:#ff9800;">⚠️ Alerts</h4>
+          ${alerts.map((alert: any) => `
+            <div style="padding:6px 8px; margin-bottom:4px; background:rgba(255,152,0,0.1); border-radius:4px; font-size:12px; border-left:3px solid ${
+              alert.severity === 'critical' ? '#f44336' : '#ff9800'
+            };">
+              ${alert.message}
             </div>
-          ` : ''}
-          <div style="font-size:10px; color:#888; margin-top:4px;">
-            Priority: ${rec.priority || 'normal'}
+          `).join('')}
+        </div>
+      ` : ''}
+      
+      <div style="margin-bottom:12px;">
+        <h4 style="margin:0 0 8px 0; font-size:13px; color:#66bb6a;">✅ Recommendations</h4>
+        ${recs.map((rec: any, i: number) => `
+          <div style="margin-bottom:8px; padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; border-left:3px solid ${
+            rec.priority === 'critical' ? '#f44336' :
+            rec.priority === 'high' ? '#ff9800' : 
+            rec.priority === 'medium' ? '#ffeb3b' : '#66bb6a'
+          };">
+            <div style="font-weight:bold; color:#fff; margin-bottom:4px;">
+              ${i + 1}. ${rec.action}
+            </div>
+            <div style="font-size:12px; color:#bbb;">
+              ${rec.reason}
+            </div>
+            ${rec.village ? `
+              <div style="font-size:11px; color:#4fc3f7; margin-top:4px;">
+                📍 ${rec.village}
+              </div>
+            ` : ''}
           </div>
-        </div>
-      `).join('') : `
-        <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; color:#999; text-align:center;">
-          No recommendations available. Try refreshing the analysis.
-        </div>
-      `}
-      <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); font-size:11px; color:#666;">
-        Powered by Claude Sonnet 4 via Vercel Proxy
+        `).join('')}
+      </div>
+      
+      <div style="padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); font-size:11px; color:#666;">
+        Analysis based on ${currentGameState?.villages?.size || 1} villages • Claude Sonnet 4
       </div>
     `;
     
-    // Add close button handler
     document.getElementById('tla-ai-close')?.addEventListener('click', () => {
       aiPanel?.remove();
     });
   }
 
-  // Restart on navigation
-  let lastHref = location.href;
-  setInterval(() => {
-    if (location.href !== lastHref) {
-      lastHref = location.href;
-      startLoop();
+  function openChatInterface() {
+    let chatPanel = document.getElementById('tla-chat-panel') as HTMLDivElement | null;
+    if (chatPanel) {
+      chatPanel.style.display = chatPanel.style.display === 'none' ? 'block' : 'none';
+      return;
     }
-  }, 1000);
+    
+    chatPanel = document.createElement('div');
+    chatPanel.id = 'tla-chat-panel';
+    chatPanel.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 8px;
+      width: 400px;
+      height: 500px;
+      z-index: 2147483645;
+      font: 13px/1.5 system-ui, sans-serif;
+      color: #eee;
+      background: rgba(0, 0, 0, 0.95);
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+      border: 1px solid rgba(156, 39, 176, 0.3);
+      display: flex;
+      flex-direction: column;
+    `;
+    
+    const suggestions = chatAI.getSuggestedQuestions(currentGameState);
+    
+    chatPanel.innerHTML = `
+      <div style="padding:14px; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h3 style="margin:0; font-size:16px; color:#9c27b0;">💬 Strategic Advisor</h3>
+          <button id="tla-chat-close" style="background:none; border:none; color:#999; cursor:pointer; font-size:20px;">×</button>
+        </div>
+      </div>
+      
+      <div id="tla-chat-messages" style="flex:1; overflow-y:auto; padding:14px;">
+        <div style="padding:10px; background:rgba(156,39,176,0.1); border-radius:6px; margin-bottom:10px;">
+          <div style="font-weight:bold; margin-bottom:4px;">Welcome to TravianAssistant AI!</div>
+          <div style="font-size:12px; color:#bbb;">Ask me anything about your game strategy.</div>
+        </div>
+        
+        ${suggestions.length > 0 ? `
+          <div style="margin-bottom:10px;">
+            <div style="font-size:11px; color:#888; margin-bottom:6px;">Suggested questions:</div>
+            ${suggestions.map(q => `
+              <button class="tla-suggestion" style="display:block; width:100%; text-align:left; padding:6px 8px; margin-bottom:4px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:4px; color:#4fc3f7; cursor:pointer; font-size:12px;">
+                ${q}
+              </button>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+      
+      <div style="padding:14px; border-top:1px solid rgba(255,255,255,0.1);">
+        <div style="display:flex; gap:8px;">
+          <input id="tla-chat-input" type="text" placeholder="Ask about troops, buildings, strategy..." 
+                 style="flex:1; padding:8px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); border-radius:4px; color:#fff;">
+          <button id="tla-chat-send" style="padding:8px 16px; background:#9c27b0; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">
+            Send
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.documentElement.appendChild(chatPanel);
+    
+    // Wire up chat events
+    document.getElementById('tla-chat-close')?.addEventListener('click', () => {
+      chatPanel?.remove();
+    });
+    
+    const input = document.getElementById('tla-chat-input') as HTMLInputElement;
+    const sendBtn = document.getElementById('tla-chat-send');
+    const messagesEl = document.getElementById('tla-chat-messages');
+    
+    async function sendMessage() {
+      const question = input.value.trim();
+      if (!question) return;
+      
+      // Add user message
+      messagesEl!.innerHTML += `
+        <div style="margin-bottom:10px; text-align:right;">
+          <div style="display:inline-block; padding:8px 12px; background:rgba(156,39,176,0.2); border-radius:8px; max-width:80%;">
+            ${question}
+          </div>
+        </div>
+      `;
+      
+      input.value = '';
+      input.disabled = true;
+      sendBtn!.textContent = '...';
+      
+      // Get AI response
+      try {
+        if (!currentGameState) {
+          await quickAnalyze();
+        }
+        
+        const answer = await chatAI.askQuestion(question, currentGameState);
+        
+        messagesEl!.innerHTML += `
+          <div style="margin-bottom:10px;">
+            <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; border-left:3px solid #4fc3f7;">
+              ${answer.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+        `;
+        
+      } catch (error) {
+        console.error('[TLA] Chat error:', error);
+        messagesEl!.innerHTML += `
+          <div style="margin-bottom:10px;">
+            <div style="padding:8px; background:rgba(244,67,54,0.1); border-radius:4px; color:#f44336;">
+              Failed to get response. Please try again.
+            </div>
+          </div>
+        `;
+      } finally {
+        input.disabled = false;
+        sendBtn!.textContent = 'Send';
+        input.focus();
+        messagesEl!.scrollTop = messagesEl!.scrollHeight;
+      }
+    }
+    
+    sendBtn?.addEventListener('click', sendMessage);
+    input?.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+    
+    // Handle suggestion clicks
+    document.querySelectorAll('.tla-suggestion').forEach(btn => {
+      btn.addEventListener('click', () => {
+        input.value = btn.textContent || '';
+        sendMessage();
+      });
+    });
+  }
 
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) runOnce(false);
-  });
+  async function exportData() {
+    try {
+      const data = await dataStore.exportData();
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `travian-data-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showMsg("Data exported!");
+    } catch (error) {
+      console.error('[TLA] Export failed:', error);
+      showMsg("Export failed");
+    }
+  }
 
-  // Start!
-  startLoop();
-  console.log('[TLA] Content script v' + VERSION + ' initialized');
+  function copyGameState() {
+    if (!currentGameState) {
+      showMsg("No data to copy");
+      return;
+    }
+    
+    const stateCopy = {
+      ...currentGameState,
+      villages: Array.from(currentGameState.villages.entries())
+    };
+    
+    navigator.clipboard.writeText(JSON.stringify(stateCopy, null, 2))
+      .then(() => showMsg("Copied to clipboard!"))
+      .catch(() => showMsg("Copy failed"));
+  }
+
+  async function clearOldData() {
+    if (confirm("Clear data older than 1 day?")) {
+      await dataStore.cleanOldData(1);
+      showMsg("Old data cleared");
+    }
+  }
+
+  // ---------- Initialize ----------
+  async function initialize() {
+    console.log('[TLA] v' + VERSION + ' initializing...');
+    
+    // Ensure HUD
+    ensureHUD();
+    
+    // Do initial quick analysis
+    await quickAnalyze();
+    
+    // Set up periodic refresh (every 5 minutes)
+    setInterval(async () => {
+      if (!document.hidden && !isFullScanRunning) {
+        await quickAnalyze();
+      }
+    }, 5 * 60 * 1000);
+    
+    // Expose for debugging
+    (window as any).TLA = {
+      version: VERSION,
+      state: () => currentGameState,
+      scraper: enhancedScraper,
+      navigator: villageNavigator,
+      dataStore: dataStore,
+      chat: chatAI,
+      debug: () => {
+        console.log('[TLA Debug]', {
+          state: currentGameState,
+          recommendations: aiRecommendations,
+          villages: villageNavigator.getVillages()
+        });
+      }
+    };
+    
+    console.log('[TLA] Ready! Use TLA.debug() in console for info.');
+  }
+
+  // Start when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    initialize();
+  }
 })();
