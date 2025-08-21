@@ -1,5 +1,5 @@
-// Enhanced Multi-Village Scraper
-// Integrates village navigation, data persistence, and intelligent collection
+// Enhanced Multi-Village Scraper (SAFE VERSION - NO AUTO-NAVIGATION)
+// Only collects data from current village unless explicitly requested
 
 import { villageNavigator, type VillageData } from './village-navigator';
 import { dataStore } from './data-persistence';
@@ -60,9 +60,7 @@ export class EnhancedScraper {
 
   private async initialize() {
     console.log('[TLA Scraper] Enhanced scraper initialized');
-    
-    // Set up periodic full account scraping
-    this.schedulePeriodicScraping();
+    // NO AUTOMATIC SCRAPING - removed schedulePeriodicScraping
   }
 
   /**
@@ -86,21 +84,25 @@ export class EnhancedScraper {
   }
 
   /**
-   * Scrape entire account (all villages) - slower but comprehensive
+   * DANGEROUS: Scrape entire account (all villages) - navigates between villages
+   * Should only be called with explicit user permission
    */
   public async scrapeFullAccount(forceRefresh = false): Promise<EnhancedGameState> {
-    // Check if we should use cached data
-    if (!forceRefresh && this.shouldUseCachedData()) {
-      console.log('[TLA Scraper] Using cached account data');
-      const cached = await dataStore.getLatestAccountSnapshot();
-      if (cached) {
-        return this.buildEnhancedState(cached.villages);
-      }
+    console.log('[TLA Scraper] WARNING: Full account scrape requested - will navigate villages');
+    
+    // Always warn user before navigating
+    if (!confirm('Full scan will navigate through all villages. This may interrupt your game. Continue?')) {
+      console.log('[TLA Scraper] Full scan cancelled by user');
+      // Return current village data only
+      const currentData = this.scrapeCurrentVillage();
+      const villages = new Map<string, VillageData>();
+      villages.set(currentData.villageId, currentData);
+      return this.buildEnhancedState(villages);
     }
 
-    console.log('[TLA Scraper] Starting full account scrape...');
+    console.log('[TLA Scraper] Starting full account scrape with navigation...');
     
-    // FIX: Use the correct function name - collectAllVillagesManual
+    // Use manual collection with navigation
     const allVillagesData = await villageNavigator.collectAllVillagesManual(
       () => this.scrapeCurrentVillage()
     );
@@ -120,23 +122,37 @@ export class EnhancedScraper {
   }
 
   /**
-   * Get intelligent game state with minimal overhead
+   * SAFE: Get intelligent game state without navigation
+   * Combines current village data with cached data from other villages
    */
   public async getSmartGameState(): Promise<EnhancedGameState> {
+    console.log('[TLA Scraper] Getting smart game state (no navigation)');
+    
     // First, get current village data quickly
     const currentVillage = this.scrapeCurrentVillage();
     
-    // For now, just build state with current village until we integrate overview scraper
+    // Build state with current village
     const villages = new Map<string, VillageData>();
     villages.set(currentVillage.villageId, currentVillage);
     
-    // Add detected villages with placeholder data
+    // Add detected villages with cached/placeholder data
     const detectedVillages = villageNavigator.getVillages();
-    detectedVillages.forEach((village, id) => {
-      if (!villages.has(id)) {
-        villages.set(id, village);
+    
+    // Get cached data for other villages from database
+    for (const [villageId, village] of detectedVillages) {
+      if (!villages.has(villageId)) {
+        // Try to get cached data
+        const cachedData = await dataStore.getLatestVillageSnapshot(villageId);
+        if (cachedData) {
+          villages.set(villageId, cachedData);
+        } else {
+          // Use placeholder data
+          villages.set(villageId, village);
+        }
       }
-    });
+    }
+    
+    console.log(`[TLA Scraper] Smart state includes ${villages.size} villages (1 current, ${villages.size - 1} cached/detected)`);
     
     return this.buildEnhancedState(villages);
   }
@@ -270,16 +286,6 @@ export class EnhancedScraper {
     // Would implement actual trend calculation here
     
     return trends;
-  }
-
-  private schedulePeriodicScraping() {
-    // Disable automatic scraping for now to avoid navigation issues
-    // Will re-enable once overview scraper is integrated
-    console.log('[TLA Scraper] Automatic scraping disabled - use manual collection');
-  }
-
-  private shouldUseCachedData(): boolean {
-    return (Date.now() - this.lastFullScrape) < this.FULL_SCRAPE_INTERVAL;
   }
 
   // Helper methods for scraping specific elements
