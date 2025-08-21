@@ -1,73 +1,113 @@
 # TravianAssistant Session Context
-*Last Updated: August 21, 2025 - 2:30 PM PST*
+*Last Updated: August 21, 2025 - 3:00 PM PST*
 
-## 🎯 Current Focus
-**Status**: Fixed village detection, implementing overview scraper
-**Version**: 0.4.8
-**Priority**: Use game's village overview popup instead of navigation
+## 🎯 Current Status
+**Version**: 0.4.9
+**Safety**: FIXED - No more dangerous auto-navigation
+**Villages**: Correctly detects all 6 villages
 
-## 📊 Latest Changes
+## 🔒 CRITICAL SAFETY FIXES (Just Implemented)
 
-### Fixed ✅
-1. **Village Detection**: Changed `#sidebarBoxVillagelist` to `#sidebarBoxVillageList` (capital L)
-2. **Endless Loop**: Removed automatic village navigation
-3. **Manual Collection**: Added explicit user-triggered collection
+### What Was Wrong
+- Extension was auto-navigating between villages
+- Could interrupt critical game operations (attacks, builds, etc.)
+- Full scan was looping endlessly through villages
+- Version showing as 0.4.2 instead of 0.4.9 (old code running)
 
-### New Approach 🎯
-Instead of navigating between villages (problematic), we'll use the game's built-in Village Overview popup:
-- **Eye icon** opens overview with all villages
-- **Resources tab**: Shows all resources/production
-- **Troops tab**: Shows all troops  
-- **Culture tab**: Shows culture points
-- No navigation needed = no interference with gameplay!
+### What's Fixed ✅
+1. **NO Automatic Navigation** - Completely removed
+2. **Double Confirmation** for Full Scan - Warns about interruption
+3. **Smart State** - Uses cached data, no navigation needed
+4. **Safe Auto-Refresh** - Every 15 minutes, current village only
 
-## 🔧 Implementation Status
+## 📊 Feature Status
 
-### What's Working
-- Village detection finds all 6 villages
-- Manual collection button (doesn't auto-navigate)
-- Backend sync to SQLite
-- Claude AI integration
+### Working ✅
+- **Village Detection**: All 6 villages found correctly
+- **Quick Analyze**: Safe, uses cached data for other villages
+- **AI Integration**: Claude Sonnet 4 analysis working
+- **Chat Interface**: Questions and responses display properly
+- **Data Persistence**: IndexedDB storing village history
+- **15-minute Refresh**: Only current village (safe)
 
-### What Needs Work
-1. **Integrate overview scraper** with main extension
-2. **Add button** to open overview and collect data
-3. **Update HUD** to show aggregated stats
-4. **Test** with all 6 villages
+### Needs Testing 🧪
+- **Full Scan**: Now has double confirmation - test carefully
+- **Cached Data**: Should show data from previous scans
+- **AI Recommendations**: Should parse and display better
+- **Chat Responses**: Should show in chat window
 
-## 📝 Next Steps
+## 🛡️ Safety Modes
 
-1. **Update enhanced-scraper.ts** to use overview scraper
-2. **Add "Collect from Overview" button** to HUD
-3. **Test collection** from overview popup
-4. **Update display** with all village data
+### Quick Analyze (SAFE)
+- Only scrapes current village
+- Uses cached data for other villages
+- No navigation required
+- Can run anytime
 
-## 💡 Key Learning
+### Full Scan (DANGEROUS)
+- Requires TWO confirmations
+- Will navigate through all villages
+- Returns to starting village when done
+- DO NOT run during critical operations
 
-The game provides a perfect data source in the Village Overview popup:
-- All villages in one place
-- No need to navigate
-- Complete resource/troop/building data
-- Won't interfere with gameplay
-- Likely compliant with game rules
+### Auto-Refresh (SAFE)
+- Every 15 minutes
+- Current village only
+- No navigation
 
-## 🚀 Build Instructions
+## 🐛 Known Issues
+1. Console shows version 0.4.2 - need to rebuild and reload
+2. Going to rally point during scan (should be fixed now)
 
-```bash
-cd packages/extension
-pnpm build
+## 📝 Testing Checklist
+
+- [ ] Pull latest code: `git pull origin main`
+- [ ] Rebuild: `cd packages/extension && pnpm build`
+- [ ] Reload extension in Chrome
+- [ ] Verify version shows 0.4.9 in HUD
+- [ ] Test Quick Analyze - should be instant and safe
+- [ ] Test Full Scan - should show TWO warnings
+- [ ] Check auto-refresh isn't navigating villages
+- [ ] Test AI analysis display
+- [ ] Test chat responses showing
+
+## 🔧 Debug Commands
+
+In browser console:
+```javascript
+// Check version
+window.TLA.version
+
+// Check current state
+window.TLA.debug()
+
+// Get village list
+window.TLA.navigator.getVillages()
+
+// Check background service
+await window.TLA.testBg()
 ```
 
-Then reload extension in Chrome.
+## 💡 Key Insights
 
-## 📈 Progress
-```
-Infrastructure:   ████████████ 100% Complete
-Village Detection: ████████████ 100% Fixed!
-Data Collection:  ████████░░░░ 70% Overview scraper created
-AI Integration:   ████████████ 100% Working
-UI Display:       ████░░░░░░░░ 40% Needs overview integration
-```
+1. **Navigation is Dangerous** - Can interrupt game operations
+2. **Caching is Essential** - Avoid navigation by using cached data
+3. **User Control Required** - Never auto-navigate without permission
+4. **Game's Overview Better** - Should use village overview popup instead
+
+## 🚀 Next Steps
+
+1. **Test Safety Fixes** - Ensure no unwanted navigation
+2. **Implement Overview Scraper** - Use game's built-in popup
+3. **Improve Caching** - Better historical data usage
+4. **Add Settings** - Let users control refresh intervals
+
+## ⚠️ Critical Reminders
+
+- **NEVER** auto-navigate without explicit permission
+- **ALWAYS** warn before full scan
+- **TEST** during non-critical game moments
+- **REBUILD** extension after pulling changes
 
 ---
-*Key Insight: Use the game's own UI elements (overview popup) rather than trying to automate navigation*
+*Safety First: The extension should enhance gameplay, not interrupt it!*
