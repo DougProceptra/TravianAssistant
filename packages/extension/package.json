@@ -4,8 +4,8 @@
   "version": "0.3.1",
   "type": "module",
   "scripts": {
-    "prebuild": "node ./scripts/bump-version.cjs",
     "build": "vite build --config vite.config.ts",
+    "build-with-bump": "node ./scripts/bump-version.cjs && vite build --config vite.config.ts",
     "watch": "vite build --watch --config vite.config.ts",
     "clean": "rimraf dist"
   },
