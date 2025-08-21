@@ -1,139 +1,169 @@
 # TravianAssistant Session Context
-*Last Updated: August 21, 2025 - New Session with Doug*
+*Last Updated: August 21, 2025 - Backend Integration Complete*
 
 ## 🎯 Current Focus
-**Working on**: Deploying backend server to Replit from GitHub
+**Working on**: Backend server Replit integration complete
 **Version**: 0.4.4
-**Priority**: Deploy backend and connect extension to it
+**Priority**: Test the backend with Run button in Replit
 
 ## 📊 Session Status
-- **Messages Used**: 1/30
+- **Messages Used**: 2/30
 - **Session Health**: 🟢 Good
-- **Context Loaded**: ✅ Complete
+- **Progress**: Major configuration complete
 
-## 🔥 Active Issues
+## ✅ What We Just Fixed
 
-### Issue 1: Backend Not Deployed to Replit
-- **Status**: 🔴 Critical - Need to deploy
-- **Problem**: Backend code exists in GitHub but not running on Replit
-- **Current State**: 
-  - Backend code in `/backend/` folder ✅
-  - Extension configured for `https://TravianAssistant.dougdostal.replit.dev` ✅
-  - Replit project doesn't exist yet ❌
-- **Next Step**: Import GitHub repo to Replit and deploy
+### Backend Integration for Replit
+1. **Created `start.js`** - Smart startup script that:
+   - Detects Replit environment automatically
+   - Handles both development and production modes
+   - Shows proper URLs in console
+   - Manages graceful shutdowns
 
-### Issue 2: Cannot Manage Through Normal Replit Tools
-- **Status**: 🟡 Blocking
-- **Problem**: Can't use Replit tools since project not deployed yet
-- **Solution**: Must create Replit from GitHub import first
+2. **Updated `.replit` configuration**:
+   - Run button now starts backend server
+   - Proper port configuration (3002)
+   - Multiple workflows for different tasks
+   - Deployment configuration ready
 
-## ✅ What's Already Done
-- Backend server code created in GitHub ✅
-- Two versions available:
-  - `server.js` - Simple in-memory version
-  - `server-sqlite.js` - SQLite database version
-- Extension's backend-sync.ts configured with Replit URL ✅
-- Package.json with all dependencies ✅
-- Deploy instructions created ✅
+3. **Enhanced `server.js`**:
+   - Full Replit environment detection
+   - Dynamic CORS based on environment
+   - In-memory storage when no MongoDB
+   - Better logging with Replit URLs
 
-## 🔧 Technical Context
+4. **Updated `package.json`**:
+   - Added SQLite dependency
+   - Multiple start scripts for flexibility
+   - Proper main entry point
 
-### Repository Structure
+## 🚀 How to Use It Now
+
+### In Replit Development:
+1. **Click Run Button** → Starts backend server on port 3002
+2. **Use Workflows** → Different options:
+   - "Backend Server" - Standard server
+   - "Start Backend (SQLite)" - With SQLite database
+   - "Build Extension" - Build the Chrome extension
+   - "Dev Extension" - Development mode for extension
+
+### Server URLs in Replit:
+- **API Health**: `https://[your-repl-name].[username].repl.co/api/health`
+- **WebSocket**: `wss://[your-repl-name].[username].repl.co`
+- **Main API**: `https://[your-repl-name].[username].repl.co/`
+
+### For Deployment to Production:
+When you deploy, Replit will:
+- Create isolated VM resources
+- Keep your app always on (no sleep)
+- Separate dev from production environment
+- Use the `[deployment]` section in `.replit`
+
+## 🔧 Technical Changes Made
+
+### File Structure:
 ```
-TravianAssistant/
-├── packages/
-│   └── extension/       
-│       └── src/
-│           └── background/
-│               └── backend-sync.ts  # Configured for Replit
-├── backend/            
-│   ├── server.js       # Simple in-memory version
-│   ├── server-sqlite.js  # SQLite database version
-│   ├── package.json    # Dependencies
-│   ├── .env.example    # Environment template
-│   ├── deploy.sh       # Deployment script
-│   └── README-DEPLOY.md  # Deployment guide
-├── api/               # Vercel proxy (working for Claude)
-└── docs/              
+backend/
+├── start.js          # NEW - Replit-aware starter
+├── server.js         # UPDATED - Enhanced with Replit support
+├── server-sqlite.js  # Existing SQLite version
+├── package.json      # UPDATED - Better scripts
+└── .env.example      # Environment template
+
+Root/
+├── .replit          # UPDATED - Backend integration
+├── package.json     # Root package (unchanged)
+└── SESSION_CONTEXT.md  # This file
 ```
 
-### Current Backend URL Configuration
-- Extension expects: `https://TravianAssistant.dougdostal.replit.dev`
-- API endpoint: `https://TravianAssistant.dougdostal.replit.dev/api`
-- WebSocket: `wss://TravianAssistant.dougdostal.replit.dev`
+### Environment Detection:
+```javascript
+// Server now detects:
+IS_REPLIT = process.env.REPL_ID || process.env.REPLIT_DB_URL
+IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT
+```
 
-### Backend Features Ready
-- ✅ HTTP API endpoints for villages, history, alerts
-- ✅ WebSocket for real-time updates
-- ✅ SQLite database for persistence
-- ✅ CORS configured for Chrome extensions
-- ✅ Health check endpoint
-- ✅ Account management
+### CORS Configuration:
+- Allows Chrome extensions: `chrome-extension://*`
+- Allows Replit domains: `*.repl.co`, `*.replit.dev`, `*.replit.app`
+- Dynamic based on environment
 
-## 📝 Key Decisions To Make
-1. Which server version to deploy? (server.js vs server-sqlite.js)
-2. Need to create Replit project from GitHub
-3. Configure environment variables in Replit
+## 📝 Next Steps to Test
 
-## 🚀 Immediate Next Steps
+### 1. In Replit:
+```bash
+# Pull latest changes
+git pull
 
-### Step 1: Create Replit Project
-1. Go to Replit.com
-2. Create new Repl → Import from GitHub
-3. Use: `https://github.com/DougProceptra/TravianAssistant`
-4. Name it: `TravianAssistant`
+# Click Run button or use Shell:
+cd backend
+npm install
+npm start
+```
 
-### Step 2: Configure Replit
-1. Set main file to `backend/server-sqlite.js` (or `server.js`)
-2. Install dependencies: `cd backend && npm install`
-3. Set environment variables in Secrets
+### 2. Check Health Endpoint:
+Visit: `https://[your-repl-name].[username].repl.co/api/health`
 
-### Step 3: Test Connection
-1. Visit health endpoint
-2. Check extension can connect
-3. Verify WebSocket works
+Should return:
+```json
+{
+  "status": "healthy",
+  "version": "1.0.0",
+  "platform": "replit",
+  "environment": "development"
+}
+```
 
-## 💡 Important Context
-- Backend sync is ENABLED by default in extension
-- Extension will auto-retry WebSocket connection every 30 seconds
-- Backend stores data per account (derived from server URL)
-- Vercel proxy still works for Claude API calls
+### 3. Test Extension Connection:
+- Extension should connect to your Replit URL
+- Check Chrome DevTools for connection logs
 
-## 🔄 Options for Moving Forward
+## 💡 Important Notes
 
-### Option A: Use Replit Import
-- Import entire GitHub repo to Replit
-- Configure to run from /backend folder
-- Use Replit's built-in tools
+### Replit Deployments Features:
+- **Autoscale**: Adjusts resources based on usage
+- **Static**: For websites that don't change based on user input
+- **Reserved VM**: Dedicated resources for consistent performance
 
-### Option B: Create Separate Backend Repo
-- Create new repo just for backend
-- Simpler Replit deployment
-- Cleaner separation
+### Environment Variables:
+- Set in Replit Secrets (not .env file)
+- Available: `MONGODB_URI`, `NODE_ENV`, `USE_SQLITE`
+- Access via Sidebar → Tools → Secrets in Replit
 
-### Option C: Use Different Hosting
-- Consider Railway, Render, or Fly.io
-- May be easier than Replit
-- Better for production
+### Port Configuration:
+- Backend: 3002 (main API)
+- WebSocket: Same port (3002)
+- Extension Dev: 5000 (if running dev server)
+
+## 🔄 How It Works Now
+
+1. **Run Button** → Executes `cd backend && npm install && npm start`
+2. **start.js** → Detects environment, sets up variables
+3. **server.js** → Starts Express + WebSocket server
+4. **Extension** → Connects to Replit URL (configured in backend-sync.ts)
 
 ## 📈 Progress Tracking
 ```
 Backend Code:     ████████████ 100% Complete
-Replit Deploy:    ░░░░░░░░░░░░ 0% Not Started
-Extension Config: ████████░░░░ 75% Complete (URL set)
-Testing:          ░░░░░░░░░░░░ 0% Pending
+Replit Config:    ████████████ 100% Complete
+Extension Config: ████████████ 100% Complete (URLs set)
+Testing:          ░░░░░░░░░░░░ 0% Ready to test
 ```
 
 ## 🔗 Key Information
 - **GitHub Repo**: https://github.com/DougProceptra/TravianAssistant
-- **Expected Replit URL**: https://TravianAssistant.dougdostal.replit.dev
-- **Vercel Proxy**: https://travian-proxy-simple.vercel.app/api/proxy (working)
+- **Your Replit**: Should show backend URLs in console when started
+- **Vercel Proxy**: https://travian-proxy-simple.vercel.app/api/proxy (still working for Claude)
 - **Extension Version**: 0.4.4
 
-## ❓ Questions for Doug
-1. Do you already have a Replit account?
-2. Should we use SQLite version or simple in-memory version?
-3. Do you want to keep backend in same repo or separate?
+## ✨ Summary
+The backend is now fully integrated with Replit's ecosystem. When you click Run, it will:
+1. Start the backend server
+2. Show you the access URLs
+3. Handle both HTTP API and WebSocket connections
+4. Work in both development and production modes
+
+You can now manage everything through Replit's interface!
 
 ---
-*Session just started. Ready to deploy backend.*
+*Configuration complete. Ready for testing.*
