@@ -201,29 +201,33 @@ export class EnhancedScraper {
       
       ['wood', 'clay', 'iron'].forEach(resource => {
         const res = resource as keyof typeof village.resources;
-        const hoursToOverflow = (warehouseCapacity - village.resources[res]) / village.production[res];
-        
-        if (hoursToOverflow < 2) {
-          alerts.push({
-            type: 'overflow',
-            severity: hoursToOverflow < 0.5 ? 'critical' : 'high',
-            villageId,
-            message: `${village.villageName}: ${resource} will overflow in ${this.formatTime(hoursToOverflow)}`,
-            timeToEvent: this.formatTime(hoursToOverflow)
-          });
+        if (village.production[res] > 0) {
+          const hoursToOverflow = (warehouseCapacity - village.resources[res]) / village.production[res];
+          
+          if (hoursToOverflow < 2 && hoursToOverflow > 0) {
+            alerts.push({
+              type: 'overflow',
+              severity: hoursToOverflow < 0.5 ? 'critical' : 'high',
+              villageId,
+              message: `${village.villageName}: ${resource} will overflow in ${this.formatTime(hoursToOverflow)}`,
+              timeToEvent: this.formatTime(hoursToOverflow)
+            });
+          }
         }
       });
       
       // Check crop
-      const cropHoursToOverflow = (granaryCapacity - village.resources.crop) / village.production.crop;
-      if (cropHoursToOverflow < 2) {
-        alerts.push({
-          type: 'overflow',
-          severity: cropHoursToOverflow < 0.5 ? 'critical' : 'high',
-          villageId,
-          message: `${village.villageName}: Crop will overflow in ${this.formatTime(cropHoursToOverflow)}`,
-          timeToEvent: this.formatTime(cropHoursToOverflow)
-        });
+      if (village.production.crop > 0) {
+        const cropHoursToOverflow = (granaryCapacity - village.resources.crop) / village.production.crop;
+        if (cropHoursToOverflow < 2 && cropHoursToOverflow > 0) {
+          alerts.push({
+            type: 'overflow',
+            severity: cropHoursToOverflow < 0.5 ? 'critical' : 'high',
+            villageId,
+            message: `${village.villageName}: Crop will overflow in ${this.formatTime(cropHoursToOverflow)}`,
+            timeToEvent: this.formatTime(cropHoursToOverflow)
+          });
+        }
       }
     });
     
@@ -287,10 +291,10 @@ export class EnhancedScraper {
   // Helper methods for scraping specific elements
   private scrapeResources() {
     return {
-      wood: this.parseNumber('#l1'),
-      clay: this.parseNumber('#l2'),
-      iron: this.parseNumber('#l3'),
-      crop: this.parseNumber('#l4')
+      wood: this.parseNumberFromSelector('#l1'),
+      clay: this.parseNumberFromSelector('#l2'),
+      iron: this.parseNumberFromSelector('#l3'),
+      crop: this.parseNumberFromSelector('#l4')
     };
   }
 
@@ -330,13 +334,28 @@ export class EnhancedScraper {
   }
 
   private scrapeCulturePoints(): number {
-    const cpElement = document.querySelector('.culture_points');
-    return this.parseNumber(cpElement?.textContent || '0');
+    // Try multiple selectors for culture points
+    const selectors = [
+      '.culture_points',
+      '#culture_points_value',
+      '.culture .points',
+      '[class*="culture"] .value'
+    ];
+    
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) {
+        const value = this.parseNumber(element);
+        if (value > 0) return value;
+      }
+    }
+    
+    return 0; // Default if not found
   }
 
   private scrapeRank(): number | undefined {
     const rankElement = document.querySelector('.player_rank');
-    return rankElement ? this.parseNumber(rankElement.textContent || '0') : undefined;
+    return rankElement ? this.parseNumber(rankElement) : undefined;
   }
 
   private getCurrentVillageId(): string {
@@ -378,10 +397,25 @@ export class EnhancedScraper {
     return villages.size * 50; // Placeholder
   }
 
-  private parseNumber(selector: string | Element): number {
-    const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
-    const text = element?.textContent || '0';
+  private parseNumber(element: Element | null): number {
+    if (!element) return 0;
+    const text = element.textContent || '0';
     return parseInt(text.replace(/[^\d-]/g, '')) || 0;
+  }
+
+  private parseNumberFromSelector(selector: string): number {
+    if (!selector || selector === '0') {
+      console.warn('[TLA Scraper] Invalid selector:', selector);
+      return 0;
+    }
+    
+    try {
+      const element = document.querySelector(selector);
+      return this.parseNumber(element);
+    } catch (error) {
+      console.error('[TLA Scraper] Error parsing selector:', selector, error);
+      return 0;
+    }
   }
 
   private parseProduction(selector: string): number {
