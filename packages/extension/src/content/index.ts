@@ -1,14 +1,11 @@
 // packages/extension/src/content/index.ts
-// Travian Legends Assistant - Content Script (v0.2.8)
-// - 5s scrape cadence (paused when tab hidden)
-// - Safe selectors w/ per-field "used selector" + errors
-// - Minimal HUD with version, heartbeat, page, ✔︎/✖︎ groups, "Force scrape", "Copy JSON"
-// - AI Integration with Claude API
-// - Global debug: window.TLA.debug()
-// NOTE: This file is self-contained to avoid import mismatches.
+// Travian Legends Assistant - Content Script (v0.3.1)
+// - Works with proxy at travian-proxy-simple.vercel.app
+// - Claude Sonnet 4 integration
+// - Clean HUD with AI recommendations
 
 (() => {
-  const VERSION = "0.2.8"; // Keep in sync with manifest.json
+  const VERSION = "0.3.1"; // Updated to match manifest!
   const LOOP_MS = 5000;
 
   // ---------- Utils ----------
@@ -22,9 +19,7 @@
 
   const toNum = (s?: string) => {
     if (!s) return undefined;
-    // Normalize numbers like 12,345 or 12 345 or "‭3,445‬"
     const cleaned = s.replace(/[^\d.,]/g, "").replace(/\u202F|\u00A0/g, "");
-    // prefer last number group, then strip commas
     const m = cleaned.match(/[\d.,]+/g);
     if (!m) return undefined;
     const last = m[m.length - 1].replace(/,/g, "");
@@ -61,71 +56,36 @@
     if (p.includes("/hero/inventory")) return "hero_inventory";
     if (p.includes("/hero/attributes")) return "hero_attributes";
     if (p.includes("/hero/appearance")) return "hero_appearance";
-    if (p.includes("gid=16")) return "rallypoint"; // Rally Point (overview tab)
+    if (p.includes("gid=16")) return "rallypoint";
     return "other";
   }
 
   // ---------- Selectors ----------
   const SEL = {
-    // Top bar resources (multiple fallbacks; works on dorf1/dorf2/others)
     res: {
-      wood: [
-        "#l1 .value", "#l1.value", ".r1 .value",
-        "#stockBar .r1 .value", "#stockBar .wood .value"
-      ],
-      clay: [
-        "#l2 .value", "#l2.value", ".r2 .value",
-        "#stockBar .r2 .value", "#stockBar .clay .value"
-      ],
-      iron: [
-        "#l3 .value", "#l3.value", ".r3 .value",
-        "#stockBar .r3 .value", "#stockBar .iron .value"
-      ],
-      crop: [
-        "#l4 .value", "#l4.value", ".r4 .value",
-        "#stockBar .r4 .value", "#stockBar .crop .value"
-      ],
-      cap: [
-        "#stockBar .warehouse .capacity .value",
-        "#stockBar .warehouse .value", ".warehouse .capacity .value",
-      ],
-      gran: [
-        "#stockBar .granary .capacity .value",
-        "#stockBar .granary .value", ".granary .capacity .value",
-      ],
-      gold: [
-        ".ajaxReplaceableGoldAmount", "#topBar .gold .value", ".gold .value"
-      ],
-      silver: [
-        ".ajaxReplaceableSilverAmount", "#topBar .silver .value", ".silver .value"
-      ],
+      wood: ["#l1 .value", "#l1.value", ".r1 .value", "#stockBar .r1 .value"],
+      clay: ["#l2 .value", "#l2.value", ".r2 .value", "#stockBar .r2 .value"],
+      iron: ["#l3 .value", "#l3.value", ".r3 .value", "#stockBar .r3 .value"],
+      crop: ["#l4 .value", "#l4.value", ".r4 .value", "#stockBar .r4 .value"],
+      cap: ["#stockBar .warehouse .capacity .value", "#stockBar .warehouse .value"],
+      gran: ["#stockBar .granary .capacity .value", "#stockBar .granary .value"],
+      gold: [".ajaxReplaceableGoldAmount", "#topBar .gold .value"],
+      silver: [".ajaxReplaceableSilverAmount", "#topBar .silver .value"],
     },
-
-    // Build queue (dorf1/dorf2 center panel)
     build: {
-      rows: ".buildingList li, .boxes.buildingList li, .buildingList .build .entry, .buildingList .active .entry",
-      name: [".name", ".title", ".building", ".desc", ".text", ".slot"],
-      timer: [".contract .value", ".finishingTime .value", ".timer", ".countdown"],
+      rows: ".buildingList li, .boxes.buildingList li",
+      name: [".name", ".title", ".building"],
+      timer: [".contract .value", ".timer", ".countdown"],
     },
-
-    // Hero attributes page
     heroAttr: {
-      box: ".contentNavi .herobox, #content .herobox, .contentNavi + .content .herobox, .heroAttributesBox, #herobox", // broad
       statsRow: ".stats .progressBar",
-      // within a stats row:
       rowLabel: ".name",
       rowValue: ".value",
       rowPrimaryFill: ".bar .filling.primary",
-      rowSecondaryFill: ".bar .filling.secondary",
       speedText: ".value, .speedValue, .fieldsPerHour",
     },
-
-    // Rally point (incoming overview)
     rally: {
-      table: "#overview .troop_details, #build .overview, .troop_movements",
-      headerRow: ".movements .thead, .last tr.troop_info, .thead",
-      // Fallback: count of blocks
-      blocks: ".movements .tr, .movements .tbody .tr, .incoming .tr, .incoming .mov",
+      blocks: ".movements .tr, .incoming .tr",
     },
   } as const;
 
@@ -178,25 +138,20 @@
   }> {
     const used: Used = {};
     const errors: string[] = [];
-
-    // Try to locate visible stats rows
     const rows = $all(SEL.heroAttr.statsRow);
     used.statsRow = SEL.heroAttr.statsRow;
 
-    // Helper: read percent from style width
     const pctFromRow = (row: HTMLElement | null) => {
       if (!row) return undefined;
       const pri = $(SEL.heroAttr.rowPrimaryFill, row);
-      const sec = $(SEL.heroAttr.rowSecondaryFill, row);
       const read = (el: HTMLElement | null) => {
         const style = el?.getAttribute("style") || "";
         const m = style.match(/width:\s*([\d.]+)%/);
         return m ? Number(m[1]) : undefined;
       };
-      return read(pri) ?? read(sec);
+      return read(pri);
     };
 
-    // Discover rows by label
     let healthPct: number | undefined;
     let healthText: string | undefined;
     let expPct: number | undefined;
@@ -214,19 +169,10 @@
         expPct = pctFromRow(row);
         expText = raw;
       } else if (label.includes("speed")) {
-        // sometimes speed is rendered in a separate line/row
         speedText = raw || txt($(SEL.heroAttr.speedText, row));
         speedFph = toNum(speedText);
       }
     });
-
-    // If speed isn't in rows, try outside box
-    if (speedFph == null) {
-      const any = pick(SEL.heroAttr.speedText);
-      speedText = any.value || speedText;
-      speedFph = toNum(speedText);
-      if (any.sel) used.speed = any.sel;
-    }
 
     const data = {
       health: { pct: healthPct, text: healthText },
@@ -357,7 +303,7 @@
       lastPayload = buildPayload();
       renderHUD(lastPayload);
       if (manual) showMsg("Scrape completed");
-      // Expose for console-based verification
+      // Expose for console
       (window as any).TLA = (window as any).TLA || {};
       (window as any).TLA.state = lastPayload;
       (window as any).TLA.debug = () => {
@@ -372,9 +318,9 @@
 
   function startLoop() {
     stopLoop();
-    runOnce(false); // immediate on load/navigation
+    runOnce(false);
     timer = window.setInterval(() => {
-      if (document.hidden) return; // pause when hidden
+      if (document.hidden) return;
       runOnce(false);
     }, LOOP_MS);
   }
@@ -386,7 +332,7 @@
     }
   }
 
-  // ---------- AI Integration ----------
+  // ---------- AI Integration (FIXED!) ----------
   let aiRecommendations: any = null;
 
   async function requestAIAnalysis() {
@@ -397,27 +343,34 @@
     
     try {
       showMsg("Requesting AI analysis...");
+      console.log('[TLA] Sending game state to background:', lastPayload);
+      
       const response = await chrome.runtime.sendMessage({
         type: 'ANALYZE_GAME_STATE',
-        payload: lastPayload
+        state: lastPayload  // Use 'state' as background.ts expects
       });
       
-      if (response.error) {
-        showMsg(`AI Error: ${response.error}`);
+      console.log('[TLA] Got response from background:', response);
+      
+      if (!response.success || response.error) {
+        showMsg(`Error: ${response.error || 'Analysis failed'}`);
         return;
       }
       
       aiRecommendations = response;
       renderAIRecommendations();
-      showMsg("AI analysis complete");
+      showMsg("AI analysis complete!");
     } catch (error) {
       console.error('[TLA] AI request failed:', error);
-      showMsg("AI request failed");
+      showMsg("Failed to connect to AI");
     }
   }
 
   function renderAIRecommendations() {
-    if (!aiRecommendations || !aiRecommendations.recommendations) return;
+    if (!aiRecommendations || !aiRecommendations.recommendations) {
+      console.error('[TLA] No recommendations to render:', aiRecommendations);
+      return;
+    }
     
     // Create or update AI panel
     let aiPanel = document.getElementById('tla-ai-panel') as HTMLDivElement | null;
@@ -428,45 +381,59 @@
         position: fixed;
         top: 120px;
         right: 8px;
-        width: 280px;
+        width: 320px;
         z-index: 2147483646;
-        font: 12px/1.4 system-ui, sans-serif;
+        font: 13px/1.5 system-ui, sans-serif;
         color: #eee;
-        background: rgba(0, 0, 0, 0.85);
-        padding: 10px;
+        background: rgba(0, 0, 0, 0.9);
+        padding: 12px;
         border-radius: 8px;
-        backdrop-filter: blur(4px);
+        backdrop-filter: blur(8px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        border: 1px solid rgba(79, 195, 247, 0.3);
       `;
       document.documentElement.appendChild(aiPanel);
     }
     
-    const recs = aiRecommendations.recommendations.slice(0, 3);
+    const recs = aiRecommendations.recommendations || [];
+    const validRecs = recs.filter((r: any) => r && r.action);
+    
     aiPanel.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <h3 style="margin:0; font-size:14px; color:#4fc3f7;">🤖 AI Assistant</h3>
-        <button id="tla-ai-close" style="background:none; border:none; color:#999; cursor:pointer; font-size:16px;">×</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0; font-size:15px; color:#4fc3f7;">🤖 AI Assistant</h3>
+        <div>
+          <span style="font-size:10px; color:#666;">Sonnet 4</span>
+          <button id="tla-ai-close" style="background:none; border:none; color:#999; cursor:pointer; font-size:18px; margin-left:8px;">×</button>
+        </div>
       </div>
-      ${recs.map((rec: any, i: number) => `
-        <div style="margin-bottom:8px; padding:8px; background:rgba(255,255,255,0.05); border-radius:6px; border-left:3px solid ${
-          rec.urgency === 'high' ? '#ff5252' : rec.urgency === 'medium' ? '#ffa726' : '#66bb6a'
+      ${validRecs.length > 0 ? validRecs.map((rec: any, i: number) => `
+        <div style="margin-bottom:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; border-left:3px solid ${
+          rec.priority === 'high' ? '#ff5252' : 
+          rec.priority === 'medium' ? '#ffa726' : '#66bb6a'
         };">
           <div style="font-weight:bold; color:#fff; margin-bottom:4px;">
-            ${i + 1}. ${rec.action}
+            ${i + 1}. ${rec.action || 'Unknown action'}
           </div>
-          <div style="font-size:11px; color:#aaa; margin-bottom:2px;">
-            ${rec.reason}
+          <div style="font-size:12px; color:#bbb; margin-bottom:4px;">
+            ${rec.reason || 'No reason provided'}
           </div>
-          <div style="font-size:11px; color:#4fc3f7;">
-            → ${rec.benefit}
+          ${rec.benefit ? `
+            <div style="font-size:11px; color:#4fc3f7;">
+              → ${rec.benefit}
+            </div>
+          ` : ''}
+          <div style="font-size:10px; color:#888; margin-top:4px;">
+            Priority: ${rec.priority || 'normal'}
           </div>
         </div>
-      `).join('')}
-      ${aiRecommendations.warnings?.length ? `
-        <div style="margin-top:8px; padding:6px; background:rgba(255,82,82,0.2); border-radius:4px; font-size:11px; color:#ff8a80;">
-          ⚠️ ${aiRecommendations.warnings.join(', ')}
+      `).join('') : `
+        <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; color:#999; text-align:center;">
+          No recommendations available. Try refreshing the analysis.
         </div>
-      ` : ''}
+      `}
+      <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); font-size:11px; color:#666;">
+        Powered by Claude Sonnet 4 via Vercel Proxy
+      </div>
     `;
     
     // Add close button handler
@@ -475,7 +442,7 @@
     });
   }
 
-  // restart on SPA-like nav changes
+  // Restart on navigation
   let lastHref = location.href;
   setInterval(() => {
     if (location.href !== lastHref) {
@@ -488,6 +455,7 @@
     if (!document.hidden) runOnce(false);
   });
 
-  // Kick things off
+  // Start!
   startLoop();
+  console.log('[TLA] Content script v' + VERSION + ' initialized');
 })();
