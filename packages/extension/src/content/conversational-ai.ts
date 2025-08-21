@@ -1,5 +1,6 @@
 // Conversational AI Interface
 // Connects chat UI to Claude via background service
+// v0.4.1 - Fixed substring error and improved error handling
 
 export class ChatAI {
   private conversationHistory: Array<{role: string, content: string}> = [];
@@ -40,6 +41,13 @@ export class ChatAI {
     const currentVillage = gameState?.villages?.get(gameState.currentVillageId) || {};
     const aggregates = gameState?.aggregates || {};
     
+    // Build conversation history string safely
+    const historyString = this.conversationHistory.slice(-4).map(msg => {
+      const content = msg.content || '';
+      const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+      return `${msg.role}: ${preview}`;
+    }).join('\n');
+    
     return `You are a Travian Legends expert assistant. The player is asking for strategic advice.
 
 CURRENT GAME STATE:
@@ -50,7 +58,7 @@ CURRENT GAME STATE:
 - Total Population: ${aggregates.totalPopulation || 0}
 
 CONVERSATION HISTORY:
-${this.conversationHistory.slice(-4).map(msg => `${msg.role}: ${msg.content}`).join('\n')}
+${historyString}
 
 PLAYER'S QUESTION: ${question}
 

@@ -1,8 +1,7 @@
-// Travian Legends Assistant - Content Script (v0.4.0)
-// - Multi-village data collection
-// - IndexedDB persistence with 7-day history
-// - Conversational AI interface
-// - Enhanced scraping with alerts
+// Travian Legends Assistant - Content Script (v0.4.1)
+// - Fixed chat substring error
+// - Fixed TLA window exposure
+// - Auto-version bump on build
 
 // Import new components
 import { enhancedScraper, type EnhancedGameState } from './enhanced-scraper';
@@ -10,8 +9,15 @@ import { villageNavigator } from './village-navigator';
 import { dataStore } from './data-persistence';
 import { chatAI, StrategicCalculators } from './conversational-ai';
 
+// Make TLA globally available immediately
+declare global {
+  interface Window {
+    TLA: any;
+  }
+}
+
 (() => {
-  const VERSION = "0.4.0"; // Updated for multi-village support!
+  const VERSION = "0.4.1"; // Auto-bumped by build script
   const LOOP_MS = 5000;
 
   // ---------- Utils ----------
@@ -572,8 +578,8 @@ import { chatAI, StrategicCalculators } from './conversational-ai';
       }
     }, 5 * 60 * 1000);
     
-    // Expose for debugging
-    (window as any).TLA = {
+    // Expose TLA to window for debugging
+    window.TLA = {
       version: VERSION,
       state: () => currentGameState,
       scraper: enhancedScraper,
@@ -586,10 +592,16 @@ import { chatAI, StrategicCalculators } from './conversational-ai';
           recommendations: aiRecommendations,
           villages: villageNavigator.getVillages()
         });
+        return {
+          version: VERSION,
+          state: currentGameState,
+          recommendations: aiRecommendations
+        };
       }
     };
     
-    console.log('[TLA] Ready! Use TLA.debug() in console for info.');
+    console.log('[TLA] Ready! Use window.TLA.debug() in console for info.');
+    console.log('[TLA] Version:', VERSION);
   }
 
   // Start when DOM is ready
