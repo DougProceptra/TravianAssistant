@@ -1,7 +1,7 @@
-// Travian Legends Assistant - Content Script (v0.4.1)
-// - Fixed chat substring error
-// - Fixed TLA window exposure
-// - Auto-version bump on build
+// Travian Legends Assistant - Content Script (v0.4.2)
+// - Fixed background service connection
+// - Improved error handling
+// - Better debugging output
 
 // Import new components
 import { enhancedScraper, type EnhancedGameState } from './enhanced-scraper';
@@ -17,7 +17,7 @@ declare global {
 }
 
 (() => {
-  const VERSION = "0.4.1"; // Auto-bumped by build script
+  const VERSION = "0.4.2"; // Auto-bumped by build script
   const LOOP_MS = 5000;
 
   // ---------- Utils ----------
@@ -62,6 +62,17 @@ declare global {
     return "other";
   }
 
+  // ---------- Background Service Check ----------
+  async function checkBackgroundService(): Promise<boolean> {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'PING' });
+      return response?.success === true;
+    } catch (err) {
+      console.error('[TLA] Background service not responding:', err);
+      return false;
+    }
+  }
+
   // ---------- HUD ----------
   const HUD_ID = "tla-hud";
   let currentGameState: EnhancedGameState | null = null;
@@ -94,6 +105,10 @@ declare global {
           <span id="tla-villages" style="color:#4fc3f7;font-weight:bold">1 village</span>
           <span id="tla-heart" title="last update" style="opacity:0.7">--:--:--</span>
         </div>
+      </div>
+      
+      <div id="tla-bg-status" style="display:none;padding:4px 6px;margin-bottom:8px;background:rgba(244,67,54,0.2);border-radius:4px;font-size:11px;color:#f44336;">
+        ⚠️ Background service not connected
       </div>
       
       <div id="tla-alerts" style="margin-bottom:8px;display:none;"></div>
@@ -277,13 +292,32 @@ declare global {
       return;
     }
     
+    // Check background service first
+    const bgAlive = await checkBackgroundService();
+    if (!bgAlive) {
+      showMsg("Background service not connected. Please reload extension.");
+      document.getElementById('tla-bg-status')!.style.display = 'block';
+      return;
+    }
+    
     try {
       showMsg("Getting AI recommendations...", true);
       
+      // Convert Map to serializable format
+      const serializableState = {
+        ...currentGameState,
+        villages: Array.from(currentGameState.villages.entries()).map(([id, village]) => ({
+          id,
+          ...village
+        }))
+      };
+      
       const response = await chrome.runtime.sendMessage({
         type: 'ANALYZE_GAME_STATE',
-        state: currentGameState
+        state: serializableState
       });
+      
+      console.log('[TLA] AI response:', response);
       
       if (response.success) {
         aiRecommendations = response;
@@ -294,7 +328,7 @@ declare global {
       }
     } catch (error) {
       console.error('[TLA] AI request failed:', error);
-      showMsg("Failed to connect to AI");
+      showMsg("Failed to connect to AI - reload extension");
     }
   }
 
@@ -461,6 +495,19 @@ declare global {
       const question = input.value.trim();
       if (!question) return;
       
+      // Check background service first
+      const bgAlive = await checkBackgroundService();
+      if (!bgAlive) {
+        messagesEl!.innerHTML += `
+          <div style="margin-bottom:10px;">
+            <div style="padding:8px; background:rgba(244,67,54,0.1); border-radius:4px; color:#f44336;">
+              Background service not connected. Please reload the extension from chrome://extensions/
+            </div>
+          </div>
+        `;
+        return;
+      }
+      
       // Add user message
       messagesEl!.innerHTML += `
         <div style="margin-bottom:10px; text-align:right;">
@@ -495,7 +542,7 @@ declare global {
         messagesEl!.innerHTML += `
           <div style="margin-bottom:10px;">
             <div style="padding:8px; background:rgba(244,67,54,0.1); border-radius:4px; color:#f44336;">
-              Failed to get response. Please try again.
+              Failed to get response. Please reload extension and try again.
             </div>
           </div>
         `;
@@ -565,6 +612,16 @@ declare global {
   async function initialize() {
     console.log('[TLA] v' + VERSION + ' initializing...');
     
+    // Check background service
+    const bgAlive = await checkBackgroundService();
+    if (!bgAlive) {
+      console.warn('[TLA] Background service not responding - reload extension from chrome://extensions/');
+      const statusEl = document.getElementById('tla-bg-status');
+      if (statusEl) statusEl.style.display = 'block';
+    } else {
+      console.log('[TLA] Background service connected');
+    }
+    
     // Ensure HUD
     ensureHUD();
     
@@ -586,6 +643,7 @@ declare global {
       navigator: villageNavigator,
       dataStore: dataStore,
       chat: chatAI,
+      testBg: checkBackgroundService,
       debug: () => {
         console.log('[TLA Debug]', {
           state: currentGameState,
@@ -595,7 +653,8 @@ declare global {
         return {
           version: VERSION,
           state: currentGameState,
-          recommendations: aiRecommendations
+          recommendations: aiRecommendations,
+          backgroundAlive: checkBackgroundService()
         };
       }
     };

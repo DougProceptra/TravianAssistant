@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Travian Legends Assistant",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "AI-powered strategic advisor for Travian Legends with multi-village support",
   "permissions": [
     "storage"
@@ -26,6 +26,6 @@
   ],
   "options_page": "src/options/index.html",
   "action": {
-    "default_title": "TLA v0.4.1"
+    "default_title": "TLA v0.4.2"
   }
 }
