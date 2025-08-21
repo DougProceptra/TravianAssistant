@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TravianAssistant with Backend",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "description": "AI-powered strategic advisor for Travian Legends with backend sync",
   "permissions": [
     "storage",

@@ -1,169 +1,121 @@
 # TravianAssistant Session Context
-*Last Updated: August 21, 2025 - Backend Integration Complete*
+*Last Updated: August 21, 2025 - 1:00 PM PST*
 
 ## 🎯 Current Focus
-**Working on**: Backend server Replit integration complete
-**Version**: 0.4.4
-**Priority**: Test the backend with Run button in Replit
+**Issue Identified**: Village selector is wrong - looking for `#sidebarBoxVillagelist` but actual villages are in different DOM structure
+**Version**: 0.4.6  
+**Priority**: Fix village selector to detect all 6 villages
 
-## 📊 Session Status
-- **Messages Used**: 2/30
-- **Session Health**: 🟢 Good
-- **Progress**: Major configuration complete
+## 📊 Current Status
 
-## ✅ What We Just Fixed
+### What's Working ✅
+- Vercel proxy at `https://travian-proxy-simple.vercel.app/api/proxy`
+- Claude Sonnet 4 integration via proxy
+- Backend at `https://workspace.dougdostal.repl.co`
+- Extension basic functionality (single village)
+- AI recommendations for current village
 
-### Backend Integration for Replit
-1. **Created `start.js`** - Smart startup script that:
-   - Detects Replit environment automatically
-   - Handles both development and production modes
-   - Shows proper URLs in console
-   - Manages graceful shutdowns
-
-2. **Updated `.replit` configuration**:
-   - Run button now starts backend server
-   - Proper port configuration (3002)
-   - Multiple workflows for different tasks
-   - Deployment configuration ready
-
-3. **Enhanced `server.js`**:
-   - Full Replit environment detection
-   - Dynamic CORS based on environment
-   - In-memory storage when no MongoDB
-   - Better logging with Replit URLs
-
-4. **Updated `package.json`**:
-   - Added SQLite dependency
-   - Multiple start scripts for flexibility
-   - Proper main entry point
-
-## 🚀 How to Use It Now
-
-### In Replit Development:
-1. **Click Run Button** → Starts backend server on port 3002
-2. **Use Workflows** → Different options:
-   - "Backend Server" - Standard server
-   - "Start Backend (SQLite)" - With SQLite database
-   - "Build Extension" - Build the Chrome extension
-   - "Dev Extension" - Development mode for extension
-
-### Server URLs in Replit:
-- **API Health**: `https://[your-repl-name].[username].repl.co/api/health`
-- **WebSocket**: `wss://[your-repl-name].[username].repl.co`
-- **Main API**: `https://[your-repl-name].[username].repl.co/`
-
-### For Deployment to Production:
-When you deploy, Replit will:
-- Create isolated VM resources
-- Keep your app always on (no sleep)
-- Separate dev from production environment
-- Use the `[deployment]` section in `.replit`
-
-## 🔧 Technical Changes Made
-
-### File Structure:
-```
-backend/
-├── start.js          # NEW - Replit-aware starter
-├── server.js         # UPDATED - Enhanced with Replit support
-├── server-sqlite.js  # Existing SQLite version
-├── package.json      # UPDATED - Better scripts
-└── .env.example      # Environment template
-
-Root/
-├── .replit          # UPDATED - Backend integration
-├── package.json     # Root package (unchanged)
-└── SESSION_CONTEXT.md  # This file
-```
-
-### Environment Detection:
+### The Problem 🐛
+The village navigator is using the wrong selector:
 ```javascript
-// Server now detects:
-IS_REPLIT = process.env.REPL_ID || process.env.REPLIT_DB_URL
-IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT
+// WRONG - Looking for this:
+const villageSwitcher = document.querySelector('#sidebarBoxVillagelist');
+
+// NEED TO FIND - Actual structure from screenshot:
+// Villages are in a panel with "Villages 6/6" header
+// Each village is a clickable list item with coordinates
 ```
 
-### CORS Configuration:
-- Allows Chrome extensions: `chrome-extension://*`
-- Allows Replit domains: `*.repl.co`, `*.replit.dev`, `*.replit.app`
-- Dynamic based on environment
+Villages visible in screenshot:
+1. First Capital (92|173)
+2. Village 2 (91|172)
+3. Village 3 (92|174)
+4. Village 4 (90|172)
+5. Village 5 (92|172)
+6. Village 6 (90|174)
 
-## 📝 Next Steps to Test
+## 🔧 Root Cause Analysis
 
-### 1. In Replit:
-```bash
-# Pull latest changes
-git pull
+### Why Only 1 Village Shows
+1. `villageNavigator.detectVillages()` can't find the village list
+2. Returns early thinking it's a single-village account
+3. Never populates the villages Map
+4. `collectAllVillagesData()` has nothing to iterate through
 
-# Click Run button or use Shell:
-cd backend
-npm install
-npm start
+### Code Flow
+```
+detectVillages() → Can't find #sidebarBoxVillagelist
+                 → Logs "No village switcher found - single village account"
+                 → villages Map stays empty
+                 → Full scan only gets current village
 ```
 
-### 2. Check Health Endpoint:
-Visit: `https://[your-repl-name].[username].repl.co/api/health`
+## 🚀 Fix Strategy
 
-Should return:
-```json
-{
-  "status": "healthy",
-  "version": "1.0.0",
-  "platform": "replit",
-  "environment": "development"
-}
+### Step 1: Identify Correct Selectors
+Need to inspect the actual DOM to find:
+- Container for village list
+- Individual village elements
+- Active village indicator
+- Village ID extraction method
+
+### Step 2: Update village-navigator.ts
+```typescript
+// Fix the detectVillages() method with correct selectors
+const villageSwitcher = document.querySelector('[actual-selector]');
 ```
 
-### 3. Test Extension Connection:
-- Extension should connect to your Replit URL
-- Check Chrome DevTools for connection logs
+### Step 3: Test Multi-Village Navigation
+- Ensure all 6 villages are detected
+- Verify switching between villages works
+- Confirm data collection from each village
 
-## 💡 Important Notes
+## 📝 Debug Commands
 
-### Replit Deployments Features:
-- **Autoscale**: Adjusts resources based on usage
-- **Static**: For websites that don't change based on user input
-- **Reserved VM**: Dedicated resources for consistent performance
+```javascript
+// Check what villages are found
+window.TLA.navigator.getVillages()
 
-### Environment Variables:
-- Set in Replit Secrets (not .env file)
-- Available: `MONGODB_URI`, `NODE_ENV`, `USE_SQLITE`
-- Access via Sidebar → Tools → Secrets in Replit
+// Force detection refresh
+window.TLA.navigator.detectVillages()
 
-### Port Configuration:
-- Backend: 3002 (main API)
-- WebSocket: Same port (3002)
-- Extension Dev: 5000 (if running dev server)
+// Try full scan
+window.TLA.scraper.scrapeFullAccount(true)
 
-## 🔄 How It Works Now
-
-1. **Run Button** → Executes `cd backend && npm install && npm start`
-2. **start.js** → Detects environment, sets up variables
-3. **server.js** → Starts Express + WebSocket server
-4. **Extension** → Connects to Replit URL (configured in backend-sync.ts)
-
-## 📈 Progress Tracking
-```
-Backend Code:     ████████████ 100% Complete
-Replit Config:    ████████████ 100% Complete
-Extension Config: ████████████ 100% Complete (URLs set)
-Testing:          ░░░░░░░░░░░░ 0% Ready to test
+// Check current state
+window.TLA.debug()
 ```
 
-## 🔗 Key Information
-- **GitHub Repo**: https://github.com/DougProceptra/TravianAssistant
-- **Your Replit**: Should show backend URLs in console when started
-- **Vercel Proxy**: https://travian-proxy-simple.vercel.app/api/proxy (still working for Claude)
-- **Extension Version**: 0.4.4
+## 🔍 Next Actions
 
-## ✨ Summary
-The backend is now fully integrated with Replit's ecosystem. When you click Run, it will:
-1. Start the backend server
-2. Show you the access URLs
-3. Handle both HTTP API and WebSocket connections
-4. Work in both development and production modes
+1. **Immediate**: Use browser DevTools to inspect village list DOM
+2. **Find**: Correct selectors for village panel
+3. **Update**: `village-navigator.ts` with correct selectors
+4. **Test**: Full scan with all 6 villages
+5. **Verify**: Aggregated stats show correctly
 
-You can now manage everything through Replit's interface!
+## 💡 Notes for Next Session
+
+- Vercel deployment is working fine (previous session was mistaken)
+- Backend is at `workspace.dougdostal.repl.co` not the old URL
+- Extension version 0.4.6 has all the multi-village code
+- Just need to fix the DOM selectors
+
+## 📈 Progress
+```
+Infrastructure:   ████████████ 100% Complete
+Single Village:   ████████████ 100% Working
+Multi-Village:    ████░░░░░░░░ 40% Selector Issue
+AI Integration:   ████████████ 100% Working
+Data Persistence: ████████████ 100% Working
+```
+
+## 🎯 Success Criteria
+- [ ] All 6 villages detected in navigator
+- [ ] Full scan visits each village
+- [ ] HUD shows "6 villages"
+- [ ] Aggregated production/resources displayed
+- [ ] AI recommendations consider all villages
 
 ---
-*Configuration complete. Ready for testing.*
+*Key Learning: Always verify DOM selectors match the actual game HTML structure*
