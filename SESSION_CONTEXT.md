@@ -1,11 +1,47 @@
 # TravianAssistant Session Context
-*Last Updated: August 21, 2025 - 3:30 PM PST*
+*Last Updated: August 21, 2025 - 3:35 PM PST*
 
-## 🚨 CRITICAL START-OF-SESSION CHECKLIST
-1. **DO NOT** touch Vercel proxy - it's working perfectly at `https://travian-proxy-simple.vercel.app/api/proxy`
-2. **ALWAYS** rebuild extension after pulling: `cd packages/extension && pnpm build`
-3. **Version should be 0.4.12+** (auto-increments on build)
-4. **Git conflicts**: Use `git stash` before pulling if manifest.json has local changes
+## 🚨 MANDATORY SESSION START PROTOCOL
+
+### STEP 1: Read & Understand
+- [ ] Read this ENTIRE document before doing ANYTHING else
+- [ ] Note the current version (should be 0.4.12+)
+- [ ] Understand what's working vs broken
+- [ ] Review Doug's preferences and requirements
+
+### STEP 2: Check Your Capabilities
+- [ ] **GitHub Access**: You can read/write to `DougProceptra/TravianAssistant` repo
+- [ ] **Web Search**: Use for documentation and current best practices
+- [ ] **File Attachments**: Check what files Doug has attached to this conversation
+- [ ] **Context Tools**: You have access to Doug's memory/context storage
+
+### STEP 3: Sync & Verify State
+```bash
+# Run these commands in Replit terminal
+cd /home/runner/workspace
+git status
+git log --oneline -5
+```
+- [ ] Check for uncommitted changes
+- [ ] Verify latest commit matches GitHub
+
+### STEP 4: Update This Document
+- [ ] Add timestamp of session start
+- [ ] Note any immediate issues found
+- [ ] Update throughout session with progress
+- [ ] Commit changes regularly
+
+### STEP 5: Update Doug's Context Memory
+Use the context tool to store:
+- [ ] Any new preferences Doug expresses
+- [ ] Technical decisions made
+- [ ] Problems encountered and solutions
+- [ ] Progress on features
+
+Example:
+```
+Store in context: "Doug prefers direct communication without apologetics. He has 6 Travian villages and uses Resource Bar extension for monitoring."
+```
 
 ## 📁 PROJECT STRUCTURE & RESOURCES
 
@@ -63,12 +99,14 @@ packages/extension/
 - **Show Progress**: Regular status updates
 - **Admit Uncertainty**: Say "I don't know" rather than guess
 - **Time Estimates**: Be realistic, multiply by 3 for safety
+- **No Apologizing**: Don't say sorry, just fix things
 
 ### Code Approach
 - **Research First**: Always check docs/web search before coding
 - **One Step at a Time**: Single clear actions, not multiple options
 - **Test Everything**: Verify each change works
 - **Safety First**: Never auto-navigate or interrupt gameplay
+- **Document Changes**: Update this file as you work
 
 ### Available Resources
 - Doug can provide Resource Bar extension code
@@ -208,15 +246,17 @@ window.TLA.scraper  // Enhanced scraper instance
 - ✅ Use Resource Bar as the reference implementation
 - ✅ Prioritize gameplay safety over features
 - ✅ Document all changes in session context
+- ✅ Update Doug's context memory with progress
 
 ## 📝 COMMUNICATION NOTES FOR AI
 
 When starting a new session:
 1. **First**: Read this entire document
-2. **Second**: Ask Doug for Resource Bar code if not provided
-3. **Third**: Check current git status and sync
-4. **Fourth**: Rebuild and test current state
-5. **Then**: Proceed with implementation
+2. **Second**: Check attached files and previous context
+3. **Third**: Update Doug's memory/context if needed
+4. **Fourth**: Sync git and check current state
+5. **Fifth**: Ask Doug for Resource Bar code if not provided
+6. **Then**: Proceed with implementation
 
 Doug's time is valuable. Be efficient, accurate, and honest. If something isn't working after 2-3 attempts, stop and reassess rather than continuing to guess.
 
@@ -235,5 +275,21 @@ Doug's time is valuable. Be efficient, accurate, and honest. If something isn't 
 ### Next Critical Step
 **GET THE RESOURCE BAR CODE** - Everything depends on understanding how it works.
 
+## 📅 SESSION LOG
+
+### August 21, 2025 - Afternoon Session
+- Fixed village detection issue
+- Implemented safety measures
+- Discovered Resource Bar solution
+- Updated to version 0.4.12+
+- Identified navigation as core problem
+
+### [Next Session Date]
+- [ ] Update this with progress
+- [ ] Note any new issues
+- [ ] Record decisions made
+- [ ] Document what was tested
+
 ---
 *Remember: The goal is to enhance gameplay, not interrupt it. Resource Bar has already solved this - we just need to learn from it.*
+*KEEP THIS DOCUMENT UPDATED THROUGHOUT YOUR SESSION*
