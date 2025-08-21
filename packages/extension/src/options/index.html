@@ -80,12 +80,19 @@
       border: 1px solid #f5c6cb;
       display: block;
     }
-    .api-key-info {
-      background: #f0f0f0;
-      padding: 10px;
+    .api-info {
+      background: #e3f2fd;
+      padding: 12px;
       border-radius: 6px;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      border: 1px solid #90caf9;
+    }
+    .version-info {
+      text-align: center;
+      color: #999;
       font-size: 12px;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -93,13 +100,10 @@
   <div class="container">
     <h1>⚔️ Travian Assistant Settings</h1>
     
-    <div class="api-key-info">
-      💡 Get your API key from <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic Console</a>
-    </div>
-    
-    <div class="form-group">
-      <label for="apiKey">Claude API Key</label>
-      <input type="password" id="apiKey" placeholder="sk-ant-api03-..." />
+    <div class="api-info">
+      🤖 <strong>AI Powered by Claude Sonnet 4</strong><br>
+      ✅ No API key needed - uses secure proxy connection<br>
+      🔒 Your game data is processed securely
     </div>
     
     <div class="form-group">
@@ -153,6 +157,10 @@
     <button id="testBtn">Test AI Connection</button>
     
     <div id="status" class="status"></div>
+    
+    <div class="version-info">
+      TravianAssistant v0.3.1 | Powered by Claude Sonnet 4
+    </div>
   </div>
   
   <script type="module" src="/options.js"></script>
