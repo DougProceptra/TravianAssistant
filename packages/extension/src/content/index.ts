@@ -1,6 +1,6 @@
-// Travian Legends Assistant - Content Script (v0.5.0)
+// Travian Legends Assistant - Content Script (v0.5.1)
 // REFACTORED: Now uses safe scraping (overview page + AJAX interception)
-// No more dangerous navigation through villages!
+// Fixed: Chat error handling and automatic data refresh
 
 // Import new safe scraping components
 import { safeScraper, type SafeGameState } from './safe-scraper';
@@ -17,8 +17,9 @@ declare global {
 }
 
 (() => {
-  const VERSION = "0.5.0";
+  const VERSION = "0.5.1";
   const REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
+  const AUTO_REFRESH_ON_START = true; // Auto-fetch data on initialization
 
   // ---------- Utils ----------
   const $ = (sel: string, root: ParentNode = document) =>
@@ -48,6 +49,7 @@ declare global {
   let currentGameState: SafeGameState | null = null;
   let aiRecommendations: any = null;
   let lastRefresh = 0;
+  let isRefreshing = false;
 
   function ensureHUD() {
     let el = document.getElementById(HUD_ID) as HTMLDivElement | null;
@@ -214,28 +216,53 @@ declare global {
   }
 
   // ---------- Main Functions ----------
-  async function refreshData() {
+  async function refreshData(forceRefresh = true) {
+    if (isRefreshing) {
+      console.log('[TLA] Already refreshing, skipping...');
+      return;
+    }
+    
     try {
+      isRefreshing = true;
       showMsg("Fetching all village data...", true);
-      currentGameState = await safeScraper.refresh();
+      
+      // Force refresh from overview page
+      currentGameState = await safeScraper.refresh(forceRefresh);
+      
       updateHUD(currentGameState);
       showMsg(`Data refreshed! (${currentGameState.villages.length} villages)`);
       console.log('[TLA] Safe refresh complete:', currentGameState);
+      
+      // If we got 0 villages and we're not on the overview page, try to fetch it
+      if (currentGameState.villages.length === 0 && !window.location.pathname.includes('statistics')) {
+        showMsg("No villages found. Trying to fetch overview...", true);
+        // The safeScraper should handle fetching via AJAX
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        currentGameState = await safeScraper.refresh(true);
+        updateHUD(currentGameState);
+      }
+      
     } catch (error) {
       console.error('[TLA] Refresh failed:', error);
       showMsg("Refresh failed - see console");
+    } finally {
+      isRefreshing = false;
     }
   }
 
   function goToOverview() {
-    // Navigate to overview page
-    window.location.href = '/dorf3.php';
+    // Navigate to overview page - use the correct URL for this server
+    window.location.href = '/village/statistics';
   }
 
   async function requestAIAnalysis() {
     if (!currentGameState || currentGameState.villages.length === 0) {
-      showMsg("Refresh data first!");
-      return;
+      showMsg("No village data! Refreshing...");
+      await refreshData();
+      if (!currentGameState || currentGameState.villages.length === 0) {
+        showMsg("Still no villages. Please go to Overview page.");
+        return;
+      }
     }
     
     // Check background service first
@@ -487,8 +514,11 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
           throw new Error('Background service not connected');
         }
         
-        if (!currentGameState) {
+        if (!currentGameState || currentGameState.villages.length === 0) {
           await refreshData();
+          if (!currentGameState || currentGameState.villages.length === 0) {
+            throw new Error('No village data available');
+          }
         }
         
         const response = await chrome.runtime.sendMessage({
@@ -497,24 +527,28 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
           state: currentGameState
         });
         
-        if (response.success) {
+        if (response?.success && response?.answer) {
+          // Safe string handling - ensure answer exists and is a string
+          const answer = String(response.answer || 'No response received');
+          const formattedAnswer = answer.replace(/\n/g, '<br>');
+          
           messagesEl!.innerHTML += `
             <div style="margin-bottom:10px;">
               <div style="padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; border-left:3px solid #4fc3f7;">
-                ${response.answer.replace(/\n/g, '<br>')}
+                ${formattedAnswer}
               </div>
             </div>
           `;
         } else {
-          throw new Error(response.error || 'Failed to get response');
+          throw new Error(response?.error || 'Failed to get response');
         }
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('[TLA] Chat error:', error);
         messagesEl!.innerHTML += `
           <div style="margin-bottom:10px;">
             <div style="padding:8px; background:rgba(244,67,54,0.1); border-radius:4px; color:#f44336;">
-              Error: ${error}
+              Error: ${error?.message || error || 'Unknown error'}
             </div>
           </div>
         `;
@@ -595,8 +629,11 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
     // Ensure HUD
     ensureHUD();
     
-    // Do initial data collection
-    await refreshData();
+    // Auto-refresh data on start
+    if (AUTO_REFRESH_ON_START) {
+      console.log('[TLA] Auto-refreshing data on startup...');
+      await refreshData(true);
+    }
     
     // Subscribe to state updates
     safeScraper.onStateUpdate((state) => {
@@ -611,7 +648,7 @@ ${aiRecommendations.recommendations || 'No specific recommendations available.'}
         const timeSinceRefresh = Date.now() - lastRefresh;
         if (timeSinceRefresh >= REFRESH_INTERVAL) {
           console.log('[TLA] Auto-refresh triggered');
-          await refreshData();
+          await refreshData(true);
         }
       }
     }, 60 * 1000); // Check every minute
