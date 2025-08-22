@@ -1,309 +1,244 @@
 # TravianAssistant Session Context
-*Last Updated: August 21, 2025 - Evening (Post Resource Bar Analysis)*
+*Last Updated: August 22, 2025 - V3 Strategic Planning Complete*
 
 ## 🚨 MANDATORY SESSION START PROTOCOL
 
 ### STEP 1: Read Core Documentation
 - [ ] Read this ENTIRE document before doing ANYTHING else
-- [ ] **CRITICAL**: Read `/docs/APPLICATION_DESIGN_V2.md` for complete implementation details
-- [ ] Note the current version (should be 0.4.12+)
-- [ ] Understand what's working vs broken
-- [ ] Review Doug's preferences and requirements
+- [ ] **NEW PRIORITY**: Read `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` for roadmap
+- [ ] Review previous design docs if needed for reference
+- [ ] Note we are starting fresh with V3 approach
 
-### STEP 2: Check Your Capabilities
-- [ ] **GitHub Access**: You can read/write to `DougProceptra/TravianAssistant` repo
-- [ ] **Web Search**: Use for documentation and current best practices
-- [ ] **File Attachments**: Check what files Doug has attached to this conversation
-- [ ] **Context Tools**: You have access to Doug's memory/context storage
+### STEP 2: Implementation Focus
+- [ ] **Target Beta**: August 29, 2025 (7 days)
+- [ ] **Target Production**: September 9, 2025
+- [ ] **Priority**: Game Start Optimizer (top-5 settler goal)
 
-### STEP 3: Review Design Documents
-- [ ] **PRIMARY REFERENCE**: `/docs/APPLICATION_DESIGN_V2.md` - Complete technical design
-- [ ] This file (SESSION_CONTEXT.md) - Quick reference and session notes
-- [ ] Check for any new documents in `/docs/` folder
-
-### STEP 4: Sync & Verify State
-```bash
-# Run these commands in Replit terminal
-cd /home/runner/workspace
-git status
-git log --oneline -5
-```
-- [ ] Check for uncommitted changes
-- [ ] Verify latest commit matches GitHub
-
-### STEP 5: Update This Document
-- [ ] Add timestamp of session start
-- [ ] Note any immediate issues found
-- [ ] Update throughout session with progress
-- [ ] Commit changes regularly
-
-### STEP 6: Update Doug's Context Memory
-Use the context tool to store:
-- [ ] Any new preferences Doug expresses
-- [ ] Technical decisions made
-- [ ] Problems encountered and solutions
-- [ ] Progress on features
+### STEP 3: Check Environment
+- [ ] Create new Replit (Node.js template)
+- [ ] Clone GitHub repo: `git clone https://github.com/DougProceptra/TravianAssistant.git`
+- [ ] Install dependencies: `npm install better-sqlite3 express cors dotenv`
 
 ## 📚 ESSENTIAL DOCUMENTATION
 
-### Primary Technical Reference
-**`/docs/APPLICATION_DESIGN_V2.md`** - The complete implementation guide
-- Full architecture details with code examples
-- Phase-by-phase implementation plan
-- All technical specifications
-- Safety features and testing strategy
+### NEW Primary Reference (V3)
+**`/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md`** - Complete V3 roadmap and implementation guide
+- 14-day sprint plan with daily tasks
+- Complete technical architecture
+- Game start optimization algorithms
+- Database schemas and migration path
+- AI integration with context_intelligence
 
-### Quick Reference (This File)
-**`SESSION_CONTEXT.md`** - Session management and quick notes
-- Current status and issues
-- Doug's preferences
-- Quick commands
-- Session logs
+### Supporting Documents
+- `/docs/TRAVIAN_ASSISTANT_V3.md` - Initial V3 vision
+- `/docs/APPLICATION_DESIGN_V2.md` - Previous iteration (reference only)
+- `/docs/resource_bar_code` - ResourceBar Plus analysis
 
-## 🎯 MAJOR BREAKTHROUGH - Resource Bar Analysis Complete
+## 🎯 V3 STRATEGIC VISION
 
-### What We Discovered
-The Resource Bar extension (10,000+ lines analyzed) gets ALL village data WITHOUT navigation by:
+### Mission
+Transform Travian from tedious spreadsheet calculations to AI-powered strategic excellence, enabling top-20 competitive play in under 2 hours per day.
 
-1. **Overview Page Parsing** (`dorf3.php`)
-   - Single page contains ALL villages data
-   - Resources, production, troops, buildings
-   - No navigation required!
+### Architecture Evolution
+```
+V2 (Deprecated): Navigation-based scraping
+V3 (Current): Smart data collection + AI analysis
+
+Chrome Extension → Replit Backend → SQLite/Supabase
+       ↓                ↓                  ↓
+   Data Scraper    Claude AI          Data Storage
+       ↓                ↓                  ↓
+     HUD UI      Context Learning     Analytics
+```
+
+### Key Success Metrics
+- **Game Start**: Top-5 settler (<168 hours)
+- **Time Efficiency**: <2 hours/day gameplay
+- **Rank**: Top-20 by population
+- **Automation**: Zero manual calculations
+
+## 💡 KEY DISCOVERIES FROM TODAY'S SESSION
+
+### Data Collection Methods
+1. **map.sql Daily Exports**
+   - Available at: `http://[server].travian.com/map.sql.gz`
+   - Contains all villages, players, alliances
+   - Updated daily automatically
 
 2. **AJAX Interception**
-   - Game already fetches multi-village data
-   - We can intercept and use it
-   - Real-time updates without refresh
+   - Monitor game's own API calls
+   - Real-time data without navigation
+   - No server rule violations
 
-3. **LocalStorage/Cookie Mining**
-   - Game caches village data locally
-   - We can read without server calls
-   - Historical data available
+3. **Smart Aggregation**
+   - Parse overview pages when viewed
+   - Cache everything locally
+   - Build complete picture over time
 
-4. **Village Switcher Parsing**
-   - Dropdown contains all village IDs
-   - Basic info without navigation
-   - Always available on every page
+### Technical Decisions
+- **Start with Replit + SQLite** for rapid prototyping
+- **Migrate to Supabase** when team collaboration needed
+- **Use flexible JSON schemas** for easy evolution
+- **Abstract database layer** for smooth migration
 
-### Implementation Strategy (NEW)
-**See `/docs/APPLICATION_DESIGN_V2.md` for complete implementation details**
+## 🏗️ IMPLEMENTATION PLAN
 
-#### Phase 1: Remove Dangerous Code (IMMEDIATE)
-- [ ] Delete `village-navigator.ts`
-- [ ] Remove all navigation-based scanning
-- [ ] Disable "Full Scan" feature
-- [ ] Remove auto-navigation code
+### Week 1: Foundation (Aug 22-29) - BETA
+**Day 1-2**: Core Infrastructure
+- Replit setup with SQLite
+- Basic Express server
+- map.sql importer
 
-#### Phase 2: Implement Safe Collection
-- [ ] Create `overview-parser.ts` - Parse dorf3.php
-- [ ] Create `ajax-interceptor.ts` - Monitor game AJAX
-- [ ] Create `storage-monitor.ts` - Read game cache
-- [ ] Create `village-state-manager.ts` - Aggregate all data
+**Day 3-4**: Chrome Extension
+- Manifest V3 structure
+- Data collection layer
+- HUD implementation
 
-#### Phase 3: Update UI
-- [ ] Resource Bar showing all villages (like Resource Bar ext)
-- [ ] Remove navigation-based features from HUD
-- [ ] Add "Refresh Overview" button (manual only)
+**Day 5-6**: Game Start Optimizer
+- Opening sequence algorithm
+- Resource optimization
+- Quest path calculator
 
-## ✅ WORKING COMPONENTS
+**Day 7**: Beta Testing
+- Deploy to team
+- Collect feedback
+- Fix critical bugs
 
-### Vercel Proxy - FULLY FUNCTIONAL
-- **URL**: `https://travian-proxy-simple.vercel.app/api/proxy`
-- **Status**: Working correctly, no changes needed
-- **Model**: Claude Sonnet 4 (claude-sonnet-4-20250514)
-- **Note**: This proxy is stable and functional - DO NOT CHANGE
+### Week 2: AI & Polish (Aug 29-Sept 5)
+- Claude integration
+- Context learning
+- Performance optimization
+- Production deployment
 
-### Extension Core
-- Chrome Extension structure working
-- Service worker functional
-- Content script injecting
-- HUD displaying (needs update)
+## 🔧 TECHNICAL SETUP
 
-## ❌ DEPRECATED - TO BE REMOVED
+### Database Schema (Ready to Create)
+```sql
+CREATE TABLE villages (
+  id INTEGER PRIMARY KEY,
+  x INTEGER NOT NULL,
+  y INTEGER NOT NULL,
+  vid INTEGER UNIQUE,
+  name TEXT,
+  player_id INTEGER,
+  population INTEGER,
+  data JSON,
+  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-### Navigation-Based Features
-- ~~Full Scan~~ - DANGEROUS, interrupts gameplay
-- ~~Village Navigator~~ - Causes game issues
-- ~~Auto-refresh with navigation~~ - Can break attacks/builds
+CREATE TABLE game_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_type TEXT NOT NULL,
+  timestamp TIMESTAMP NOT NULL,
+  data JSON NOT NULL,
+  processed BOOLEAN DEFAULT FALSE
+);
 
-## 📁 PROJECT STRUCTURE & RESOURCES
-
-### Repository Location
-- **Replit**: `/home/runner/workspace/`
-- **GitHub**: `https://github.com/DougProceptra/TravianAssistant`
-- **Main Branch**: `main` (all work happens here)
-
-### Key Files to Update
+CREATE TABLE recommendations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  priority INTEGER,
+  action_type TEXT,
+  action_data JSON,
+  completed BOOLEAN DEFAULT FALSE
+);
 ```
-packages/extension/
-├── src/
-│   └── content/
-│       ├── overview-parser.ts        # NEW: Parse dorf3.php
-│       ├── ajax-interceptor.ts       # NEW: Monitor AJAX
-│       ├── storage-monitor.ts        # NEW: Read game cache
-│       ├── village-state-manager.ts  # NEW: Aggregate data
-│       ├── village-navigator.ts      # DELETE THIS
-│       └── enhanced-scraper.ts       # UPDATE: Current page only
-```
 
-### Documentation Files
-```
-docs/
-├── APPLICATION_DESIGN_V2.md    # MAIN TECHNICAL REFERENCE
-├── DEVELOPMENT_PLAN.md         # Original plan (partially outdated)
-└── resource_bar_code           # Resource Bar extension analysis
+### Quick Start Commands
+```bash
+# Replit setup
+npm init -y
+npm install better-sqlite3 express cors dotenv
+npm install @anthropic-ai/sdk
+
+# Test map.sql import
+curl https://lusobr.x2.lusobrasileiro.travian.com/map.sql -o map.sql
+sqlite3 travian.db < map.sql
 ```
 
 ## 🎮 GAME CONTEXT
 
-### Server & Account
-- **Server**: lusobr.x2.lusobrasileiro.travian.com
-- **Tribe**: Egyptians
-- **Villages**: 6 total
-  - 000: 24488 (Capital)
-  - 001: 20985
-  - 002: 21104
-  - 003: 21214
-  - 004: 27828
-  - 005: 20522
+### Server Details
+- **Current Server**: lusobr.x2.lusobrasileiro.travian.com
+- **New Server**: Starts September 9, 2025
+- **Tribe Focus**: Egyptians
+- **Goal**: Top-5 settler
 
-### Resource Bar Extension Insights
-- Shows total production: `216W + 210Y + 210V + 100 Air`
-- Shows overflow timers for each village
-- Updates WITHOUT navigation
-- **We now know how to replicate this**
+### Doug's Requirements
+- **Play Style**: Defensive with artifact capability
+- **Time Budget**: <2 hours/day
+- **Team Size**: 3-5 players
+- **Pain Point**: Village prioritization and calculations
 
-## 💻 DOUG'S DEVELOPMENT PREFERENCES
+## 📊 DATA STRATEGY
 
-### Communication Style
-- **Be Direct**: No fluff, get to the point
-- **Show Progress**: Regular status updates
-- **Admit Uncertainty**: Say "I don't know" rather than guess
-- **Time Estimates**: Be realistic, multiply by 3 for safety
-- **No Apologizing**: Don't say sorry, just fix things
+### Collection Priorities
+1. **Real-time**: Attacks, resources, building queues
+2. **Periodic**: Map scanning, alliance data, rankings
+3. **Daily**: map.sql, market prices, statistics
 
-### Code Approach
-- **Research First**: Always check docs/web search before coding
-- **One Step at a Time**: Single clear actions, not multiple options
-- **Test Everything**: Verify each change works
-- **Safety First**: Never auto-navigate or interrupt gameplay
-- **Document Changes**: Update this file as you work
+### Storage Strategy
+- **Hot Data**: Last 7 days in IndexedDB
+- **Warm Data**: Full history in SQLite/Supabase
+- **Cold Data**: Compressed archives after 30 days
+- **Report Retention**: 30 days farm, 90 days combat, forever defense
 
-## 🔧 TECHNICAL DECISIONS
+## ⚠️ CRITICAL RULES
 
-### NEW Architecture (Post Resource Bar Analysis)
-**Full details in `/docs/APPLICATION_DESIGN_V2.md`**
-
-```
-Data Collection (Safe):
-├── Overview Parser (dorf3.php)
-├── AJAX Interceptor 
-├── LocalStorage Monitor
-└── Current Page Scraper
-
-Data Processing:
-├── Village State Manager
-├── Pattern Analyzer
-└── IndexedDB Storage
-
-AI Integration:
-├── Complete game state
-├── All villages context
-└── Historical trends
-```
-
-### What We're NOT Doing
-- ❌ No navigation between villages
-- ❌ No automatic actions
-- ❌ No gameplay interruption
-- ❌ No server rule violations
-
-## 📊 DEBUG COMMANDS
-
-### Browser Console (on Travian page)
-```javascript
-// Check if overview page accessible
-fetch('/dorf3.php').then(r => r.text()).then(console.log)
-
-// Check village switcher
-document.getElementById('villageList')
-
-// Monitor AJAX calls
-XMLHttpRequest.prototype.open = new Proxy(XMLHttpRequest.prototype.open, {
-  apply: (target, thisArg, args) => {
-    console.log('AJAX:', args[1]);
-    return target.apply(thisArg, args);
-  }
-});
-
-// Check localStorage
-Object.keys(localStorage).filter(k => k.includes('village'))
-```
-
-## 🚀 NEXT STEPS (PRIORITY ORDER)
-
-### Immediate (Today)
-1. **Read Design Doc**: Review `/docs/APPLICATION_DESIGN_V2.md` thoroughly
-2. **Safety First**: Remove all navigation code
-3. **Rebuild**: Version 2.0.0 without dangerous features
-4. **Test**: Verify no unwanted navigation
-
-### Tomorrow
-1. **Implement Overview Parser**: Get all village data safely
-2. **Test on live server**: Verify data collection works
-3. **Update HUD**: Show safe features only
-
-### This Week
-1. **AJAX Interceptor**: Real-time updates
-2. **State Manager**: Aggregate all data sources
-3. **Enhanced AI**: Use complete game state
-
-## ⚠️ CRITICAL REMINDERS
-
-### Safety Rules
-- **NEVER navigate automatically**
-- **NEVER interrupt user actions**
-- **ALWAYS manual refresh only**
-- **ALWAYS test on one village first**
+### ToS Compliance
+- ✅ No automation of game actions
+- ✅ Data collection and analysis only
+- ✅ Smart recommendations, manual execution
+- ⚠️ Gray area: Systematic scanning (case-by-case)
 
 ### Development Rules
-- **DELETE navigation code first**
-- **TEST everything in console first**
-- **VERIFY no gameplay impact**
-- **DOCUMENT all changes**
-- **FOLLOW the design in `/docs/APPLICATION_DESIGN_V2.md`**
+- **One clear action at a time**
+- **Research before implementing**
+- **Test everything locally first**
+- **Document all decisions**
 
 ## 📝 SESSION LOG
 
-### August 21, 2025 - Evening
-- Analyzed 10,000+ lines of Resource Bar code
-- Discovered overview page contains all data
-- Identified safe data collection methods
-- Created comprehensive design document: `/docs/APPLICATION_DESIGN_V2.md`
-- Updated session context with design doc reference
+### August 22, 2025 - V3 Strategic Planning
+**Major Accomplishments:**
+- Evolved from V2 (navigation-based) to V3 (AI-powered) vision
+- Researched how existing tools collect data (map.sql, AJAX interception)
+- Designed scalable database architecture (SQLite → Supabase migration path)
+- Created comprehensive 14-day implementation roadmap
+- Defined clear success metrics for each game phase
+- Resolved all technical architecture questions
+- Set beta target for August 29, production for September 9
 
-### [Next Session Date]
-- [ ] Read `/docs/APPLICATION_DESIGN_V2.md` first
-- [ ] Remove navigation code
-- [ ] Implement overview parser
-- [ ] Test safe data collection
-- [ ] Update UI components
+**Key Documents Created:**
+- `/docs/TRAVIAN_ASSISTANT_V3.md` - Initial vision
+- `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` - Full roadmap
 
-## 💡 KEY INSIGHT
+**Next Session Focus:**
+- Set up Replit environment
+- Create database schema
+- Build Chrome extension skeleton
+- Implement map.sql importer
+- Start game optimization algorithm
 
-**We've been solving the wrong problem!**
+### [Next Session - Implementation Day 1]
+- [ ] Create new Replit (Node.js)
+- [ ] Run setup scripts from V3 roadmap
+- [ ] Build foundation infrastructure
+- [ ] Test with live game data
 
-Instead of navigating to each village (dangerous), we should:
-1. Parse the overview page (safe, complete data)
-2. Intercept AJAX calls (real-time updates)
-3. Read game's cache (historical data)
+## 🚀 READY TO BUILD
 
-This is exactly how Resource Bar works - and it's brilliant!
+We have:
+- ✅ Clear vision and success metrics
+- ✅ Complete technical roadmap
+- ✅ 14-day sprint plan
+- ✅ All architecture decisions made
+- ✅ Database schemas ready
+- ✅ Algorithm designs complete
 
-**All implementation details are in `/docs/APPLICATION_DESIGN_V2.md`**
+**Next session: Start building Day 1-2 Foundation**
 
 ---
-*Remember: The goal is to enhance gameplay, not interrupt it.*
-*Navigation was the problem. Overview parsing is the solution.*
-*ALWAYS refer to `/docs/APPLICATION_DESIGN_V2.md` for implementation details.*
-*KEEP THIS DOCUMENT UPDATED THROUGHOUT YOUR SESSION*
+*V3 represents a complete strategic evolution from helper tool to AI command center.*
+*The roadmap is complete. The path is clear. Time to execute.*
+*ALWAYS refer to `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` for implementation details.*
