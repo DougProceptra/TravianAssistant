@@ -13,7 +13,8 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 
 async function downloadMapSql() {
-  const serverUrl = process.env.SERVER_URL || 'https://lusobr.x2.lusobrasileiro.travian.com';
+  // Use TRAVIAN_SERVER_URL for clarity - can have multiple servers
+  const serverUrl = process.env.TRAVIAN_SERVER_URL || process.env.SERVER_URL || 'https://lusobr.x2.lusobrasileiro.travian.com';
   const mapUrl = `${serverUrl}/map.sql.gz`;
   
   console.log(`📥 Downloading map.sql from ${mapUrl}...`);
@@ -158,6 +159,10 @@ function parseMapSql(filePath) {
 async function main() {
   try {
     console.log('🚀 Starting map.sql import process...\n');
+    
+    // Show which server we're using
+    const serverUrl = process.env.TRAVIAN_SERVER_URL || process.env.SERVER_URL || 'https://lusobr.x2.lusobrasileiro.travian.com';
+    console.log(`🌐 Server: ${serverUrl}\n`);
     
     // Download and decompress
     const mapSqlPath = await downloadMapSql();
