@@ -1,7 +1,7 @@
 {
   "name": "travian-assistant-backend",
-  "version": "1.0.0",
-  "description": "Backend server for TravianAssistant Chrome Extension",
+  "version": "3.0.0",
+  "description": "TravianAssistant V3 Backend - AI-powered strategic command center",
   "main": "start.js",
   "scripts": {
     "start": "node start.js",
@@ -10,17 +10,23 @@
     "dev": "nodemon start.js",
     "server": "node server.js",
     "server:sqlite": "node server-sqlite.js",
+    "init-db": "node ../scripts/init-db-v3.js",
+    "import-map": "node ../scripts/import-map.js",
+    "setup": "npm run init-db && npm run import-map",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
     "travian",
     "backend",
     "websocket",
-    "api"
+    "api",
+    "ai",
+    "strategy"
   ],
   "author": "DougProceptra",
   "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3",
     "better-sqlite3": "^12.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
