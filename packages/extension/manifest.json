@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "TravianAssistant",
-  "version": "0.5.2",
-  "description": "AI-powered strategic advisor for Travian Legends",
+  "name": "TravianAssistant with Backend",
+  "version": "0.4.13",
+  "description": "AI-powered strategic advisor for Travian Legends with backend sync",
   "permissions": [
     "storage",
     "activeTab",
@@ -10,10 +10,12 @@
   ],
   "host_permissions": [
     "*://*.travian.com/*",
-    "https://travian-proxy.vercel.app/*"
+    "https://travian-proxy-simple.vercel.app/*",
+    "https://TravianAssistant.dougdostal.replit.dev/*",
+    "wss://TravianAssistant.dougdostal.replit.dev/*"
   ],
   "background": {
-    "service_worker": "service_worker.js",
+    "service_worker": "background.js",
     "type": "module"
   },
   "content_scripts": [
