@@ -1,5 +1,5 @@
 # TravianAssistant Session Context
-*Last Updated: August 23, 2025 - Day 1 Implementation Started*
+*Last Updated: August 23, 2025 - Day 1 Implementation In Progress*
 
 ## 🚀 AUTOMATIC SESSION STARTUP TRIGGER
 
@@ -28,16 +28,17 @@
 - ✅ **Replit**: Already created and functioning
 - ✅ **GitHub Sync**: Repository connected and syncing with Replit
 - ✅ **Basic Structure**: Packages folder, extension skeleton exists
-- 🚧 **Database**: Needs SQLite schema implementation
+- 🚧 **Database**: Schema scripts created, needs execution
 - 🚧 **Backend Server**: Needs Express API setup
-- 🚧 **Map.sql Importer**: Needs implementation
+- ✅ **Map.sql Importer**: Script created, ready to run
 
 ### Today's Objectives (Day 1-2)
 - [x] Replit environment exists and synced
-- [ ] Initialize SQLite database with V3 schema
-- [ ] Create Express server with API endpoints
-- [ ] Build map.sql importer script
-- [ ] Test Chrome extension data collection
+- [x] Create database initialization script
+- [x] Create map.sql importer script
+- [ ] Run database initialization
+- [ ] Import map.sql data
+- [ ] Create Express API endpoints
 - [ ] Connect extension to backend API
 
 ### Completion Status
@@ -45,9 +46,10 @@
 - [x] Technical Roadmap Documented
 - [x] Replit Environment Connected
 - [x] GitHub Repository Synced
-- [ ] Database Implementation
+- [x] Database Scripts Created
+- [ ] Database Initialized
+- [ ] Map Data Imported
 - [ ] Backend API Creation
-- [ ] Map.sql Importer
 - [ ] Game Start Optimizer
 
 ## 🚨 MANDATORY SESSION START PROTOCOL
@@ -78,16 +80,25 @@
 - **URL**: Connected to GitHub repo `DougProceptra/TravianAssistant`
 - **Type**: Node.js environment
 - **Sync**: Auto-sync enabled with GitHub
+- **Secrets**: Use Replit Secrets tab (NOT .env files)
 - **Structure**: 
   ```
   TravianAssistant/
   ├── packages/
   │   └── extension/     # Chrome extension code
   ├── backend/          # Server code (to be implemented)
-  ├── scripts/          # Utility scripts
+  ├── scripts/          # Utility scripts (V3 scripts added)
   ├── db/              # Database files
   └── docs/            # Documentation
   ```
+
+### Replit Secrets Configuration
+**Use the Secrets tab (🔐) in Replit, NOT .env files:**
+```
+SERVER_URL = https://lusobr.x2.lusobrasileiro.travian.com
+ANTHROPIC_API_KEY = [your API key]
+DATABASE_PATH = ./backend/travian.db
+```
 
 ### Replit Commands Available
 ```bash
@@ -97,6 +108,12 @@ npm run init-db         # Initialize database
 npm run import-map      # Import map.sql
 npm start              # Start Express server
 npm run dev           # Start with nodemon
+
+# Day 1 Scripts (run in order):
+git pull origin main
+node scripts/init-db-v3.js
+node scripts/import-map.js
+node scripts/test-db.js
 
 # Git sync commands:
 git pull              # Pull latest from GitHub
@@ -124,23 +141,22 @@ git push             # Push to GitHub
 ### Supporting Documents
 - `/docs/TRAVIAN_ASSISTANT_V3.md` - Initial V3 vision document
 - `/docs/APPLICATION_DESIGN_V2.md` - Previous iteration (deprecated)
-- `/docs/resource_bar_code` - ResourceBar Plus analysis
+- `/scripts/README.md` - Scripts documentation
 
 ## 🏗️ WEEK 1 IMPLEMENTATION PLAN
 
 ### Day 1-2: Core Infrastructure ⬅️ CURRENT
-**Backend Setup** (In Replit)
-- [ ] Create `/backend/server.js` with Express
-- [ ] Implement `/backend/db/schema.js` for SQLite
-- [ ] Create `/scripts/import-map.js` for map.sql
-- [ ] Build `/backend/api/` endpoints structure
-- [ ] Test database connections
+**Completed:**
+- ✅ `/scripts/init-db-v3.js` - Database initialization
+- ✅ `/scripts/import-map.js` - Map data importer  
+- ✅ `/scripts/test-db.js` - Database verification
+- ✅ Updated `backend/package.json` with V3 scripts
 
-**Chrome Extension** (Existing structure)
-- [ ] Verify manifest.json is V3 compliant
-- [ ] Update content script for data collection
-- [ ] Implement service worker for background tasks
-- [ ] Create HUD overlay component
+**Pending:**
+- [ ] Run database initialization
+- [ ] Import map.sql data
+- [ ] Create `/backend/api/` endpoints
+- [ ] Update Chrome extension connection
 
 ### Day 3-4: Chrome Extension Development
 - Data collection implementation
@@ -190,7 +206,7 @@ Chrome Extension → Replit Backend → SQLite/Supabase
 
 ### Database Schema (SQLite)
 ```sql
--- Core game data
+-- Core game data (implemented in init-db-v3.js)
 CREATE TABLE villages (
   id INTEGER PRIMARY KEY,
   x INTEGER NOT NULL,
@@ -220,26 +236,21 @@ CREATE TABLE recommendations (
   action_type TEXT,
   action_data JSON,
   completed BOOLEAN DEFAULT FALSE,
-  result JSON
+  result JSON,
+  ai_confidence REAL,
+  phase TEXT
 );
 
-CREATE TABLE performance_metrics (
-  date DATE PRIMARY KEY,
-  population_rank INTEGER,
-  resource_production INTEGER,
-  time_played_minutes INTEGER,
-  actions_automated INTEGER
+CREATE TABLE game_start_progress (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  server_start_time TIMESTAMP,
+  current_phase TEXT,
+  hours_elapsed INTEGER,
+  cp_accumulated INTEGER,
+  next_settlement_eta TIMESTAMP,
+  strategy_notes JSON,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-```
-
-### Environment Variables (.env)
-```bash
-# Replit .env file (use Secrets tab in Replit)
-ANTHROPIC_API_KEY=your_key_here
-DATABASE_PATH=./db/travian.db
-SERVER_URL=https://lusobr.x2.lusobrasileiro.travian.com
-PORT=3000
-NODE_ENV=development
 ```
 
 ## 📊 DATA COLLECTION STRATEGY
@@ -273,11 +284,12 @@ NODE_ENV=development
 - ⚠️ **GRAY AREA**: Systematic map scanning (discuss case-by-case)
 
 ### Development Principles
-1. **One clear action at a time** - No overwhelming lists
-2. **Research before implementing** - Use web_search for current info
-3. **Test everything locally first** - Replit before production
-4. **Document all decisions** - Update this file continuously
-5. **Fail fast, iterate quickly** - Beta in 7 days
+1. **Code goes in GitHub** - Doug pulls to Replit
+2. **One clear action at a time** - No overwhelming lists
+3. **Research before implementing** - Use web_search for current info
+4. **Test everything locally first** - Replit before production
+5. **Document all decisions** - Update this file continuously
+6. **Fail fast, iterate quickly** - Beta in 7 days
 
 ## 📝 SESSION LOG
 
@@ -290,29 +302,34 @@ NODE_ENV=development
 - Set sprint timeline
 
 ### August 23, 2025 - Day 1 Implementation 🚧
-**In Progress:**
+**Completed:**
 - Replit already exists and synced with GitHub
-- Need to implement SQLite database schema
-- Need to create Express server
-- Need to build map.sql importer
+- Created database initialization script (`init-db-v3.js`)
+- Created map.sql importer (`import-map.js`)
+- Created database test script (`test-db.js`)
+- Updated package.json with V3 scripts
+- Clarified Replit Secrets usage (not .env)
+
+**Next Steps:**
+1. Run `git pull origin main` in Replit
+2. Run `node scripts/init-db-v3.js`
+3. Run `node scripts/import-map.js`
+4. Run `node scripts/test-db.js`
+5. Create Express API endpoints
 
 **Session Notes:**
 - Improved session startup protocol for automatic execution
 - Claude now recognizes TravianAssistant context immediately
 - SESSION_CONTEXT.md will be continuously updated
 - Discovered Replit already exists and is synced
-
-**Next Steps:**
-1. Check existing Replit file structure
-2. Implement database initialization script
-3. Create Express server with API endpoints
-4. Build map.sql importer
-5. Test with live server data
+- All code goes directly to GitHub for pull to Replit
+- Use Replit Secrets, not .env files
 
 ### Next Session Checklist
-- [ ] Complete any unfinished Day 1-2 objectives
-- [ ] Begin Day 3-4 Chrome Extension work if ahead
-- [ ] Test map.sql import with live data
+- [ ] Verify database initialization successful
+- [ ] Confirm map.sql import worked
+- [ ] Create Express API endpoints
+- [ ] Begin Day 3-4 Chrome Extension work
 - [ ] Update progress in this document
 
 ## 🛠️ QUICK REFERENCE
@@ -323,19 +340,19 @@ NODE_ENV=development
 ls -la
 
 # Install missing dependencies
-npm install better-sqlite3 express cors dotenv @anthropic-ai/sdk
+npm install @anthropic-ai/sdk
 
-# Initialize database
-node scripts/init-db.js
+# Initialize V3 database
+node scripts/init-db-v3.js
 
 # Import map.sql
 node scripts/import-map.js
 
-# Start server
-node backend/server.js
+# Test database
+node scripts/test-db.js
 
-# Test endpoints
-curl http://localhost:3000/api/status
+# Start server
+cd backend && npm start
 ```
 
 ### Chrome Extension Testing
@@ -358,7 +375,7 @@ git status
 # Pull latest changes
 git pull origin main
 
-# Commit and push
+# Commit and push (if needed)
 git add .
 git commit -m "Day 1: [specific change]"
 git push origin main
@@ -373,6 +390,8 @@ git push origin main
 - **AI**: Claude Sonnet via API (not browser-based)
 - **Data**: JSON columns for flexibility
 - **Replit**: Already exists, synced with GitHub
+- **Secrets**: Use Replit Secrets tab, not .env files
+- **Code Management**: All code to GitHub, pull to Replit
 
 ### Pending Decisions
 - [ ] Exact HUD positioning defaults
@@ -387,13 +406,14 @@ git push origin main
 - ✅ Clear daily objectives
 - ✅ Replit environment (exists and synced)
 - ✅ GitHub repository connected
-- ✅ Basic extension structure
+- ✅ Database scripts created
+- ✅ Map importer ready
 - ✅ Architecture decisions made
 
 ### We Need (Day 1 Priority)
-- 🚧 SQLite database implementation
+- 🚧 Run database initialization
+- 🚧 Import map.sql data
 - 🚧 Express server with API
-- 🚧 map.sql importer script
 - 🚧 Extension-to-backend connection
 - 🚧 Basic HUD overlay
 
@@ -404,4 +424,5 @@ git push origin main
 *Every session starts here, every session updates here.*
 
 **Current Focus: Day 1-2 Core Infrastructure Implementation**
-**Replit Status: Exists and synced with GitHub**
+**Status: Database scripts created, awaiting execution**
+**Replit: Use Secrets tab for environment variables**
