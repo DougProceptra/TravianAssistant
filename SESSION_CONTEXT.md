@@ -1,49 +1,138 @@
 # TravianAssistant Session Context
-*Last Updated: August 22, 2025 - V3 Strategic Planning Complete*
+*Last Updated: August 23, 2025 - Day 1 Implementation Started*
+
+## 🚀 AUTOMATIC SESSION STARTUP TRIGGER
+
+**When Doug says any of these phrases:**
+- "TravianAssistant session start"
+- "Continue TravianAssistant development"  
+- "Execute session startup"
+- "Follow session start up steps"
+
+**Claude MUST automatically:**
+1. ✅ Retrieve context using `context_intelligence` tool
+2. ✅ Read this SESSION_CONTEXT.md file
+3. ✅ Check `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` for roadmap
+4. ✅ Report current status and next steps
+5. ✅ Begin execution WITHOUT waiting for confirmation
+
+## 📍 CURRENT PROJECT STATUS
+
+### Implementation Phase
+- **Current Day**: Day 1-2 of Week 1 (Core Infrastructure)
+- **Sprint Day**: 1 of 14
+- **Beta Target**: August 29, 2025 (6 days remaining)
+- **Production Target**: September 9, 2025 (17 days remaining)
+
+### Today's Objectives (Day 1-2)
+- [ ] Set up Replit with Node.js template
+- [ ] Initialize SQLite database with schema
+- [ ] Create basic Express server
+- [ ] Build map.sql importer script
+- [ ] Create Chrome extension skeleton
+- [ ] Test data collection with live server
+
+### Completion Status
+- [x] V3 Strategic Planning Complete
+- [x] Technical Roadmap Documented
+- [ ] Replit Environment Setup
+- [ ] Database Implementation
+- [ ] Chrome Extension Foundation
+- [ ] Map.sql Importer
+- [ ] Game Start Optimizer
 
 ## 🚨 MANDATORY SESSION START PROTOCOL
 
-### STEP 1: Read Core Documentation
-- [ ] Read this ENTIRE document before doing ANYTHING else
-- [ ] **NEW PRIORITY**: Read `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` for roadmap
-- [ ] Review previous design docs if needed for reference
-- [ ] Note we are starting fresh with V3 approach
+### STEP 1: Context Retrieval (AUTOMATIC)
+- Retrieve stored patterns with `context_intelligence`
+- Check for any updates from previous sessions
+- Load Doug's preferences and project patterns
 
-### STEP 2: Implementation Focus
-- [ ] **Target Beta**: August 29, 2025 (7 days)
-- [ ] **Target Production**: September 9, 2025
-- [ ] **Priority**: Game Start Optimizer (top-5 settler goal)
+### STEP 2: Documentation Review (AUTOMATIC)
+- Read this entire SESSION_CONTEXT.md
+- Check `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` for roadmap details
+- Note current implementation day and objectives
 
-### STEP 3: Check Environment
-- [ ] Create new Replit (Node.js template)
-- [ ] Clone GitHub repo: `git clone https://github.com/DougProceptra/TravianAssistant.git`
-- [ ] Install dependencies: `npm install better-sqlite3 express cors dotenv`
+### STEP 3: Status Report (AUTOMATIC)
+- Report current sprint day and remaining time
+- List today's objectives from roadmap
+- Identify any blockers or decisions needed
+
+### STEP 4: Begin Execution (AUTOMATIC)
+- Start with first uncompleted objective
+- Provide clear, actionable code/scripts
+- Update this document as progress is made
 
 ## 📚 ESSENTIAL DOCUMENTATION
 
-### NEW Primary Reference (V3)
+### Primary References (V3)
 **`/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md`** - Complete V3 roadmap and implementation guide
-- 14-day sprint plan with daily tasks
+- Full 14-day sprint plan with daily tasks
 - Complete technical architecture
 - Game start optimization algorithms
 - Database schemas and migration path
-- AI integration with context_intelligence
+- AI integration specifications
+
+**`SESSION_CONTEXT.md`** (This file) - Living project state
+- Current implementation status
+- Session handoff information
+- Quick reference for key decisions
+- Progress tracking
 
 ### Supporting Documents
-- `/docs/TRAVIAN_ASSISTANT_V3.md` - Initial V3 vision
-- `/docs/APPLICATION_DESIGN_V2.md` - Previous iteration (reference only)
+- `/docs/TRAVIAN_ASSISTANT_V3.md` - Initial V3 vision document
+- `/docs/APPLICATION_DESIGN_V2.md` - Previous iteration (deprecated)
 - `/docs/resource_bar_code` - ResourceBar Plus analysis
 
-## 🎯 V3 STRATEGIC VISION
+## 🏗️ WEEK 1 IMPLEMENTATION PLAN
 
-### Mission
-Transform Travian from tedious spreadsheet calculations to AI-powered strategic excellence, enabling top-20 competitive play in under 2 hours per day.
-
-### Architecture Evolution
+### Day 1-2: Core Infrastructure ⬅️ CURRENT
+**Backend (Replit)**
+```bash
+# Quick setup commands
+npm init -y
+npm install better-sqlite3 express cors dotenv
+npm install @anthropic-ai/sdk
+npm install --save-dev @types/node @types/express
 ```
-V2 (Deprecated): Navigation-based scraping
-V3 (Current): Smart data collection + AI analysis
 
+**Database (SQLite)**
+- Initialize with schema from roadmap
+- Create migration abstraction layer
+- Build map.sql import script
+- Test with sample data
+
+**Chrome Extension**
+- Manifest V3 structure
+- Background service worker
+- Content script skeleton
+- Basic HUD overlay
+
+### Day 3-4: Chrome Extension Development
+- Data collection implementation
+- HUD positioning and controls
+- Settings storage
+- Communication with backend
+
+### Day 5-6: Game Start Optimizer
+- Egyptian-specific algorithms
+- Quest path optimization
+- Resource balance calculator
+- CP accumulation strategy
+
+### Day 7: Beta Testing & Feedback
+- Deploy to team members
+- Collect feedback
+- Fix critical bugs
+- Prepare for Week 2
+
+## 🎮 PROJECT CONTEXT
+
+### Mission Statement
+Transform Travian gameplay from tedious spreadsheet calculations to AI-powered strategic excellence, enabling top-20 competitive play in under 2 hours per day.
+
+### Architecture (V3)
+```
 Chrome Extension → Replit Backend → SQLite/Supabase
        ↓                ↓                  ↓
    Data Scraper    Claude AI          Data Storage
@@ -57,63 +146,17 @@ Chrome Extension → Replit Backend → SQLite/Supabase
 - **Rank**: Top-20 by population
 - **Automation**: Zero manual calculations
 
-## 💡 KEY DISCOVERIES FROM TODAY'S SESSION
+### Server Details
+- **Current Server**: lusobr.x2.lusobrasileiro.travian.com
+- **New Server**: Starts September 9, 2025
+- **Tribe Focus**: Egyptians
+- **Team Size**: 3-5 players
 
-### Data Collection Methods
-1. **map.sql Daily Exports**
-   - Available at: `http://[server].travian.com/map.sql.gz`
-   - Contains all villages, players, alliances
-   - Updated daily automatically
+## 🔧 TECHNICAL SPECIFICATIONS
 
-2. **AJAX Interception**
-   - Monitor game's own API calls
-   - Real-time data without navigation
-   - No server rule violations
-
-3. **Smart Aggregation**
-   - Parse overview pages when viewed
-   - Cache everything locally
-   - Build complete picture over time
-
-### Technical Decisions
-- **Start with Replit + SQLite** for rapid prototyping
-- **Migrate to Supabase** when team collaboration needed
-- **Use flexible JSON schemas** for easy evolution
-- **Abstract database layer** for smooth migration
-
-## 🏗️ IMPLEMENTATION PLAN
-
-### Week 1: Foundation (Aug 22-29) - BETA
-**Day 1-2**: Core Infrastructure
-- Replit setup with SQLite
-- Basic Express server
-- map.sql importer
-
-**Day 3-4**: Chrome Extension
-- Manifest V3 structure
-- Data collection layer
-- HUD implementation
-
-**Day 5-6**: Game Start Optimizer
-- Opening sequence algorithm
-- Resource optimization
-- Quest path calculator
-
-**Day 7**: Beta Testing
-- Deploy to team
-- Collect feedback
-- Fix critical bugs
-
-### Week 2: AI & Polish (Aug 29-Sept 5)
-- Claude integration
-- Context learning
-- Performance optimization
-- Production deployment
-
-## 🔧 TECHNICAL SETUP
-
-### Database Schema (Ready to Create)
+### Database Schema (SQLite)
 ```sql
+-- Core game data
 CREATE TABLE villages (
   id INTEGER PRIMARY KEY,
   x INTEGER NOT NULL,
@@ -123,7 +166,8 @@ CREATE TABLE villages (
   player_id INTEGER,
   population INTEGER,
   data JSON,
-  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(x, y)
 );
 
 CREATE TABLE game_events (
@@ -131,6 +175,7 @@ CREATE TABLE game_events (
   event_type TEXT NOT NULL,
   timestamp TIMESTAMP NOT NULL,
   data JSON NOT NULL,
+  village_id INTEGER,
   processed BOOLEAN DEFAULT FALSE
 );
 
@@ -140,105 +185,170 @@ CREATE TABLE recommendations (
   priority INTEGER,
   action_type TEXT,
   action_data JSON,
-  completed BOOLEAN DEFAULT FALSE
+  completed BOOLEAN DEFAULT FALSE,
+  result JSON
+);
+
+-- Analytics
+CREATE TABLE performance_metrics (
+  date DATE PRIMARY KEY,
+  population_rank INTEGER,
+  resource_production INTEGER,
+  time_played_minutes INTEGER,
+  actions_automated INTEGER
 );
 ```
 
-### Quick Start Commands
+### Environment Variables (.env)
 ```bash
-# Replit setup
-npm init -y
-npm install better-sqlite3 express cors dotenv
-npm install @anthropic-ai/sdk
-
-# Test map.sql import
-curl https://lusobr.x2.lusobrasileiro.travian.com/map.sql -o map.sql
-sqlite3 travian.db < map.sql
+# Replit .env file
+ANTHROPIC_API_KEY=your_key_here
+DATABASE_PATH=./travian.db
+SERVER_URL=https://lusobr.x2.lusobrasileiro.travian.com
+PORT=3000
+NODE_ENV=development
 ```
 
-## 🎮 GAME CONTEXT
+## 📊 DATA COLLECTION STRATEGY
 
-### Server Details
-- **Current Server**: lusobr.x2.lusobrasileiro.travian.com
-- **New Server**: Starts September 9, 2025
-- **Tribe Focus**: Egyptians
-- **Goal**: Top-5 settler
+### Priority 1: Real-time Data
+- Resource levels (every page load)
+- Building queues (AJAX interception)
+- Incoming attacks (continuous monitoring)
+- Market prices (when viewed)
 
-### Doug's Requirements
-- **Play Style**: Defensive with artifact capability
-- **Time Budget**: <2 hours/day
-- **Team Size**: 3-5 players
-- **Pain Point**: Village prioritization and calculations
+### Priority 2: Periodic Data
+- map.sql daily import
+- Alliance member list
+- Rankings (population, attack, defense)
+- Reports (farm, scout, combat)
 
-## 📊 DATA STRATEGY
+### Priority 3: On-Demand
+- Oasis information
+- Player profiles
+- Alliance diplomacy
+- Artifact holders
 
-### Collection Priorities
-1. **Real-time**: Attacks, resources, building queues
-2. **Periodic**: Map scanning, alliance data, rankings
-3. **Daily**: map.sql, market prices, statistics
-
-### Storage Strategy
-- **Hot Data**: Last 7 days in IndexedDB
-- **Warm Data**: Full history in SQLite/Supabase
-- **Cold Data**: Compressed archives after 30 days
-- **Report Retention**: 30 days farm, 90 days combat, forever defense
-
-## ⚠️ CRITICAL RULES
+## ⚠️ CRITICAL RULES & GUIDELINES
 
 ### ToS Compliance
-- ✅ No automation of game actions
-- ✅ Data collection and analysis only
-- ✅ Smart recommendations, manual execution
-- ⚠️ Gray area: Systematic scanning (case-by-case)
+- ✅ **ALLOWED**: Data collection, analysis, recommendations
+- ✅ **ALLOWED**: Reading game responses, parsing HTML
+- ✅ **ALLOWED**: Storing data locally, calculations
+- ❌ **FORBIDDEN**: Automating game actions
+- ❌ **FORBIDDEN**: Sending game commands automatically
+- ⚠️ **GRAY AREA**: Systematic map scanning (discuss case-by-case)
 
-### Development Rules
-- **One clear action at a time**
-- **Research before implementing**
-- **Test everything locally first**
-- **Document all decisions**
+### Development Principles
+1. **One clear action at a time** - No overwhelming lists
+2. **Research before implementing** - Use web_search for current info
+3. **Test everything locally first** - Replit before production
+4. **Document all decisions** - Update this file continuously
+5. **Fail fast, iterate quickly** - Beta in 7 days
 
 ## 📝 SESSION LOG
 
-### August 22, 2025 - V3 Strategic Planning
-**Major Accomplishments:**
-- Evolved from V2 (navigation-based) to V3 (AI-powered) vision
-- Researched how existing tools collect data (map.sql, AJAX interception)
-- Designed scalable database architecture (SQLite → Supabase migration path)
-- Created comprehensive 14-day implementation roadmap
-- Defined clear success metrics for each game phase
-- Resolved all technical architecture questions
-- Set beta target for August 29, production for September 9
+### August 22, 2025 - V3 Strategic Planning ✅
+**Completed:**
+- Evolved from V2 to V3 architecture
+- Created comprehensive roadmap (`TRAVIAN_ASSISTANT_V3_COMPLETE.md`)
+- Researched data collection methods
+- Designed database architecture
+- Set sprint timeline
 
-**Key Documents Created:**
-- `/docs/TRAVIAN_ASSISTANT_V3.md` - Initial vision
-- `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` - Full roadmap
+### August 23, 2025 - Day 1 Implementation 🚧
+**In Progress:**
+- Setting up Replit environment
+- Creating database schema
+- Building Chrome extension skeleton
+- Implementing map.sql importer
 
-**Next Session Focus:**
-- Set up Replit environment
-- Create database schema
-- Build Chrome extension skeleton
-- Implement map.sql importer
-- Start game optimization algorithm
+**Session Notes:**
+- Improved session startup protocol for automatic execution
+- Claude now recognizes TravianAssistant context immediately
+- SESSION_CONTEXT.md will be continuously updated
 
-### [Next Session - Implementation Day 1]
-- [ ] Create new Replit (Node.js)
-- [ ] Run setup scripts from V3 roadmap
-- [ ] Build foundation infrastructure
-- [ ] Test with live game data
+### Next Session Checklist
+- [ ] Complete any unfinished Day 1-2 objectives
+- [ ] Begin Day 3-4 Chrome Extension work if ahead
+- [ ] Test map.sql import with live data
+- [ ] Update progress in this document
 
-## 🚀 READY TO BUILD
+## 🛠️ QUICK REFERENCE
 
-We have:
-- ✅ Clear vision and success metrics
+### Replit Commands
+```bash
+# Start server
+node server.js
+
+# Test database
+sqlite3 travian.db
+
+# Import map.sql
+node scripts/import-map.js
+
+# Run tests
+npm test
+```
+
+### Chrome Extension
+```bash
+# Load unpacked extension
+chrome://extensions/ → Developer mode → Load unpacked
+
+# View service worker logs
+chrome://extensions/ → Details → Service worker
+
+# Test content script
+F12 → Console → Check for TravianAssistant logs
+```
+
+### Git Workflow
+```bash
+# Pull latest
+git pull origin main
+
+# Commit changes
+git add .
+git commit -m "Day 1: [specific change]"
+git push origin main
+```
+
+## 🎯 DECISION LOG
+
+### Technical Decisions Made
+- **Database**: SQLite first, Supabase later (easier local dev)
+- **Backend**: Node.js on Replit (Doug's preference)
+- **Extension**: Manifest V3 (required by Chrome)
+- **AI**: Claude Sonnet via API (not browser-based)
+- **Data**: JSON columns for flexibility
+
+### Pending Decisions
+- [ ] Exact HUD positioning defaults
+- [ ] Cache duration for different data types
+- [ ] Team sharing mechanism (before Supabase)
+- [ ] Beta distribution method
+
+## 🚀 READY STATE
+
+### We Have
 - ✅ Complete technical roadmap
-- ✅ 14-day sprint plan
-- ✅ All architecture decisions made
+- ✅ Clear daily objectives
 - ✅ Database schemas ready
-- ✅ Algorithm designs complete
+- ✅ Architecture decisions made
+- ✅ Success metrics defined
 
-**Next session: Start building Day 1-2 Foundation**
+### We Need
+- 🚧 Replit environment setup
+- 🚧 Working Chrome extension
+- 🚧 map.sql importer
+- 🚧 Basic HUD implementation
+- 🚧 Game start optimizer
 
 ---
-*V3 represents a complete strategic evolution from helper tool to AI command center.*
-*The roadmap is complete. The path is clear. Time to execute.*
-*ALWAYS refer to `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` for implementation details.*
+
+*This document is the living state of TravianAssistant V3.*
+*Update it continuously as we progress.*
+*Every session starts here, every session updates here.*
+
+**Current Focus: Day 1-2 Core Infrastructure Implementation**
