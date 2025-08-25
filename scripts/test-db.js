@@ -29,18 +29,22 @@ try {
   });
   
   // Check if map data exists
-  const mapDataCheck = db.prepare(`
-    SELECT 
-      COUNT(DISTINCT player_id) as players,
-      COUNT(*) as villages
-    FROM villages 
-    WHERE player_id > 0
-  `).get();
-  
-  console.log('\n🗺️ Map Data:');
-  console.log('═'.repeat(40));
-  console.log(`  Active Players      : ${mapDataCheck.players}`);
-  console.log(`  Player Villages     : ${mapDataCheck.villages}`);
+  try {
+    const mapDataCheck = db.prepare(`
+      SELECT 
+        COUNT(DISTINCT player_id) as players,
+        COUNT(*) as villages
+      FROM villages 
+      WHERE player_id > 0
+    `).get();
+    
+    console.log('\n🗺️ Map Data:');
+    console.log('═'.repeat(40));
+    console.log(`  Active Players      : ${mapDataCheck.players}`);
+    console.log(`  Player Villages     : ${mapDataCheck.villages}`);
+  } catch (err) {
+    console.log('\n⚠️ Map data not yet imported');
+  }
   
   // Check game start progress
   try {
@@ -50,7 +54,8 @@ try {
       console.log('═'.repeat(40));
       console.log(`  Current Phase       : ${gameStart.current_phase}`);
       console.log(`  Hours Elapsed       : ${gameStart.hours_elapsed}`);
-      console.log(`  Strategy            : ${JSON.parse(gameStart.strategy_notes).strategy}`);
+      const strategy = JSON.parse(gameStart.strategy_notes || '{}');
+      console.log(`  Strategy            : ${strategy.strategy || 'Not set'}`);
     }
   } catch (err) {
     console.log('\n⚠️ Game start tracker not initialized');

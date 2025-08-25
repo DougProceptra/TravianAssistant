@@ -4,7 +4,12 @@ const path = require('path');
 const https = require('https');
 const zlib = require('zlib');
 
-require('dotenv').config();
+// Try to load dotenv but don't fail if it doesn't exist (Replit uses Secrets)
+try {
+  require('dotenv').config();
+} catch (e) {
+  // It's fine, we're using Replit Secrets
+}
 
 const dbPath = path.join(__dirname, '..', 'backend', 'travian.db');
 const db = new Database(dbPath);
@@ -187,7 +192,7 @@ async function main() {
     console.log(`
 📊 Database Statistics:
   - Total Villages: ${stats.villages}
-  - Total Players: ${stats.players}
+  - Total Players: ${stats.players}  
   - Total Alliances: ${stats.alliances}
   - Oases: ${stats.oases}
   
