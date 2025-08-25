@@ -17,28 +17,26 @@ build = ["sh", "-c", "cd backend && npm install"]
 NODE_ENV = "production"
 USE_SQLITE = "true"
 
-# Port configuration
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
 [[ports]]
 localPort = 3002
 externalPort = 80
-exposeLocalhost = false
 
-# Alternative port for WebSocket if needed
 [[ports]]
 localPort = 3003
 externalPort = 3003
-exposeLocalhost = false
 
-# Development server port (if running extension dev server)
 [[ports]]
 localPort = 5000
 externalPort = 5000
-exposeLocalhost = false
 
 # Nix packages
 [nix]
 channel = "stable-25_05"
-packages = ["nodejs-20", "nodePackages.npm", "nodePackages.pnpm"]
+packages = ["nodejs-20", "nodePackages.npm", "nodePackages.pnpm", "lsof"]
 
 # Workflows for different tasks
 [workflows]

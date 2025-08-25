@@ -163,9 +163,9 @@ app.post('/api/account', (req, res) => {
   
   try {
     const stmt = db.prepare(`
-      INSERT INTO accounts (account_id, server_url, account_name, tribe)
+      INSERT INTO accounts (id, server_url, account_name, tribe)
       VALUES (?, ?, ?, ?)
-      ON CONFLICT(account_id) DO UPDATE SET
+      ON CONFLICT(id) DO UPDATE SET
         server_url = excluded.server_url,
         account_name = excluded.account_name,
         tribe = excluded.tribe,
@@ -194,34 +194,24 @@ app.post('/api/villages', (req, res) => {
     
     // Start transaction
     const transaction = db.transaction(() => {
-      // Ensure account exists
-      db.prepare('INSERT OR IGNORE INTO accounts (account_id) VALUES (?)').run(accountId);
-      
       // Process each village
       for (const v of villagesToProcess) {
         // Upsert village
         const villageStmt = db.prepare(`
-          INSERT INTO villages (account_id, village_id, name, coordinates, x, y)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO villages (id, account_id, village_id, name, coordinates)
+          VALUES (?, ?, ?, ?, ?)
           ON CONFLICT(account_id, village_id) DO UPDATE SET
             name = excluded.name,
-            coordinates = excluded.coordinates,
-            x = excluded.x,
-            y = excluded.y
+            coordinates = excluded.coordinates
         `);
         
         const villageDbId = `${accountId}_${v.villageId || v.id}`;
-        const coords = (v.coordinates || '0|0').split('|');
-        const x = parseInt(coords[0]) || 0;
-        const y = parseInt(coords[1]) || 0;
-        
         villageStmt.run(
+          villageDbId,
           accountId,
           v.villageId || v.id,
           v.villageName || v.name || 'Unknown',
-          v.coordinates || '0|0',
-          x,
-          y
+          v.coordinates || ''
         );
         
         // Store snapshot
@@ -294,7 +284,7 @@ app.get('/api/villages/:accountId', (req, res) => {
   
   try {
     // Get account info
-    const account = db.prepare('SELECT * FROM accounts WHERE account_id = ?').get(accountId);
+    const account = db.prepare('SELECT * FROM accounts WHERE id = ?').get(accountId);
     
     // Get villages
     const villages = db.prepare('SELECT * FROM villages WHERE account_id = ?').all(accountId);
