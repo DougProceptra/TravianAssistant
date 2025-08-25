@@ -1,161 +1,92 @@
 # TravianAssistant Session Context
-**Last Updated**: August 25, 2025 - Session Recovery from Bad Overwrites
-**Current Version**: Backend v1.0.0 (FIXED), Extension v0.4.3
-**Status**: Backend restored to working state from Session 3
+**Last Updated**: August 25, 2025 - Data Discovery Phase
+**Current Version**: Backend v1.0.0, Extension v0.5.1
+**Status**: Testing safe scraper with real game data
 
-## 🔴 CRITICAL LESSON LEARNED - I FUCKED UP
+## 🎯 CURRENT FOCUS
 
-### What I Did Wrong (No Excuses)
-In the last session, I **overwrote working code** without reviewing what was already built:
-- **Session 3 (2 sessions ago)**: Backend was 100% WORKING with proper SQLite schema
-- **Last Session**: I blindly modified code without checking, breaking everything
-- **Root Cause**: Acting like a junior dev instead of reviewing existing work first
+### Data Discovery Mission
+We're mapping exactly what data exists on Travian game pages because the overview page provides less than expected:
+- Only shows village names, coordinates, and merchant counts
+- NO individual resource/production/population data in overview table
+- Need to inspect statistics tabs to find where real data lives
 
-### The Specific Fuckups
-1. **Removed columns from schema**: The `villages` table lost `x` and `y` columns
-2. **Wrong column names**: Used wrong primary key references in SQL
-3. **Ignored test evidence**: The test script showed EXACTLY what worked, I didn't look
-4. **No attention to detail**: Made assumptions instead of checking actual code
+### Discovered Issues
+1. **HUD showing fake data**: Total production and resources are calculated, not scraped
+2. **Population**: 785 is correct for CURRENT village only (not total)
+3. **Overview limitations**: `/village/statistics/overview` only has basic info
+4. **ResourceBarPlus conflict**: Another extension Doug is replacing
 
-## ✅ RECOVERY COMPLETED (This Session)
+## 📊 PAGES TO INSPECT
 
-### What Was Fixed
-1. **Restored Working Schema**: Added back `x` and `y` columns to villages table
-2. **Fixed SQL Statements**: Corrected all queries to use proper column names
-3. **Created Recovery Script**: `backend/fix-database.js` to rebuild database
-4. **Updated server-sqlite.js**: Fixed all SQL to match correct schema
+### Statistics Tabs (Priority)
+- [x] `/village/statistics/overview` - Basic village list only
+- [ ] `/village/statistics/resources` - Detailed resource data?
+- [ ] `/village/statistics/culturepoints` - Culture point generation
+- [ ] `/village/statistics/troops` - Troop counts per village
 
-### Files Modified
-- `backend/server-sqlite.js` - Fixed SQL queries and schema (SHA: 73762f91)
-- `backend/fix-database.js` - NEW: Database recovery script (SHA: 3393e418)
+### Game Pages (Secondary)
+- [ ] `/production.php` - Resource production rates
+- [ ] `/build.php` - Village buildings
+- [ ] `/build.php?id=39` - Rally point (troops)
+- [ ] Marketplace - Trade data
+- [ ] Map - Other players' villages
 
-## 📊 ACTUAL WORKING ARCHITECTURE
+## ✅ WHAT'S WORKING
 
-### Backend SQLite Structure (CORRECT)
-```sql
--- The accounts table uses 'id' NOT 'account_id' as PRIMARY KEY
-CREATE TABLE accounts (
-  id TEXT PRIMARY KEY,  -- This is the account ID
-  server_url TEXT NOT NULL,
-  account_name TEXT,
-  tribe TEXT
-);
+### Backend (v1.0.0)
+- SQLite database with correct schema
+- All 6 test endpoints passing
+- Account and village storage working
 
--- The villages table MUST have x,y columns
-CREATE TABLE villages (
-  id TEXT PRIMARY KEY,  -- Format: accountId_villageId
-  account_id TEXT NOT NULL,
-  village_id TEXT NOT NULL, 
-  name TEXT NOT NULL,
-  coordinates TEXT,
-  x INTEGER DEFAULT 0,  -- REQUIRED - was missing!
-  y INTEGER DEFAULT 0,  -- REQUIRED - was missing!
-  UNIQUE(account_id, village_id)
-);
+### Extension (v0.5.1) 
+- Safe scraper mode (no navigation)
+- AJAX interceptor initialized
+- Basic data collection from overview
+- HUD displays (but with wrong data)
+
+## 🔴 WHAT NEEDS FIXING
+
+### Critical Issues
+1. **Fake calculations**: Remove hardcoded math, get real data
+2. **Chat function**: "Ask a question" failing with error
+3. **Data accuracy**: Scrapers not getting actual game values
+
+### Data Collection Gaps
+- Production rates per village
+- Resource stockpiles per village  
+- Population per village
+- Culture points
+- Troop counts
+- Building information
+
+## 🚀 NEXT IMMEDIATE ACTIONS
+
+### Step 1: Complete Page Inspection
+Run the enhanced inspector (v2) on each statistics tab to map data structure
+
+### Step 2: Fix Scrapers
+Based on inspection results, update scrapers to get real data from correct locations
+
+### Step 3: Update Database Schema
+Expand schema to store all discovered data fields
+
+### Step 4: Remove Fake Calculations
+Replace hardcoded math with actual scraped values
+
+## 📝 Inspector Code Location
+The enhanced inspector v2 is at:
+```
+scripts/inspect-travian-data-v2.js
 ```
 
-## 🚀 RECOVERY STEPS FOR REPLIT
+## 🔑 Session Rules
 
-```bash
-# IN REPLIT - RUN THESE NOW:
-
-# 1. Pull the fixes
-cd ~/workspace
-git pull origin main
-
-# 2. Delete broken database and recreate
-cd backend
-rm -f travian.db
-node fix-database.js
-
-# 3. Restart the server
-npm run server:sqlite
-
-# 4. Verify it's working
-cd ..
-node scripts/test-backend-sqlite.js
-```
-
-### Expected Test Output
-```
-✓ Health endpoint working
-✓ Root endpoint working  
-✓ Account creation working
-✓ Village sync working
-✓ Get villages working
-✓ History endpoint working
-
-✓ All tests passed! Backend is working correctly.
-```
-
-## 📍 CURRENT STATUS (HONEST)
-
-### What Actually Works
-- **Backend**: Session 3 version restored and fixed
-- **Test Scripts**: All validation tools working
-- **Database Schema**: Correct structure in place
-
-### What's Still Broken/Untested
-- **Elite Scraper**: Written but NEVER tested (Session 4)
-- **Chrome Extension**: Unknown state after multiple sessions
-- **Data Collection**: Not validated with real game
-
-## 🎯 NEXT IMMEDIATE ACTIONS
-
-### Step 1: Verify Backend Recovery
-Run the test script and confirm all 6 tests pass
-
-### Step 2: Check Extension State
-```bash
-cd packages/extension
-npm run build
-# Document any errors
-```
-
-### Step 3: Test Elite Scraper
-The elite-scraper.ts was written but never tested - needs validation
-
-## ⚠️ DEVELOPER PROTOCOL (MANDATORY)
-
-### What I MUST Do Going Forward
-1. **ALWAYS check existing code first** - no assumptions
-2. **Run tests before changing anything** - verify working state
-3. **Read commit history** - understand what was done
-4. **Test after every change** - catch breaks immediately
-5. **Document reality not intentions** - working means tested
-
-### What I Will NEVER Do Again
-1. **Never overwrite without reviewing**
-2. **Never assume schema without checking**
-3. **Never claim success without testing**
-4. **Never ignore test scripts**
-5. **Never act without understanding context**
-
-## 📝 Session End Status
-
-### Completed This Session
-- [x] Identified exact overwrites from last session
-- [x] Fixed database schema to match Session 3
-- [x] Corrected all SQL statements
-- [x] Created recovery script
-- [x] Documented lessons learned
-- [x] Pushed fixes to GitHub
-
-### Requires Verification in Replit
-- [ ] Database recreated with fix script
-- [ ] Server running with fixed code
-- [ ] All 6 backend tests passing
-- [ ] Extension building without errors
-
-## 🔑 Key Takeaways
-
-1. **Session 3 was SUCCESS** - Backend worked perfectly
-2. **Last session was FAILURE** - Overwrote without checking
-3. **This session is RECOVERY** - Fixed the overwrites
-4. **Next session is VALIDATION** - Test everything
+1. **No assumptions** - Inspect actual pages, don't guess structure
+2. **Test everything** - Working means tested with real data
+3. **Update continuously** - Keep SESSION_CONTEXT current
+4. **Remove stale info** - Delete outdated content immediately
 
 ---
 
-*I acknowledge I fucked up by not reviewing existing work. The backend is now restored to the working Session 3 state. No more assumptions - only verified facts.*
-
-**Run the recovery steps in Replit NOW to confirm the fix works.**
+*Current session focus: Map real data structure via inspection, fix scrapers to collect actual values, remove all fake calculations.*
