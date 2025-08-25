@@ -2,220 +2,100 @@
 
 /**
  * Travian Game Data Inspector
- * Run this on your local machine while logged into Travian
- * It will inspect game pages and output data structure for database design
+ * Generates inspection code to run manually in Chrome DevTools
  */
 
-const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
 
-// Configuration
-const GAME_URL = 'https://lusobr.x2.lusobrasileiro.travian.com';
-const OUTPUT_FILE = path.join(__dirname, 'travian-data-analysis.json');
-
-// Pages to inspect for essential data
-const ESSENTIAL_PAGES = [
-  { url: '/village/statistics', name: 'Village Overview', category: 'essential' },
-  { url: '/production.php', name: 'Resource Production', category: 'essential' },
-  { url: '/build.php', name: 'Village Buildings', category: 'essential' },
-  { url: '/build.php?id=39', name: 'Rally Point (Troops)', category: 'essential' },
-  { url: '/build.php?id=16', name: 'Rally Point (Movements)', category: 'essential' }
-];
-
-// Pages for supportive data
-const SUPPORTIVE_PAGES = [
-  { url: '/karte.php', name: 'Map', category: 'supportive' },
-  { url: '/build.php?id=17', name: 'Marketplace', category: 'supportive' },
-  { url: '/statistics.php', name: 'Player Statistics', category: 'supportive' },
-  { url: '/alliance.php', name: 'Alliance Info', category: 'supportive' }
-];
+// Output file for schema
+const SCHEMA_FILE = path.join(__dirname, '..', 'backend', 'travian-schema.sql');
 
 /**
- * Inspection functions to run in browser context
+ * Inspection code to run in browser
  */
-const inspectionScript = `
-  function inspectPage() {
-    const result = {
-      url: window.location.pathname + window.location.search,
-      timestamp: new Date().toISOString(),
-      tables: [],
-      dataElements: {},
-      forms: [],
-      ajaxEndpoints: []
+const inspectionCode = `
+// Travian Data Inspector - Run this in Chrome DevTools Console
+(function() {
+  const result = {
+    url: window.location.pathname + window.location.search,
+    timestamp: new Date().toISOString(),
+    tables: [],
+    dataElements: {}
+  };
+  
+  // Inspect all tables
+  document.querySelectorAll('table').forEach((table, index) => {
+    const tableInfo = {
+      index: index,
+      id: table.id || null,
+      className: table.className || null,
+      headers: [],
+      sampleRow: [],
+      rowCount: table.querySelectorAll('tbody tr').length
     };
     
-    // Inspect all tables
-    document.querySelectorAll('table').forEach((table, index) => {
-      const tableInfo = {
-        index: index,
-        id: table.id || null,
-        className: table.className || null,
-        headers: [],
-        sampleRow: [],
-        rowCount: table.querySelectorAll('tbody tr').length
-      };
-      
-      // Get headers
-      const headers = table.querySelectorAll('thead th, thead td');
-      if (headers.length === 0) {
-        // Try first row as headers
-        const firstRow = table.querySelector('tr');
-        if (firstRow) {
-          firstRow.querySelectorAll('th, td').forEach(cell => {
-            tableInfo.headers.push(cell.textContent.trim());
-          });
-        }
-      } else {
-        headers.forEach(h => tableInfo.headers.push(h.textContent.trim()));
-      }
-      
-      // Get sample data row
-      const dataRow = table.querySelector('tbody tr') || table.querySelectorAll('tr')[1];
-      if (dataRow) {
-        dataRow.querySelectorAll('td').forEach(cell => {
-          tableInfo.sampleRow.push({
-            text: cell.textContent.trim(),
-            html: cell.innerHTML.substring(0, 200),
-            classes: cell.className
-          });
+    // Get headers
+    const headers = table.querySelectorAll('thead th, thead td');
+    if (headers.length === 0) {
+      const firstRow = table.querySelector('tr');
+      if (firstRow) {
+        firstRow.querySelectorAll('th, td').forEach(cell => {
+          tableInfo.headers.push(cell.textContent.trim());
         });
       }
-      
-      result.tables.push(tableInfo);
-    });
-    
-    // Inspect specific data elements
-    const selectors = {
-      // Resources
-      wood: '#l1',
-      clay: '#l2', 
-      iron: '#l3',
-      crop: '#l4',
-      warehouseCapacity: '.warehouse .capacity',
-      granaryCapacity: '.granary .capacity',
-      
-      // Village info
-      villageName: '#villageNameField',
-      villageList: '.villageList',
-      coordinates: '.coordinatesWrapper',
-      population: '.population',
-      
-      // Culture/Loyalty
-      culturePoints: '.culture_points',
-      loyalty: '.loyalty',
-      
-      // Troops
-      troopTable: '.troop_details',
-      movements: '.in_attack, .in_raid',
-      
-      // Buildings
-      buildingList: '.buildingSlot',
-      constructionQueue: '.buildQueue'
-    };
-    
-    for (const [key, selector] of Object.entries(selectors)) {
-      const element = document.querySelector(selector);
-      if (element) {
-        result.dataElements[key] = {
-          found: true,
-          text: element.textContent.trim(),
-          html: element.innerHTML.substring(0, 200),
-          selector: selector
-        };
-      } else {
-        result.dataElements[key] = {
-          found: false,
-          selector: selector
-        };
-      }
+    } else {
+      headers.forEach(h => tableInfo.headers.push(h.textContent.trim()));
     }
     
-    // Find all forms (for understanding game actions)
-    document.querySelectorAll('form').forEach(form => {
-      result.forms.push({
-        action: form.action,
-        method: form.method,
-        id: form.id,
-        className: form.className,
-        inputCount: form.querySelectorAll('input').length
+    // Get sample data row
+    const dataRow = table.querySelector('tbody tr') || table.querySelectorAll('tr')[1];
+    if (dataRow) {
+      dataRow.querySelectorAll('td').forEach(cell => {
+        tableInfo.sampleRow.push(cell.textContent.trim());
       });
-    });
+    }
     
-    // Check for AJAX endpoints in scripts
-    const scripts = Array.from(document.querySelectorAll('script')).map(s => s.textContent);
-    const ajaxPatterns = [
-      /fetch\\(['"]([^'"]+)['"]/g,
-      /\\.ajax\\(.*url:\\s*['"]([^'"]+)['"]/g,
-      /XMLHttpRequest.*open\\(.*['"]([^'"]+)['"]/g
-    ];
-    
-    scripts.forEach(script => {
-      if (script) {
-        ajaxPatterns.forEach(pattern => {
-          const matches = script.matchAll(pattern);
-          for (const match of matches) {
-            if (match[1] && !result.ajaxEndpoints.includes(match[1])) {
-              result.ajaxEndpoints.push(match[1]);
-            }
-          }
-        });
-      }
-    });
-    
-    return result;
+    result.tables.push(tableInfo);
+  });
+  
+  // Check for specific data elements
+  const selectors = {
+    wood: '#l1',
+    clay: '#l2', 
+    iron: '#l3',
+    crop: '#l4',
+    warehouse: '.warehouse',
+    granary: '.granary',
+    villageName: '#villageNameField',
+    villageList: '.villageList',
+    population: '.population',
+    culturePoints: '.culture_points'
+  };
+  
+  for (const [key, selector] of Object.entries(selectors)) {
+    const element = document.querySelector(selector);
+    result.dataElements[key] = element ? element.textContent.trim() : 'NOT FOUND';
   }
   
-  inspectPage();
+  console.log('=== TRAVIAN DATA STRUCTURE ===');
+  console.log(JSON.stringify(result, null, 2));
+  return result;
+})();
 `;
 
 /**
- * Manual inspection instructions
+ * Generate comprehensive SQL schema
  */
-function generateManualInstructions() {
-  console.log(`
-==============================================
-MANUAL INSPECTION INSTRUCTIONS
-==============================================
-
-Since we need you to be logged into your Travian account,
-please run these commands manually in Chrome DevTools:
-
-1. Open Chrome and log into Travian
-2. Press F12 to open DevTools
-3. Go to Console tab
-4. Navigate to each page and run this code:
-
-----------------------------------------
-${inspectionScript}
-----------------------------------------
-
-5. Copy the output and save to a file
-6. Repeat for each important page:
-   - /village/statistics (Village Overview)
-   - /production.php (Resources)
-   - /build.php (Buildings)
-   - /build.php?id=39 (Rally Point)
-   
-7. Send the results back for analysis
-
-==============================================
-  `);
-}
-
-/**
- * Generate SQL schema based on discovered data
- */
-function generateSchema(analysisData) {
-  let schema = `-- TravianAssistant Complete Database Schema
+function generateSchema() {
+  return `-- TravianAssistant Complete Database Schema
 -- Generated: ${new Date().toISOString()}
--- Based on game inspection data
 
 -- ============================================
 -- ESSENTIAL TABLES (Core Gameplay)
 -- ============================================
 
--- Player's account information
+-- Player's account
 CREATE TABLE IF NOT EXISTS accounts (
   id TEXT PRIMARY KEY,
   server_url TEXT NOT NULL,
@@ -223,12 +103,11 @@ CREATE TABLE IF NOT EXISTS accounts (
   tribe TEXT CHECK(tribe IN ('Romans', 'Teutons', 'Gauls', 'Egyptians', 'Huns')),
   alliance_id INTEGER,
   population_rank INTEGER,
-  alliance_rank INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Villages owned by the player
+-- Villages owned by player
 CREATE TABLE IF NOT EXISTS villages (
   id TEXT PRIMARY KEY,
   account_id TEXT NOT NULL,
@@ -244,7 +123,7 @@ CREATE TABLE IF NOT EXISTS villages (
   UNIQUE(account_id, x, y)
 );
 
--- Current resource levels
+-- Current resources
 CREATE TABLE IF NOT EXISTS resources (
   village_id TEXT PRIMARY KEY,
   wood INTEGER DEFAULT 0,
@@ -257,7 +136,7 @@ CREATE TABLE IF NOT EXISTS resources (
   FOREIGN KEY (village_id) REFERENCES villages(id)
 );
 
--- Resource production rates
+-- Production rates
 CREATE TABLE IF NOT EXISTS production (
   village_id TEXT PRIMARY KEY,
   wood_per_hour INTEGER DEFAULT 0,
@@ -270,7 +149,7 @@ CREATE TABLE IF NOT EXISTS production (
   FOREIGN KEY (village_id) REFERENCES villages(id)
 );
 
--- Buildings in each village
+-- Buildings
 CREATE TABLE IF NOT EXISTS buildings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   village_id TEXT NOT NULL,
@@ -283,7 +162,7 @@ CREATE TABLE IF NOT EXISTS buildings (
   UNIQUE(village_id, slot_id)
 );
 
--- Troops in villages
+-- Troops
 CREATE TABLE IF NOT EXISTS troops (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   village_id TEXT NOT NULL,
@@ -291,8 +170,6 @@ CREATE TABLE IF NOT EXISTS troops (
   count INTEGER DEFAULT 0,
   in_village INTEGER DEFAULT 0,
   in_training INTEGER DEFAULT 0,
-  in_transit INTEGER DEFAULT 0,
-  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (village_id) REFERENCES villages(id),
   UNIQUE(village_id, unit_type)
 );
@@ -306,8 +183,6 @@ CREATE TABLE IF NOT EXISTS movements (
   movement_type TEXT CHECK(movement_type IN ('attack', 'raid', 'reinforce', 'trade', 'return')),
   arrival_time TIMESTAMP NOT NULL,
   troop_data JSON,
-  resources_data JSON,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (from_village_id) REFERENCES villages(id)
 );
 
@@ -315,36 +190,32 @@ CREATE TABLE IF NOT EXISTS movements (
 -- SUPPORTIVE TABLES (Strategic Information)
 -- ============================================
 
--- Other players' villages from map scanning
+-- Other players' villages (from map)
 CREATE TABLE IF NOT EXISTS map_villages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   x INTEGER NOT NULL,
   y INTEGER NOT NULL,
   village_name TEXT,
   player_name TEXT,
-  player_id INTEGER,
   alliance_name TEXT,
   population INTEGER,
-  tribe TEXT,
   last_scanned TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(x, y)
 );
 
--- Oases near villages
+-- Oases
 CREATE TABLE IF NOT EXISTS oases (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   x INTEGER NOT NULL,
   y INTEGER NOT NULL,
   type TEXT,
-  bonus_type TEXT,
   bonus_percentage INTEGER,
   occupied_by TEXT,
-  animals JSON,
   last_scanned TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(x, y)
 );
 
--- Market prices and trades
+-- Market offers
 CREATE TABLE IF NOT EXISTS market_offers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   village_id TEXT,
@@ -354,128 +225,75 @@ CREATE TABLE IF NOT EXISTS market_offers (
   seeking_resource TEXT,
   seeking_amount INTEGER,
   ratio REAL,
-  merchant_count INTEGER,
-  max_delivery_time INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (village_id) REFERENCES villages(id)
 );
 
--- Hero information
-CREATE TABLE IF NOT EXISTS hero (
-  account_id TEXT PRIMARY KEY,
-  level INTEGER DEFAULT 1,
-  experience INTEGER DEFAULT 0,
-  health_percentage INTEGER DEFAULT 100,
-  attack_bonus INTEGER DEFAULT 0,
-  defense_bonus INTEGER DEFAULT 0,
-  resources_bonus INTEGER DEFAULT 0,
-  current_village_id TEXT,
-  is_traveling BOOLEAN DEFAULT FALSE,
-  FOREIGN KEY (account_id) REFERENCES accounts(id),
-  FOREIGN KEY (current_village_id) REFERENCES villages(id)
-);
-
--- Alliance information
-CREATE TABLE IF NOT EXISTS alliance_members (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  alliance_id INTEGER,
-  player_name TEXT,
-  population INTEGER,
-  village_count INTEGER,
-  rank INTEGER,
-  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================================
--- ANALYSIS TABLES (Calculated/Derived Data)
--- ============================================
-
--- Historical snapshots for trend analysis
-CREATE TABLE IF NOT EXISTS snapshots (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  village_id TEXT NOT NULL,
-  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  population INTEGER,
-  resources JSON,
-  production JSON,
-  troops JSON,
-  buildings JSON,
-  FOREIGN KEY (village_id) REFERENCES villages(id)
-);
-
--- Strategic targets identified
-CREATE TABLE IF NOT EXISTS targets (
+-- Farming targets
+CREATE TABLE IF NOT EXISTS farm_list (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   x INTEGER NOT NULL,
   y INTEGER NOT NULL,
-  target_type TEXT CHECK(target_type IN ('farm', 'conquer', 'chief', 'raid')),
-  priority INTEGER,
-  estimated_resources INTEGER,
-  estimated_defense INTEGER,
-  distance REAL,
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(x, y)
-);
-
--- Farming list
-CREATE TABLE IF NOT EXISTS farm_list (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  target_id INTEGER,
   village_id TEXT,
   last_attack TIMESTAMP,
-  attack_interval INTEGER, -- minutes
   average_haul INTEGER,
-  losses_acceptable BOOLEAN DEFAULT TRUE,
   is_active BOOLEAN DEFAULT TRUE,
-  FOREIGN KEY (target_id) REFERENCES targets(id),
-  FOREIGN KEY (village_id) REFERENCES villages(id)
+  FOREIGN KEY (village_id) REFERENCES villages(id),
+  UNIQUE(x, y, village_id)
 );
 
--- ============================================
--- INDEXES FOR PERFORMANCE
--- ============================================
-
+-- Create indexes
 CREATE INDEX idx_villages_account ON villages(account_id);
 CREATE INDEX idx_villages_coords ON villages(x, y);
 CREATE INDEX idx_movements_arrival ON movements(arrival_time);
 CREATE INDEX idx_map_villages_coords ON map_villages(x, y);
-CREATE INDEX idx_map_villages_player ON map_villages(player_name);
-CREATE INDEX idx_snapshots_village_time ON snapshots(village_id, timestamp);
-CREATE INDEX idx_targets_priority ON targets(priority DESC);
 `;
-
-  return schema;
 }
 
 // Main execution
-if (require.main === module) {
-  console.log('Travian Data Inspector');
-  console.log('======================');
-  console.log('');
-  console.log('This tool needs to be run manually in the browser.');
-  console.log('');
-  
-  generateManualInstructions();
-  
-  // Generate initial schema
-  const schema = generateSchema({});
-  
-  // Save schema to file
-  fs.writeFileSync(
-    path.join(__dirname, 'travian-schema.sql'),
-    schema,
-    'utf8'
-  );
-  
-  console.log('');
-  console.log('Initial schema saved to: travian-schema.sql');
-  console.log('');
-  console.log('After you collect the inspection data, we can refine the schema');
-  console.log('to match the exact data structure of the game.');
-}
+console.log(`
+==============================================
+TRAVIAN DATA INSPECTOR
+==============================================
 
-module.exports = {
-  inspectionScript,
-  generateSchema
-};
+This tool helps discover all data available in Travian
+so we can build a complete database schema.
+
+INSTRUCTIONS:
+1. Open Chrome and log into your Travian game
+2. Press F12 to open DevTools Console
+3. Navigate to each page below and run the inspection code
+4. Copy the output for analysis
+
+PAGES TO INSPECT:
+- /village/statistics (Village Overview)
+- /production.php (Resources)
+- /build.php (Buildings)
+- /build.php?id=39 (Rally Point)
+
+INSPECTION CODE TO RUN:
+==============================================
+`);
+
+console.log(inspectionCode);
+
+console.log(`
+==============================================
+
+After collecting data from all pages, we'll refine
+the database schema to match exactly what's available.
+
+Generating initial schema...
+`);
+
+// Generate and save schema
+const schema = generateSchema();
+fs.writeFileSync(SCHEMA_FILE, schema, 'utf8');
+
+console.log(`Schema saved to: ${SCHEMA_FILE}`);
+console.log(`
+Next steps:
+1. Run the inspection code on each game page
+2. Save the output from each page
+3. We'll update the schema based on actual data
+`);
