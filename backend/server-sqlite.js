@@ -36,6 +36,8 @@ db.exec(`
     village_id TEXT NOT NULL,
     name TEXT NOT NULL,
     coordinates TEXT,
+    x INTEGER DEFAULT 0,
+    y INTEGER DEFAULT 0,
     is_capital INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (account_id) REFERENCES accounts(id),
@@ -163,9 +165,9 @@ app.post('/api/account', (req, res) => {
   
   try {
     const stmt = db.prepare(`
-      INSERT INTO accounts (account_id, server_url, account_name, tribe)
+      INSERT INTO accounts (id, server_url, account_name, tribe)
       VALUES (?, ?, ?, ?)
-      ON CONFLICT(account_id) DO UPDATE SET
+      ON CONFLICT(id) DO UPDATE SET
         server_url = excluded.server_url,
         account_name = excluded.account_name,
         tribe = excluded.tribe,
@@ -194,15 +196,15 @@ app.post('/api/villages', (req, res) => {
     
     // Start transaction
     const transaction = db.transaction(() => {
-      // Ensure account exists
-      db.prepare('INSERT OR IGNORE INTO accounts (account_id) VALUES (?)').run(accountId);
+      // Ensure account exists - FIX: use 'id' column not 'account_id'
+      db.prepare('INSERT OR IGNORE INTO accounts (id) VALUES (?)').run(accountId);
       
       // Process each village
       for (const v of villagesToProcess) {
-        // Upsert village
+        // Upsert village with correct column names
         const villageStmt = db.prepare(`
-          INSERT INTO villages (account_id, village_id, name, coordinates, x, y)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO villages (id, account_id, village_id, name, coordinates, x, y)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(account_id, village_id) DO UPDATE SET
             name = excluded.name,
             coordinates = excluded.coordinates,
@@ -216,6 +218,7 @@ app.post('/api/villages', (req, res) => {
         const y = parseInt(coords[1]) || 0;
         
         villageStmt.run(
+          villageDbId,  // This is the 'id' column (primary key)
           accountId,
           v.villageId || v.id,
           v.villageName || v.name || 'Unknown',
@@ -293,8 +296,8 @@ app.get('/api/villages/:accountId', (req, res) => {
   const { accountId } = req.params;
   
   try {
-    // Get account info
-    const account = db.prepare('SELECT * FROM accounts WHERE account_id = ?').get(accountId);
+    // Get account info - FIX: use 'id' column
+    const account = db.prepare('SELECT * FROM accounts WHERE id = ?').get(accountId);
     
     // Get villages
     const villages = db.prepare('SELECT * FROM villages WHERE account_id = ?').all(accountId);
