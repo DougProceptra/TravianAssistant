@@ -1,7 +1,7 @@
 /**
  * Overview Parser - Safe multi-village data collection
- * Fetches dorf3.php overview page to get all village data without navigation
- * Based on Resource Bar Plus approach
+ * Fetches village/statistics overview page to get all village data without navigation
+ * v0.5.3 - Fixed URL and improved error handling
  */
 
 export interface VillageOverviewData {
@@ -64,10 +64,11 @@ export class OverviewParser {
   private cache: Map<string, VillageOverviewData> = new Map();
   private lastFetch: number = 0;
   private readonly CACHE_DURATION = 60000; // 1 minute cache
-  private readonly OVERVIEW_URL = '/dorf3.php';
+  // FIXED: Updated to correct URL based on actual game
+  private readonly OVERVIEW_URL = '/village/statistics';
   
   constructor() {
-    console.log('[TLA Overview] Parser initialized - safe data collection mode');
+    console.log('[TLA Overview] Parser v0.5.3 initialized - using /village/statistics');
   }
 
   /**
@@ -83,14 +84,14 @@ export class OverviewParser {
     }
 
     try {
-      console.log('[TLA Overview] Fetching overview page...');
+      console.log('[TLA Overview] Fetching overview page from:', this.OVERVIEW_URL);
       
       // Fetch the overview page
       const response = await fetch(this.OVERVIEW_URL, {
         credentials: 'same-origin',
         headers: {
-          'Accept': 'text/html',
-          'X-Requested-With': 'XMLHttpRequest'
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Cache-Control': 'no-cache'
         }
       });
 
@@ -99,6 +100,8 @@ export class OverviewParser {
       }
 
       const html = await response.text();
+      console.log('[TLA Overview] Received HTML, length:', html.length);
+      
       const villages = this.parseOverviewHTML(html);
       
       // Update cache
@@ -131,41 +134,61 @@ export class OverviewParser {
     const doc = parser.parseFromString(html, 'text/html');
     const villages: VillageOverviewData[] = [];
 
-    // Try multiple possible table selectors (different Travian versions)
-    const selectors = [
-      '#overview table.village_overview',
-      '#villages tbody tr',
-      '.villageList tbody tr',
-      'table#overview tbody tr',
-      '.overviewTable tbody tr'
-    ];
-
-    let villageRows: NodeListOf<Element> | null = null;
+    // Primary selector for the overview table
+    const overviewTable = doc.querySelector('table#overview');
     
-    for (const selector of selectors) {
-      villageRows = doc.querySelectorAll(selector);
-      if (villageRows && villageRows.length > 0) {
-        console.log(`[TLA Overview] Found villages using selector: ${selector}`);
-        break;
+    if (overviewTable) {
+      console.log('[TLA Overview] Found table#overview');
+      
+      // Get all rows from tbody
+      const rows = overviewTable.querySelectorAll('tbody tr');
+      console.log(`[TLA Overview] Found ${rows.length} village rows`);
+      
+      rows.forEach((row, index) => {
+        try {
+          const village = this.parseVillageRowFromOverview(row);
+          if (village) {
+            villages.push(village);
+            console.log(`[TLA Overview] Parsed village ${index + 1}:`, village.name);
+          }
+        } catch (error) {
+          console.error(`[TLA Overview] Failed to parse row ${index}:`, error);
+        }
+      });
+    } else {
+      console.warn('[TLA Overview] table#overview not found, trying alternative selectors');
+      
+      // Try other possible selectors
+      const selectors = [
+        '#villages tbody tr',
+        '.villageList tbody tr',
+        '.overviewTable tbody tr',
+        'table.overview tbody tr'
+      ];
+
+      for (const selector of selectors) {
+        const rows = doc.querySelectorAll(selector);
+        if (rows.length > 0) {
+          console.log(`[TLA Overview] Found villages using selector: ${selector}`);
+          rows.forEach((row, index) => {
+            try {
+              const village = this.parseVillageRow(row);
+              if (village) {
+                villages.push(village);
+              }
+            } catch (error) {
+              console.error(`[TLA Overview] Failed to parse village row ${index}:`, error);
+            }
+          });
+          break;
+        }
       }
     }
 
-    if (!villageRows || villageRows.length === 0) {
-      console.warn('[TLA Overview] No village rows found, trying alternative parsing');
+    if (villages.length === 0) {
+      console.warn('[TLA Overview] No villages parsed, trying alternative format');
       return this.parseAlternativeFormat(doc);
     }
-
-    // Parse each village row
-    villageRows.forEach((row, index) => {
-      try {
-        const village = this.parseVillageRow(row);
-        if (village) {
-          villages.push(village);
-        }
-      } catch (error) {
-        console.error(`[TLA Overview] Failed to parse village row ${index}:`, error);
-      }
-    });
 
     // Also extract culture points and other account-wide data
     this.parseAccountData(doc);
@@ -174,7 +197,100 @@ export class OverviewParser {
   }
 
   /**
-   * Parse a single village row from the overview table
+   * Parse a village row from the overview table (table#overview specific)
+   */
+  private parseVillageRowFromOverview(row: Element): VillageOverviewData | null {
+    const cells = row.querySelectorAll('td');
+    if (cells.length < 2) return null;
+
+    // Based on observed structure:
+    // Cell 0: Village name with link
+    // Cell 1: Attack indicator (if any)
+    // Cell 2: Coordinates  
+    // Cell 3+: Resources or other data
+
+    // Extract village link and ID
+    const villageLink = cells[0]?.querySelector('a[href*="newdid="]');
+    if (!villageLink) {
+      console.warn('[TLA Overview] No village link found in row');
+      return null;
+    }
+
+    const villageId = villageLink.getAttribute('href')?.match(/newdid=(\d+)/)?.[1];
+    if (!villageId) {
+      console.warn('[TLA Overview] Could not extract village ID');
+      return null;
+    }
+
+    // Extract village name
+    const villageName = villageLink.textContent?.trim() || 'Unknown';
+
+    // Extract coordinates - might be in different cells depending on attack status
+    let coordText = '';
+    for (let i = 1; i < Math.min(cells.length, 4); i++) {
+      const text = cells[i].textContent || '';
+      if (text.includes('(') && text.includes('|')) {
+        coordText = text;
+        break;
+      }
+    }
+    
+    const coordinates = this.parseCoordinates(coordText);
+
+    // Extract resources - usually after coordinates
+    const resources = {
+      wood: 0,
+      clay: 0,
+      iron: 0,
+      crop: 0
+    };
+
+    // Look for resource values in remaining cells
+    let resourceStartIndex = -1;
+    for (let i = 2; i < cells.length; i++) {
+      const text = cells[i].textContent?.trim() || '';
+      // Check if this looks like a resource value (number possibly with k suffix)
+      if (/^\d+k?$/.test(text.replace(/[,.\s]/g, ''))) {
+        resourceStartIndex = i;
+        break;
+      }
+    }
+
+    if (resourceStartIndex > 0 && resourceStartIndex + 3 < cells.length) {
+      resources.wood = this.parseNumber(cells[resourceStartIndex].textContent || '0');
+      resources.clay = this.parseNumber(cells[resourceStartIndex + 1].textContent || '0');
+      resources.iron = this.parseNumber(cells[resourceStartIndex + 2].textContent || '0');
+      resources.crop = this.parseNumber(cells[resourceStartIndex + 3].textContent || '0');
+    }
+
+    // Check if this is the active village
+    const isActive = row.classList.contains('active') || 
+                     row.classList.contains('hl') ||
+                     !!row.querySelector('.active');
+
+    return {
+      id: villageId,
+      name: villageName,
+      coordinates,
+      isActive,
+      resources,
+      production: {
+        wood: 0,
+        clay: 0,
+        iron: 0,
+        crop: 0
+      },
+      storage: {
+        warehouse: 0,
+        warehouseCapacity: 0,
+        granary: 0,
+        granaryCapacity: 0
+      }
+    };
+  }
+
+  /**
+   * Parse a single village row from the overview table (fallback method)
    */
   private parseVillageRow(row: Element): VillageOverviewData | null {
     const cells = row.querySelectorAll('td');
