@@ -1,36 +1,37 @@
 # TravianAssistant Session Context
-**Last Updated**: August 25, 2025 - Data Discovery Phase
+**Last Updated**: August 25, 2025 - Data Discovery Complete
 **Current Version**: Backend v1.0.0, Extension v0.5.1
-**Status**: Testing safe scraper with real game data
+**Status**: Mapped game data structure, ready to build proper scrapers
 
-## 🎯 CURRENT FOCUS
+## 🎯 DATA DISCOVERY COMPLETE
 
-### Data Discovery Mission
-We're mapping exactly what data exists on Travian game pages because the overview page provides less than expected:
-- Only shows village names, coordinates, and merchant counts
-- NO individual resource/production/population data in overview table
-- Need to inspect statistics tabs to find where real data lives
+### Key Discovery: Game stores data in JavaScript variables!
+- `window.resources` contains current village's real-time data
+- `window.Travian` contains game configuration
+- Statistics pages show data for ALL villages in tables
 
-### Discovered Issues
-1. **HUD showing fake data**: Total production and resources are calculated, not scraped
-2. **Population**: 785 is correct for CURRENT village only (not total)
-3. **Overview limitations**: `/village/statistics/overview` only has basic info
-4. **ResourceBarPlus conflict**: Another extension Doug is replacing
+### Data Available:
 
-## 📊 PAGES TO INSPECT
+#### From JavaScript (window.resources):
+```javascript
+{
+  production: { l1: wood/hr, l2: clay/hr, l3: iron/hr, l4: crop/hr, l5: freeCrop },
+  storage: { l1: currentWood, l2: currentClay, l3: currentIron, l4: currentCrop },
+  maxStorage: { l1: woodCapacity, l2: clayCapacity, l3: ironCapacity, l4: cropCapacity }
+}
+```
 
-### Statistics Tabs (Priority)
-- [x] `/village/statistics/overview` - Basic village list only
-- [ ] `/village/statistics/resources` - Detailed resource data?
-- [ ] `/village/statistics/culturepoints` - Culture point generation
-- [ ] `/village/statistics/troops` - Troop counts per village
+#### From Statistics Pages:
+- **Overview Tab** (`/village/statistics/overview`): Basic village list
+- **Resources Tab** (`/village/statistics/resources`): 9 villages with production data
+  - Sub-tabs exist: `/warehouse`, `/production`, `/capacity`
+- **Culture Points Tab** (`/village/statistics/culturepoints`): Culture generation
+- **Troops Tab** (`/village/statistics/troops`): Troop counts per village
 
-### Game Pages (Secondary)
-- [ ] `/production.php` - Resource production rates
-- [ ] `/build.php` - Village buildings
-- [ ] `/build.php?id=39` - Rally point (troops)
-- [ ] Marketplace - Trade data
-- [ ] Map - Other players' villages
+#### Proven Selectors:
+- Resources: `#l1` (wood), `#l2` (clay), `#l3` (iron), `#l4` (crop)
+- Tables: `table#overview`, `table#ressources`
+- Village data: Available in table rows on statistics pages
 
 ## ✅ WHAT'S WORKING
 
@@ -39,54 +40,62 @@ We're mapping exactly what data exists on Travian game pages because the overvie
 - All 6 test endpoints passing
 - Account and village storage working
 
-### Extension (v0.5.1) 
-- Safe scraper mode (no navigation)
-- AJAX interceptor initialized
-- Basic data collection from overview
-- HUD displays (but with wrong data)
+### Data Collection
+- Can read `window.resources` for current village
+- Can scrape statistics tables for all villages
+- ResourceBarPlus proven selectors work
 
-## 🔴 WHAT NEEDS FIXING
+## 🔴 WHAT NEEDS BUILDING
 
-### Critical Issues
-1. **Fake calculations**: Remove hardcoded math, get real data
-2. **Chat function**: "Ask a question" failing with error
-3. **Data accuracy**: Scrapers not getting actual game values
+### Next Steps:
+1. **Update scrapers** to use `window.resources` instead of fake calculations
+2. **Parse statistics tables** correctly to get all village data
+3. **Remove fake math** from HUD displays
+4. **Fix chat function** error
 
-### Data Collection Gaps
+### Database Schema Updates Needed:
+Add columns for:
 - Production rates per village
-- Resource stockpiles per village  
+- Storage capacities per village
 - Population per village
 - Culture points
-- Troop counts
-- Building information
 
-## 🚀 NEXT IMMEDIATE ACTIONS
+## 🚀 IMPLEMENTATION PLAN
 
-### Step 1: Complete Page Inspection
-Run the enhanced inspector (v2) on each statistics tab to map data structure
+### Step 1: Fix Current Village Scraper
+- Read from `window.resources` directly
+- Stop fake calculations
 
-### Step 2: Fix Scrapers
-Based on inspection results, update scrapers to get real data from correct locations
+### Step 2: Statistics Page Parser
+- Parse all villages from statistics tables
+- Store in database with proper structure
 
-### Step 3: Update Database Schema
-Expand schema to store all discovered data fields
+### Step 3: HUD Update
+- Display real totals from database
+- Show accurate production sums
 
-### Step 4: Remove Fake Calculations
-Replace hardcoded math with actual scraped values
+## 📝 Inspector Results Summary
 
-## 📝 Inspector Code Location
-The enhanced inspector v2 is at:
-```
-scripts/inspect-travian-data-v2.js
-```
+### Overview Page:
+- 4 tables found, 7 villages
+- Limited data (name, coordinates, merchants)
 
-## 🔑 Session Rules
+### Resources Page:
+- 9 villages with detailed resource data
+- 6 columns per village row
+- Sub-tabs available for more detail
 
-1. **No assumptions** - Inspect actual pages, don't guess structure
-2. **Test everything** - Working means tested with real data
-3. **Update continuously** - Keep SESSION_CONTEXT current
-4. **Remove stale info** - Delete outdated content immediately
+### JavaScript Variables:
+- `window.resources`: Current village real-time data
+- `window.Travian`: Game configuration (needs exploration)
+
+## 🔑 Key Takeaways
+
+1. **Stop scraping HTML for current village** - use `window.resources`
+2. **Statistics pages have ALL villages** - parse those tables
+3. **Sub-tabs exist** - explore `/warehouse`, `/production`, `/capacity`
+4. **ResourceBarPlus selectors work** - use their approach
 
 ---
 
-*Current session focus: Map real data structure via inspection, fix scrapers to collect actual values, remove all fake calculations.*
+*Data discovery phase complete. Ready to implement proper data collection using discovered structures.*
