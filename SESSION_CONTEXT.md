@@ -1,101 +1,106 @@
 # TravianAssistant Session Context
-**Last Updated**: August 25, 2025 - Data Discovery Complete
+**Last Updated**: August 25, 2025 - Sub-tab exploration complete
 **Current Version**: Backend v1.0.0, Extension v0.5.1
-**Status**: Mapped game data structure, ready to build proper scrapers
+**Status**: Data discovery in progress - found rich data in statistics sub-tabs
 
-## 🎯 DATA DISCOVERY COMPLETE
+## 📊 DATA DISCOVERY UPDATE
 
-### Key Discovery: Game stores data in JavaScript variables!
-- `window.resources` contains current village's real-time data
-- `window.Travian` contains game configuration
-- Statistics pages show data for ALL villages in tables
+### Sub-Tab Findings:
 
-### Data Available:
+#### Warehouse Tab (`/resources/warehouse`)
+- 7 villages with **7 cells each**
+- Shows fill percentages and time to full
+- Cell structure: Village, Wood%, Clay%, Iron%, Time to full wood/clay/iron, Crop%, Time to full crop
 
-#### From JavaScript (window.resources):
-```javascript
-{
-  production: { l1: wood/hr, l2: clay/hr, l3: iron/hr, l4: crop/hr, l5: freeCrop },
-  storage: { l1: currentWood, l2: currentClay, l3: currentIron, l4: currentCrop },
-  maxStorage: { l1: woodCapacity, l2: clayCapacity, l3: ironCapacity, l4: cropCapacity }
-}
-```
+#### Production Tab (`/resources/production`)
+- 9 villages with **5 cells each**
+- Shows hourly production rates
+- Cell structure: Village, Wood/hr, Clay/hr, Iron/hr, Total production
+- **Note**: `window.production` object exists on this page!
 
-#### From Statistics Pages:
-- **Overview Tab** (`/village/statistics/overview`): Basic village list
-- **Resources Tab** (`/village/statistics/resources`): 9 villages with production data
-  - Sub-tabs exist: `/warehouse`, `/production`, `/capacity`
-- **Culture Points Tab** (`/village/statistics/culturepoints`): Culture generation
-- **Troops Tab** (`/village/statistics/troops`): Troop counts per village
+#### Capacity Tab (`/resources/capacity`)
+- 9 villages with **3 cells each**
+- Shows storage capacities
+- Cell structure: Village, Warehouse capacity, Granary capacity
 
-#### Proven Selectors:
-- Resources: `#l1` (wood), `#l2` (clay), `#l3` (iron), `#l4` (crop)
-- Tables: `table#overview`, `table#ressources`
-- Village data: Available in table rows on statistics pages
+#### Troops Tab (`/troops`)
+- Shows troop counts per village
+- **12 cells** for each village (10 troop types + village name + total?)
+- Multiple tables for different troop categories
 
-## ✅ WHAT'S WORKING
+#### Support Tab (`/troops/support`)
+- Shows reinforcements between villages
+- **10 separate tables** (one per village showing support details)
+- 11 cells per row in support details
 
-### Backend (v1.0.0)
-- SQLite database with correct schema
-- All 6 test endpoints passing
-- Account and village storage working
+### JavaScript Variables Discovery:
+- `window.resources`: Always present (current village data)
+- `window.production`: Only on production sub-tab!
+- `window.Travian`: Always present (game config)
 
-### Data Collection
-- Can read `window.resources` for current village
-- Can scrape statistics tables for all villages
-- ResourceBarPlus proven selectors work
+## 🔍 STILL TO DISCOVER
 
-## 🔴 WHAT NEEDS BUILDING
+### Critical Missing Data:
+1. **Village coordinates** - Need to find where stored
+2. **Population per village** - Not found in inspected tabs yet
+3. **Culture points** - Need to check culture tab
+4. **Building levels** - Need to check individual village pages
+5. **Hero information** - Not explored yet
+6. **Alliance data** - Not explored yet
+7. **Map data** - Not explored yet
+8. **Market/trade routes** - Not explored yet
+9. **Attack/defense reports** - Not explored yet
+10. **Messages/IGMs** - Not explored yet
 
-### Next Steps:
-1. **Update scrapers** to use `window.resources` instead of fake calculations
-2. **Parse statistics tables** correctly to get all village data
-3. **Remove fake math** from HUD displays
-4. **Fix chat function** error
+### Pages to Explore:
+- `/village/statistics/culturepoints`
+- `/dorf1.php` (resource fields view)
+- `/dorf2.php` (buildings view)
+- `/build.php?id=39` (rally point - movements)
+- `/build.php?id=17` (marketplace - trades)
+- `/hero.php` (hero stats)
+- `/allianz.php` (alliance)
+- `/berichte.php` (reports)
+- `/messages.php` (messages)
 
-### Database Schema Updates Needed:
-Add columns for:
-- Production rates per village
-- Storage capacities per village
-- Population per village
-- Culture points
+### Questions to Answer:
+1. Where are village coordinates stored?
+2. How to get population data?
+3. Can we access building queue data?
+4. Where is merchant/trade data?
+5. How to detect incoming attacks?
 
-## 🚀 IMPLEMENTATION PLAN
+## ✅ CONFIRMED WORKING
 
-### Step 1: Fix Current Village Scraper
-- Read from `window.resources` directly
-- Stop fake calculations
+### Data Collection Methods:
+1. **JavaScript variables** (`window.resources`, `window.production`)
+2. **Statistics tables** with consistent IDs
+3. **ResourceBarPlus selectors** (`#l1`, `#l2`, etc.)
 
-### Step 2: Statistics Page Parser
-- Parse all villages from statistics tables
-- Store in database with proper structure
+### Table IDs Found:
+- `table#overview` - Overview tab
+- `table#ressources` - Resources main tab
+- `table#warehouse` - Warehouse sub-tab
+- `table#production` - Production sub-tab  
+- `table#capacity` - Capacity sub-tab
+- `table#troops` - Troops tab
 
-### Step 3: HUD Update
-- Display real totals from database
-- Show accurate production sums
+## 🎯 NEXT SESSION PRIORITIES
 
-## 📝 Inspector Results Summary
+1. **Explore culture points tab** - Critical for game progression
+2. **Check village pages** (`dorf1.php`, `dorf2.php`) for building data
+3. **Find village coordinates** - Essential for map features
+4. **Explore hero page** - Important for complete account status
+5. **Check rally point** - For movement/attack detection
 
-### Overview Page:
-- 4 tables found, 7 villages
-- Limited data (name, coordinates, merchants)
+## 📝 Key Insights
 
-### Resources Page:
-- 9 villages with detailed resource data
-- 6 columns per village row
-- Sub-tabs available for more detail
-
-### JavaScript Variables:
-- `window.resources`: Current village real-time data
-- `window.Travian`: Game configuration (needs exploration)
-
-## 🔑 Key Takeaways
-
-1. **Stop scraping HTML for current village** - use `window.resources`
-2. **Statistics pages have ALL villages** - parse those tables
-3. **Sub-tabs exist** - explore `/warehouse`, `/production`, `/capacity`
-4. **ResourceBarPlus selectors work** - use their approach
+1. **Sub-tabs have specialized data** - Each focuses on specific aspects
+2. **Window objects vary by page** - `window.production` only on production tab
+3. **Table structures are consistent** - Can build reliable parsers
+4. **Multiple data sources needed** - Must combine JS vars + tables
+5. **Some data still hidden** - Coordinates, population not found yet
 
 ---
 
-*Data discovery phase complete. Ready to implement proper data collection using discovered structures.*
+*Data discovery ~60% complete. Need to explore remaining pages for full picture.*
