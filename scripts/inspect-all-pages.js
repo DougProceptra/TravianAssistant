@@ -1,6 +1,6 @@
-// TravianAssistant Multi-Page Inspector v3
-// Automatically inspects all key pages and saves results to localStorage
-// Run this ONCE and it will navigate through pages collecting data
+// TravianAssistant Multi-Page Inspector v4
+// Enhanced with ResourceBarPlus proven selectors and techniques
+// Run this ONCE and it will navigate through pages collecting REAL data
 
 (function() {
   'use strict';
@@ -8,14 +8,15 @@
   const INSPECTOR_KEY = 'TLA_INSPECTION_RESULTS';
   const CURRENT_PAGE_KEY = 'TLA_CURRENT_INSPECTION';
   
-  // Pages to inspect in order
+  // Pages to inspect - updated based on ResourceBarPlus approach
   const PAGES_TO_INSPECT = [
     { url: '/village/statistics/overview', name: 'Statistics Overview' },
     { url: '/village/statistics/resources', name: 'Resources Tab' },
     { url: '/village/statistics/culturepoints', name: 'Culture Points Tab' },
     { url: '/village/statistics/troops', name: 'Troops Tab' },
     { url: '/production.php', name: 'Production Page' },
-    { url: '/build.php', name: 'Village Center' },
+    { url: '/dorf1.php', name: 'Village Resources View' },
+    { url: '/dorf2.php', name: 'Village Buildings View' },
     { url: '/build.php?id=39', name: 'Rally Point' },
     { url: '/build.php?id=17', name: 'Marketplace' }
   ];
@@ -31,118 +32,188 @@
     localStorage.setItem(CURRENT_PAGE_KEY, JSON.stringify(state));
   }
   
-  // Inspect current page
+  // Enhanced page inspector using ResourceBarPlus techniques
   function inspectCurrentPage() {
     const results = {
       url: window.location.pathname + window.location.search,
       timestamp: new Date().toISOString(),
       tables: [],
       resources: null,
+      production: null,
       population: null,
       villages: [],
-      rawData: {}
+      rawData: {},
+      gameVariables: {}
     };
     
-    // Get resource bar data
-    const stockBar = document.querySelector('#stockBar, .stockBar');
+    // Method 1: Get resources from stockBar (ResourceBarPlus method)
+    const stockBar = document.querySelector('#stockBar, .stockBar, .stockBarTable');
     if (stockBar) {
       results.resources = {
-        wood: stockBar.querySelector('.wood .value')?.textContent?.trim(),
-        clay: stockBar.querySelector('.clay .value')?.textContent?.trim(),
-        iron: stockBar.querySelector('.iron .value')?.textContent?.trim(),
-        crop: stockBar.querySelector('.crop .value')?.textContent?.trim(),
-        freeCrop: stockBar.querySelector('.freeCrop .value')?.textContent?.trim()
+        // ResourceBarPlus uses these exact selectors
+        wood: parseInt(document.querySelector('#l1, .r1')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        clay: parseInt(document.querySelector('#l2, .r2')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        iron: parseInt(document.querySelector('#l3, .r3')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        crop: parseInt(document.querySelector('#l4, .r4')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        freeCrop: parseInt(document.querySelector('#l5, .r5')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        
+        // Storage capacities
+        woodCapacity: parseInt(document.querySelector('#stockBarResource1 .capacity')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        clayCapacity: parseInt(document.querySelector('#stockBarResource2 .capacity')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        ironCapacity: parseInt(document.querySelector('#stockBarResource3 .capacity')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        cropCapacity: parseInt(document.querySelector('#stockBarResource4 .capacity')?.textContent?.replace(/[^\d]/g, '') || '0')
       };
     }
     
-    // Get population
-    const popElement = document.querySelector('[class*="population"] .value, .inhabitants');
-    if (popElement) {
-      results.population = popElement.textContent.trim();
+    // Method 2: Get production rates
+    const productionTable = document.querySelector('#production, .production, table.production');
+    if (productionTable) {
+      results.production = {
+        wood: parseInt(productionTable.querySelector('tr:nth-child(1) td.num')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        clay: parseInt(productionTable.querySelector('tr:nth-child(2) td.num')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        iron: parseInt(productionTable.querySelector('tr:nth-child(3) td.num')?.textContent?.replace(/[^\d]/g, '') || '0'),
+        crop: parseInt(productionTable.querySelector('tr:nth-child(4) td.num')?.textContent?.replace(/[^\d]/g, '') || '0')
+      };
     }
     
-    // Inspect all tables
+    // Method 3: Get population (ResourceBarPlus technique)
+    const popElement = document.querySelector('.inhabitants, .population .value, #population');
+    if (popElement) {
+      results.population = parseInt(popElement.textContent.replace(/[^\d]/g, '') || '0');
+    }
+    
+    // Method 4: Check for game's JavaScript variables (key insight from ResourceBarPlus)
+    if (typeof window.resources !== 'undefined') {
+      results.gameVariables.resources = window.resources;
+    }
+    if (typeof window.production !== 'undefined') {
+      results.gameVariables.production = window.production;
+    }
+    if (typeof window.storage !== 'undefined') {
+      results.gameVariables.storage = window.storage;
+    }
+    if (typeof window.Travian !== 'undefined' && window.Travian.Game) {
+      results.gameVariables.TravianGame = {
+        villageId: window.Travian.Game.villageId,
+        speed: window.Travian.Game.speed
+      };
+    }
+    
+    // Method 5: Special handling for statistics pages (ResourceBarPlus approach)
+    if (window.location.pathname.includes('/village/statistics')) {
+      const overviewTable = document.querySelector('table#overview, table.overview');
+      if (overviewTable) {
+        const rows = overviewTable.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length > 0) {
+            const villageData = {
+              name: cells[0]?.querySelector('a')?.textContent?.trim() || cells[0]?.textContent?.trim(),
+              coordinates: cells[1]?.textContent?.trim(),
+              population: parseInt(cells[2]?.textContent?.replace(/[^\d]/g, '') || '0'),
+              // Look for resource columns
+              wood: parseInt(cells[3]?.textContent?.replace(/[^\d]/g, '') || '0'),
+              clay: parseInt(cells[4]?.textContent?.replace(/[^\d]/g, '') || '0'),
+              iron: parseInt(cells[5]?.textContent?.replace(/[^\d]/g, '') || '0'),
+              crop: parseInt(cells[6]?.textContent?.replace(/[^\d]/g, '') || '0')
+            };
+            results.villages.push(villageData);
+          }
+        });
+      }
+    }
+    
+    // Method 6: Check dorf1 and dorf2 pages (village views)
+    if (window.location.pathname.includes('dorf1')) {
+      // Resource fields
+      const fields = document.querySelectorAll('#village_map .gid1, #village_map .gid2, #village_map .gid3, #village_map .gid4');
+      results.rawData.resourceFields = [];
+      fields.forEach(field => {
+        const level = field.querySelector('.level')?.textContent?.replace(/[^\d]/g, '');
+        if (level) {
+          results.rawData.resourceFields.push({
+            type: field.className.match(/gid(\d)/)?.[1],
+            level: parseInt(level)
+          });
+        }
+      });
+    }
+    
+    if (window.location.pathname.includes('dorf2')) {
+      // Buildings
+      const buildings = document.querySelectorAll('#village_map .building');
+      results.rawData.buildings = [];
+      buildings.forEach(building => {
+        const gid = building.className.match(/g(\d+)/)?.[1];
+        const level = building.querySelector('.level')?.textContent?.replace(/[^\d]/g, '');
+        if (gid && level) {
+          results.rawData.buildings.push({
+            gid: parseInt(gid),
+            level: parseInt(level)
+          });
+        }
+      });
+    }
+    
+    // Method 7: Capture all tables for analysis
     document.querySelectorAll('table').forEach((table, idx) => {
       const tableData = {
         index: idx,
         id: table.id || null,
         className: table.className || null,
         headers: [],
-        sampleRows: [],
+        firstRow: [],
         rowCount: 0
       };
       
       // Get headers
-      const headers = table.querySelectorAll('thead th, tbody tr:first-child th, tr:first-child td');
+      const headers = table.querySelectorAll('thead th, tbody tr:first-child th');
       headers.forEach(h => {
         const text = h.textContent.trim();
         if (text) tableData.headers.push(text);
       });
       
-      // Get sample rows (first 3 data rows)
-      const rows = table.querySelectorAll('tbody tr, tr');
-      tableData.rowCount = rows.length;
-      
-      rows.forEach((row, rowIdx) => {
-        if (rowIdx < 3) {
-          const rowData = [];
-          row.querySelectorAll('td').forEach(cell => {
-            rowData.push(cell.textContent.trim());
+      // Get first data row for structure analysis
+      const firstDataRow = table.querySelector('tbody tr:nth-child(2), tbody tr:first-child');
+      if (firstDataRow) {
+        firstDataRow.querySelectorAll('td').forEach(cell => {
+          tableData.firstRow.push({
+            text: cell.textContent.trim(),
+            className: cell.className,
+            hasLink: !!cell.querySelector('a'),
+            hasInput: !!cell.querySelector('input')
           });
-          if (rowData.length > 0) {
-            tableData.sampleRows.push(rowData);
-          }
-        }
-      });
+        });
+      }
       
-      if (tableData.headers.length > 0 || tableData.sampleRows.length > 0) {
+      tableData.rowCount = table.querySelectorAll('tbody tr').length;
+      
+      if (tableData.headers.length > 0 || tableData.firstRow.length > 0) {
         results.tables.push(tableData);
       }
     });
     
-    // Special handling for statistics pages
-    if (window.location.pathname.includes('/village/statistics')) {
-      // Look for village data in any format
-      const villageRows = document.querySelectorAll('tr[data-village-id], .village-row, tbody tr');
-      villageRows.forEach(row => {
-        const villageData = {};
-        row.querySelectorAll('td').forEach((cell, idx) => {
-          villageData[`col_${idx}`] = cell.textContent.trim();
+    // Method 8: Try to intercept AJAX data (ResourceBarPlus technique)
+    // This captures data that might be loaded dynamically
+    if (window.XMLHttpRequest) {
+      const originalOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function(method, url) {
+        this.addEventListener('load', function() {
+          if (url.includes('ajax') || url.includes('api')) {
+            try {
+              const response = JSON.parse(this.responseText);
+              results.rawData.ajaxResponses = results.rawData.ajaxResponses || [];
+              results.rawData.ajaxResponses.push({
+                url: url,
+                data: response
+              });
+            } catch (e) {
+              // Not JSON, ignore
+            }
+          }
         });
-        if (Object.keys(villageData).length > 0) {
-          results.villages.push(villageData);
-        }
-      });
-    }
-    
-    // Special handling for production page
-    if (window.location.pathname.includes('production.php')) {
-      const production = {};
-      document.querySelectorAll('.production, .num, [class*="prod"]').forEach(el => {
-        const text = el.textContent.trim();
-        if (text.match(/\d+/)) {
-          const parent = el.closest('tr, div');
-          const label = parent?.querySelector('.res, .type, .name')?.textContent?.trim() || 'unknown';
-          production[label] = text;
-        }
-      });
-      results.rawData.production = production;
-    }
-    
-    // Special handling for building page
-    if (window.location.pathname.includes('build.php')) {
-      const buildings = [];
-      document.querySelectorAll('.buildingSlot, .building, [class*="building"]').forEach(el => {
-        const building = {
-          id: el.getAttribute('data-building-id') || el.className,
-          level: el.querySelector('.level, .lvl, [class*="level"]')?.textContent?.trim(),
-          name: el.querySelector('.name, [class*="name"]')?.textContent?.trim()
-        };
-        if (building.level || building.name) {
-          buildings.push(building);
-        }
-      });
-      results.rawData.buildings = buildings;
+        originalOpen.apply(this, arguments);
+      };
     }
     
     return results;
@@ -186,27 +257,29 @@
       const pageData = results[pageName];
       console.group(`📄 ${pageName}`);
       
-      if (pageData.tables && pageData.tables.length > 0) {
-        console.log(`Tables found: ${pageData.tables.length}`);
-        pageData.tables.forEach(table => {
-          console.log(`  - ${table.id || table.className || 'unnamed'}: ${table.headers.join(', ')}`);
-        });
+      if (pageData.resources) {
+        console.log('✅ Resources found:', pageData.resources);
       }
       
-      if (pageData.resources) {
-        console.log('Resources:', pageData.resources);
+      if (pageData.production) {
+        console.log('✅ Production found:', pageData.production);
       }
       
       if (pageData.population) {
-        console.log('Population:', pageData.population);
+        console.log('✅ Population:', pageData.population);
+      }
+      
+      if (pageData.gameVariables && Object.keys(pageData.gameVariables).length > 0) {
+        console.log('✅ Game variables found:', pageData.gameVariables);
       }
       
       if (pageData.villages && pageData.villages.length > 0) {
-        console.log(`Villages found: ${pageData.villages.length}`);
+        console.log(`✅ Villages found: ${pageData.villages.length}`);
+        console.table(pageData.villages);
       }
       
-      if (pageData.rawData && Object.keys(pageData.rawData).length > 0) {
-        console.log('Additional data:', Object.keys(pageData.rawData));
+      if (pageData.tables && pageData.tables.length > 0) {
+        console.log(`📋 Tables found: ${pageData.tables.length}`);
       }
       
       console.groupEnd();
@@ -245,6 +318,7 @@
     // If we're on a page to inspect and it matches our state index
     if (currentPageIndex === state.index) {
       console.log(`🔍 Inspecting: ${currentPageName}`);
+      console.log('Using ResourceBarPlus proven selectors...');
       
       // Inspect this page
       const pageResults = inspectCurrentPage();
@@ -304,7 +378,8 @@
     }
   };
   
-  console.log('%c🔍 TravianAssistant Multi-Page Inspector v3', 'color: blue; font-size: 14px; font-weight: bold');
+  console.log('%c🔍 TravianAssistant Inspector v4 - Enhanced with ResourceBarPlus techniques', 'color: blue; font-size: 14px; font-weight: bold');
+  console.log('This version uses proven selectors from ResourceBarPlus that successfully get game data');
   console.log('Commands:');
   console.log('  TLA_Inspector.start()  - Start fresh inspection');
   console.log('  TLA_Inspector.resume() - Resume from current page');
