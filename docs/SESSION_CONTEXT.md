@@ -18,184 +18,155 @@
 
 ---
 
-*Last Updated: August 26, 2025, 18:45 PST*
-*Session Status: ACTIVE - Repository location documented*
+*Last Updated: August 26, 2025, 19:22 PST*
+*Session Status: ACTIVE - AI Integration Complete*
 
-## MAJOR PIVOT: FROM CALCULATOR TO ELITE AI ASSISTANT
+## TODAY'S PROGRESS: AI CLIENT INTEGRATION ✅
 
-### What We Built vs What We Need
-**Original Plan**: Travian calculator with AI suggestions
-**Reality Check**: Doug has 15 years experience - doesn't need basic calculations
-**New Direction**: Elite AI strategist providing non-obvious competitive advantages
+### What We Built (Session 2 - Aug 26 Evening)
 
-## TODAY'S ACCOMPLISHMENTS (Aug 26)
+1. **Elite AI Client** (`packages/extension/src/ai/ai-client.ts`)
+   - Proper system message structure with elite instructions
+   - Multiple decision prompts for different scenarios
+   - Structured response format with recommendations, insights, warnings
+   - Fallback logic for when AI is unavailable
+   - Context persistence for learning
 
-### Phase 1: Data Extraction ✅
-- Cloned Kirilloid repository
-- Extracted game constants (buildings, costs, CP values)
-- Created `travian-constants.ts` with core mechanics
-- Built basic settlement calculator
+2. **Test Framework** (`packages/extension/src/ai/test-ai-client.ts`)
+   - Realistic game state mocking
+   - Multiple scenario testing (daily review, under attack, settlement, resources)
+   - Free-form question testing
+   - Confidence scoring and priority levels
 
-### Phase 2: Realization & Pivot ✅
-**Key Insight**: Calculators are rigid. Travian is dynamic. Elite players need adaptive AI, not formulas.
+3. **Background Service Update** (`packages/extension/src/background.ts v0.5.0`)
+   - Integrated TravianAIClient
+   - Added strategic analysis endpoints
+   - Context storage and retrieval
+   - Pattern learning from high-confidence insights
+   - Multiple message types for different analysis needs
 
-Issues with pure calculator approach:
-- Can't adapt when attacked
-- Ignores psychological factors
-- Misses political dynamics
-- No learning from experience
-- Treats all servers identically
+4. **Replit Test Script** (`test-ai-prompts.js`)
+   - Simple Node.js script for quick testing
+   - No dependencies required
+   - Clear output formatting
+   - Troubleshooting guidance
 
-### Phase 3: Elite AI Architecture ✅
-Created three critical components:
-
-1. **Elite System Instructions** (`elite-player-instructions.md`)
-   - Thinks like top-20 player, not helper
-   - Considers psychology, timing, server politics
-   - Focuses on non-obvious insights
-   - Challenges conventional wisdom
-
-2. **Strategic Decision Prompts** (`elite-decision-prompts.md`)
-   - Daily strategic reviews
-   - Attack/defense analysis
-   - Diplomacy with game theory
-   - Win condition assessment
-   - Innovation opportunities
-
-3. **Context Management** (`context-manager.ts`)
-   - Integrates with Doug's context_tools
-   - Stores patterns after sessions
-   - Queries before major decisions
-   - Learns from outcomes
-   - Builds opponent profiles
-
-## THE REAL ARCHITECTURE
+## ARCHITECTURE STATUS
 
 ```
-Game State → AI Analysis (with Context) → Strategic Insights
-                    ↑                           ↓
-            Historical Patterns          Learn & Store
+Chrome Extension → Background Service → AI Client → Vercel Proxy → Claude
+       ↓                ↓                   ↓            ↓           ↓
+   Game State      Message Handler    Elite Prompts   API Key    Analysis
+       ↓                ↓                   ↓            ↓           ↓
+     Scraper          Router          Decision Types  Secured    JSON Response
 ```
 
-Not: "Build Main Building level 5 by hour 72"
-But: "Building at 3am reveals sleep schedule. Consider deception pattern."
+### System Message Structure
+- **Identity**: Elite Travian strategist (top-20 player level)
+- **Principles**: Psychology > Mechanics, Deception > Optimization
+- **Analysis Layers**: Immediate, Short-term, Mid-term, Strategic, Server-winning
+- **Focus**: Non-obvious insights, counter-plays, server-specific patterns
 
-## FILES CREATED TODAY
+### Decision Types Implemented
+1. `daily_review` - Strategic planning for next 24 hours
+2. `under_attack` - Response strategies beyond defend/dodge
+3. `settlement` - Challenge "always settle ASAP" doctrine
+4. `resource_crisis` - Creative solutions beyond "build more"
+5. `artifact_prep` - Positioning and misdirection strategies
 
-### Data/Calculator Phase
-- `/scripts/analyze-kirilloid.sh`
-- `/scripts/extract-game-data.sh`
-- `/scripts/extract-settlement-data.sh`
-- `/packages/extension/src/game-data/travian-constants.ts`
-- `/packages/extension/src/calculators/settlement-calculator.ts`
-- `/packages/extension/src/calculators/settlement-calculator-v2.ts`
+## TESTING INSTRUCTIONS
 
-### Elite AI Phase
-- `/packages/extension/src/ai/elite-player-instructions.md` ⭐
-- `/packages/extension/src/ai/elite-decision-prompts.md` ⭐
-- `/packages/extension/src/ai/context-manager.ts` ⭐
-
-### Documentation
-- `/docs/KIRILLOID_INTEGRATION_PLAN.md`
-- `/docs/AI_SETTLEMENT_LOGIC.md`
-
-## CRITICAL INSIGHTS GAINED
-
-1. **Data Extraction Incomplete**: 
-   - Missing Vikings, Spartans tribes
-   - Only got T5, not T3/T4 variants
-   - No troop data, hero mechanics, adventures
-   - BUT: Have enough for beta testing
-
-2. **Architecture Must Be AI-First**:
-   - Calculators = rigid, predictable
-   - AI = adaptive, learns, surprises opponents
-   - Context is everything in competitive play
-
-3. **Doug Needs Elite Insights, Not Basics**:
-   - Skip "how to build a warehouse"
-   - Focus on "why enemies think you're weak"
-   - Provide counter-intuitive strategies
-
-## READY FOR TESTING
-
-### What Works Now
-✅ Game constants available for reference
-✅ Elite AI instructions ready
-✅ Decision prompts for critical moments
-✅ Context management framework
-✅ Extension collecting game state
-
-### Testing Priority
-1. **Connect game state to AI prompts**
-2. **Send to Claude via Vercel proxy**
-3. **Display strategic insights in HUD**
-4. **Start storing patterns with context_tools**
-
-### What to Test First
-- Daily strategic review with current game state
-- Settlement location decision (beyond simple distance)
-- Response to being scouted
-- Resource crisis resolution
-
-## IMMEDIATE NEXT SESSION TASKS
-
-### Technical Integration
+### Quick Test (Replit)
 ```bash
 # Pull latest code
-cd ~/workspace
 git pull origin main
 
-# Test AI prompt generation
+# Run test script
 node test-ai-prompts.js
-
-# Connect to Vercel endpoint
-curl -X POST https://travian-proxy-simple.vercel.app/api/anthropic \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "[game state] + [elite prompt]"}'
 ```
 
-### First Test Scenario
-1. Export current game state from extension
-2. Apply "Daily Strategic Review" prompt
-3. Send to Claude with elite instructions
-4. Evaluate quality of insights
-5. Store patterns that emerge
+### Full Integration Test
+1. **Update Chrome Extension**
+   - Pull latest from GitHub
+   - Reload extension in Chrome
+   - Check version shows v0.5.0
+
+2. **Test AI Analysis**
+   - Open Travian game
+   - Click extension icon
+   - Select "Strategic Analysis"
+   - Choose scenario type
+   - Review recommendations
+
+3. **Monitor Console**
+   - Open Chrome DevTools
+   - Filter for "[TLA BG]"
+   - Watch for Elite AI responses
+
+## NEXT STEPS
+
+### Immediate (This Session if Time)
+- [ ] Test with live game state
+- [ ] Verify Vercel proxy with new system message format
+- [ ] Check JSON parsing reliability
+
+### Next Session Priority
+1. **Context Learning Integration**
+   - Wire up to Doug's context_tools
+   - Store patterns after each session
+   - Query before major decisions
+   - Build opponent profiles
+
+2. **HUD Display Enhancement**
+   - Show recommendations with priority
+   - Add confidence indicators
+   - Display insights/warnings
+   - Quick action buttons
+
+3. **Real Game Testing**
+   - Test all 5 decision types
+   - Measure response quality
+   - Tune prompts based on results
+   - Gather elite player feedback
+
+## KEY DECISIONS THIS SESSION
+
+1. **System Message in AI Client**: Embedded directly for reliability
+2. **Multiple Decision Types**: Different prompts for different situations
+3. **Structured JSON Response**: Consistent format for parsing
+4. **Context Persistence**: Store high-confidence insights
+5. **Fallback Intelligence**: Smart defaults when AI unavailable
 
 ## SUCCESS METRICS
 
-### Not Success
-❌ Calculating building costs accurately
-❌ Predicting settlement to the hour
-❌ Following optimal build order
+### Technical Success ✅
+- AI client properly structured
+- System messages include elite thinking
+- Multiple decision prompts ready
+- Background service integrated
+- Test framework complete
 
-### Real Success
-✅ Identifying non-obvious opportunities
-✅ Predicting opponent behavior
-✅ Winning through superior strategy
-✅ Achieving more with less time investment
+### Strategic Success (To Verify)
+- Recommendations surprise experienced players
+- Insights go beyond obvious moves
+- Considers psychological factors
+- Adapts to server-specific patterns
+- Provides contrarian strategies when optimal
 
-## KEY DECISIONS DOCUMENTED
+## TROUBLESHOOTING
 
-1. **Pivot from Calculator to AI**: Calculators exist. Elite AI doesn't.
-2. **Context Over Constants**: Patterns matter more than formulas
-3. **Psychology Over Math**: Human behavior drives Travian
-4. **Learn and Adapt**: Each server is unique
+| Issue | Solution |
+|-------|----------|
+| AI returns generic advice | Check system message is being sent |
+| JSON parsing fails | AI client has fallback extraction |
+| Proxy connection fails | Verify ANTHROPIC_API_KEY in Vercel |
+| No recommendations show | Check Chrome console for errors |
 
-## RISKS & MITIGATIONS
+## SESSION SUMMARY
 
-| Risk | Mitigation |
-|------|------------|
-| AI gives generic advice | Elite system instructions enforce competitive thinking |
-| Missing game data | Use AI to reason about unknowns |
-| Context gets stale | Continuous learning via context_tools |
-| Too complex for beta | Start with daily review, expand from there |
+Successfully connected game state to AI client with elite system instructions and multiple decision prompts. Architecture allows for sophisticated strategic analysis beyond basic calculations. Ready for live testing with real game data.
 
-## HANDOFF READY
-
-Everything committed to GitHub. Architecture defined. Ready for integration testing.
-
-The system now thinks like an elite player, not a calculator.
+The system now properly thinks like an elite player and can provide different types of analysis based on the game situation.
 
 ---
-*Session complete. Architecture pivoted from calculator to elite AI assistant. Ready for testing.*
+*Session 2 complete. AI integration successful. Ready for live game testing.*
