@@ -1,7 +1,7 @@
 /**
  * Overview Parser - Safe multi-village data collection
  * Fetches dorf3.php to get all village data without navigation
- * v0.5.4 - Fixed URL and selectors based on actual game structure
+ * v0.5.5 - Added getAllCachedVillages method for safe-scraper compatibility
  */
 
 export interface VillageOverviewData {
@@ -68,7 +68,15 @@ export class OverviewParser {
   private readonly OVERVIEW_URL = '/dorf3.php';
   
   constructor() {
-    console.log('[TLA Overview] Parser v0.5.4 initialized - using /dorf3.php');
+    console.log('[TLA Overview] Parser v0.5.5 initialized - using /dorf3.php');
+  }
+
+  /**
+   * Get all cached villages - REQUIRED BY safe-scraper.ts
+   * Returns the current cache as an array
+   */
+  public getAllCachedVillages(): VillageOverviewData[] {
+    return Array.from(this.cache.values());
   }
 
   /**
