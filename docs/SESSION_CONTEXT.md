@@ -1,62 +1,72 @@
 # TravianAssistant Session Context
-*Last Updated: August 22, 2025, 14:05 PST*
-*Session Health: 🟠 Near Limit - Session Closing*
+
+## ⚠️ CRITICAL: CODE DEVELOPMENT RULES ⚠️
+**ALL CODE IS WRITTEN TO GITHUB - NEVER DUMP CODE IN SESSION**
+- Code goes in GitHub repos, NOT in chat sessions
+- Use git commits for all implementation work
+- Session is for discussion, decisions, and architecture
+- Small script snippets for Replit execution are OK
+- Full implementations must go directly to GitHub files
+- Workflow: GitHub → Pull to Replit → Deploy
+**VIOLATING THIS WASTES SESSION SPACE AND BREAKS WORKFLOW**
+
+---
+
+*Last Updated: August 26, 2025, 14:35 PST*
+*Session Health: 🟢 Fresh Session*
 
 ## CURRENT STATE
-- **Working**: Safe scraping v0.5.0 - Overview parser + AJAX interceptor (no navigation)
-- **Proxy**: Operational at https://travian-proxy-simple.vercel.app/api/proxy
-- **Focus**: Context management system established, ready for testing phase
-- **Next Step**: Test safe scraping on actual game, then strategic planning session
+- **Version**: v0.5.1 - Data discovery phase
+- **Priority**: Complete data domain mapping for AI insights
+- **Timeline**: Beta by Aug 29, Production Sep 9
+- **Success Metric**: 4-8 hours faster settlement via AI assistance
 
-## RECENT CHANGES
-- Established 3-layer context management system (Aug 22, 14:00)
-- Updated SESSION_CONTEXT.md to living document format (Aug 22, 13:45)
-- Stored key workflow patterns to context_intelligence (Aug 22, 13:55)
-- Refactored to safe scraping without navigation (Aug 21 evening)
+## KEY DECISIONS TODAY
+- Focus on comprehensive data collection before UI
+- Building AI-powered assistant, not just visualization tool
+- Need to map complete data domain for meaningful insights
+- Track full architecture to prevent drift
 
-## BLOCKERS & ISSUES
-- Safe scraping implementation not yet tested on live game
-- Need to verify selector compatibility with Doug's specific Travian server
+## DATA COLLECTION STATUS
+Recent work (Aug 25):
+- Created multiple inspector tools for discovering game data
+- Found ResourceBarPlus selectors that work
+- Discovered sub-tab structure in game interface
+- Identified key data sources: dorf3.php, AJAX calls, JS objects
 
-## ARCHITECTURE & DESIGN
-- See: `/docs/APPLICATION_DESIGN_V2.md` for full architecture
-- See: `/docs/DEVELOPMENT_ROADMAP_v3.md` for roadmap
-- Key Decision: Safe scraping via overview page + AJAX (no navigation)
-- Context System: 3-layer management (system instructions, SESSION_CONTEXT, context_intelligence)
+## IMMEDIATE TASKS
+1. Define complete data domain specification
+2. Create data collectors in GitHub (NOT session)
+3. Test collectors on live game
+4. Build AI prompt engineering for settlement optimization
 
-## KEY TECHNICAL DETAILS
-Safe Data Collection System:
-- `overview-parser.ts` - Fetches `/dorf3.php` for ALL villages
-- `ajax-interceptor.ts` - Monitors game's AJAX calls
-- `safe-scraper.ts` - Combines all data sources
-- NO NAVIGATION = NO GAMEPLAY INTERRUPTION
+## ARCHITECTURE REFERENCE
+- `/docs/APPLICATION_DESIGN_V2.md` - Safe scraping approach
+- `/docs/DEVELOPMENT_ROADMAP_v3.md` - Full V3 roadmap  
+- `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` - Original spec
 
-## ENDPOINTS & SERVICES
-- Vercel Proxy: https://travian-proxy-simple.vercel.app/api/proxy - ✅ Working
-- Claude AI: Sonnet 4 integration - ✅ Functional
-- Build: Ready to test after pulling latest
+## VERIFIED WORKING
+- Vercel Proxy: https://travian-proxy-simple.vercel.app/api/proxy
+- Claude AI: Sonnet 4 integration tested and functional
+- Chrome Extension: Basic structure deployed
 
-## PENDING DECISIONS
-- Strategic objectives clarification (planned for next session)
-- Feature priorities after testing phase
-- Selector compatibility approach if current ones don't work
+## NEXT ACTIONS
+1. Complete data domain specification document
+2. Implement collectors in GitHub repo
+3. Test on Doug's active game
+4. Build settlement advisor prompts
 
-## DEBUG COMMANDS
+## DEBUG TOOLS
 ```javascript
-window.TLA.debug()           // Check current state
-window.TLA.state()           // Get detailed state
-window.TLA.overviewParser.fetchAllVillages() // Test parser
-window.TLA.ajaxInterceptor.isActive()       // Check AJAX
+// Run these in browser console when testing
+window.TLA?.debug()
+localStorage.getItem('travian_')  // Check for game storage
+document.querySelector('#villages')  // Test overview selector
 ```
 
-## SESSION HANDOFF
-- **Session Focus**: Context management system design and implementation
-- **Completed**: 3-layer context system established and documented
-- **Next Session**: Strategic planning for TravianAssistant objectives
-- **Ready For**: Testing current implementation, then feature planning
-
-## NOTES
-- Context management working well - living document approach validated
-- Pattern storage to context_intelligence successful
-- Doug prefers clean session starts for major planning discussions
-- System ready for development work after strategic alignment
+## SESSION RULES REMINDER
+- Architecture discussions = YES
+- Strategic decisions = YES  
+- Code implementation = GITHUB ONLY
+- Script snippets = OK if brief
+- Full code dumps = NEVER
