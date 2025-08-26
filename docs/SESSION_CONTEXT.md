@@ -1,5 +1,12 @@
 # TravianAssistant Session Context
 
+## ⚠️ PERMANENT PROJECT INFORMATION ⚠️
+**Repository**: `dougproceptra/travianassistant` (GitHub)
+- Always use this repository location
+- Owner: dougproceptra
+- Repo: travianassistant
+- Main branch: main
+
 ## ⚠️ CRITICAL: CODE DEVELOPMENT RULES ⚠️
 **ALL CODE IS WRITTEN TO GITHUB - NEVER DUMP CODE IN SESSION**
 - Code goes in GitHub repos, NOT in chat sessions
@@ -11,8 +18,8 @@
 
 ---
 
-*Last Updated: August 26, 2025, 16:10 PST*
-*Session Status: COMPLETE - Ready for Testing*
+*Last Updated: August 26, 2025, 18:45 PST*
+*Session Status: ACTIVE - Repository location documented*
 
 ## MAJOR PIVOT: FROM CALCULATOR TO ELITE AI ASSISTANT
 
