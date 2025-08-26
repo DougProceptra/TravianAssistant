@@ -1,18 +1,22 @@
 // packages/extension/src/background.ts
-// v0.4.2 - Fixed background service initialization
+// v0.5.0 - Elite AI Integration
 
 import { backendSync } from './background/backend-sync';
+import TravianAIClient from './ai/ai-client';
 
-console.log('[TLA BG] Background service starting... v0.4.2');
+console.log('[TLA BG] Background service starting... v0.5.0 - Elite AI');
 
 const PROXY_URL = 'https://travian-proxy-simple.vercel.app/api/proxy';
 
 class BackgroundService {
   private proxyUrl: string = PROXY_URL;
   private initialized: boolean = false;
+  private aiClient: TravianAIClient;
+  private lastContext: any = {};
 
   constructor() {
-    console.log('[TLA BG] Constructing background service');
+    console.log('[TLA BG] Constructing background service with Elite AI');
+    this.aiClient = new TravianAIClient(this.proxyUrl);
     this.initialize().catch(err => {
       console.error('[TLA BG] Failed to initialize:', err);
     });
@@ -26,10 +30,15 @@ class BackgroundService {
 
     // Check if proxy URL is configured
     try {
-      const stored = await chrome.storage.sync.get(['proxyUrl']);
+      const stored = await chrome.storage.sync.get(['proxyUrl', 'aiContext']);
       if (stored.proxyUrl) {
         this.proxyUrl = stored.proxyUrl;
+        this.aiClient = new TravianAIClient(this.proxyUrl);
         console.log('[TLA BG] Using custom proxy URL');
+      }
+      if (stored.aiContext) {
+        this.lastContext = stored.aiContext;
+        console.log('[TLA BG] Loaded AI context from storage');
       }
     } catch (err) {
       console.error('[TLA BG] Storage error:', err);
@@ -54,7 +63,7 @@ class BackgroundService {
     });
 
     this.initialized = true;
-    console.log('[TLA BG] Background service initialized successfully');
+    console.log('[TLA BG] Background service initialized with Elite AI');
     console.log('[TLA BG] Proxy URL:', this.proxyUrl);
     
     // Test proxy connection
@@ -68,7 +77,7 @@ class BackgroundService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-3-5-sonnet-20241022',
           max_tokens: 10,
           messages: [{ role: 'user', content: 'test' }]
         })
@@ -89,16 +98,27 @@ class BackgroundService {
     
     switch (request.type) {
       case 'PING':
-        return { success: true, message: 'Background service is running' };
+        return { success: true, message: 'Elite AI service is running' };
 
       case 'SET_PROXY_URL':
         this.proxyUrl = request.url;
+        this.aiClient = new TravianAIClient(this.proxyUrl);
         await chrome.storage.sync.set({ proxyUrl: this.proxyUrl });
         return { success: true };
 
       case 'TEST_CONNECTION':
         try {
-          const response = await this.callProxy('Test connection. Reply with "Connection successful".');
+          const testState = {
+            villages: new Map([['test', { villageName: 'Test Village' }]]),
+            currentVillageId: 'test',
+            serverAge: 86400,
+            playerRank: 100,
+            timestamp: Date.now()
+          };
+          const response = await this.aiClient.askQuestion(
+            'Confirm connection with a brief competitive Travian insight.',
+            testState
+          );
           return { success: true, response };
         } catch (error: any) {
           return { success: false, error: error.message };
@@ -106,8 +126,9 @@ class BackgroundService {
 
       case 'ANALYZE_GAME_STATE':
         try {
-          console.log('[TLA BG] Analyzing game state...');
+          console.log('[TLA BG] Analyzing game state with Elite AI...');
           const gameState = request.payload || request.state;
+          const decisionType = request.decisionType || 'daily_review';
           
           // First sync to backend if available
           let syncResult = { success: false, alerts: [] };
@@ -117,8 +138,17 @@ class BackgroundService {
             console.log('[TLA BG] Backend sync skipped:', err);
           }
           
-          // Get AI analysis
-          const analysis = await this.analyzeGame(gameState);
+          // Get Elite AI analysis
+          const analysis = await this.aiClient.analyzeGameState(
+            gameState,
+            decisionType,
+            this.lastContext
+          );
+          
+          // Store patterns if significant
+          if (analysis.confidence > 0.7 && analysis.insights) {
+            await this.storePatterns(analysis.insights);
+          }
           
           return { 
             success: true, 
@@ -131,140 +161,101 @@ class BackgroundService {
           return { success: false, error: error.message };
         }
 
-      case 'ASK_QUESTION':
+      case 'ASK_AI_QUESTION':
         try {
-          console.log('[TLA BG] Processing question...');
-          const answer = await this.callProxy(request.question || request.prompt);
+          console.log('[TLA BG] Processing strategic question...');
+          const gameState = request.gameState;
+          const answer = await this.aiClient.askQuestion(
+            request.question || request.prompt,
+            gameState,
+            this.lastContext
+          );
           return { success: true, answer };
         } catch (error: any) {
           console.error('[TLA BG] Question failed:', error);
           return { success: false, error: error.message };
         }
 
+      case 'STRATEGIC_ANALYSIS':
+        try {
+          console.log('[TLA BG] Running strategic analysis:', request.analysisType);
+          const gameState = request.gameState;
+          
+          // Map analysis types to decision types
+          const decisionMap: { [key: string]: string } = {
+            'daily': 'daily_review',
+            'attack': 'under_attack',
+            'settlement': 'settlement',
+            'resources': 'resource_crisis',
+            'artifacts': 'artifact_prep'
+          };
+          
+          const decisionType = decisionMap[request.analysisType] || 'daily_review';
+          const analysis = await this.aiClient.analyzeGameState(
+            gameState,
+            decisionType,
+            this.lastContext
+          );
+          
+          return {
+            success: true,
+            ...analysis,
+            analysisType: request.analysisType
+          };
+        } catch (error: any) {
+          console.error('[TLA BG] Strategic analysis failed:', error);
+          return { success: false, error: error.message };
+        }
+
+      case 'UPDATE_CONTEXT':
+        try {
+          // Store learned patterns and server intelligence
+          const { patterns, serverMeta, playerProfiles } = request.context;
+          this.lastContext = {
+            ...this.lastContext,
+            patterns: patterns || this.lastContext.patterns,
+            serverMeta: serverMeta || this.lastContext.serverMeta,
+            playerProfiles: playerProfiles || this.lastContext.playerProfiles
+          };
+          
+          await chrome.storage.sync.set({ aiContext: this.lastContext });
+          console.log('[TLA BG] AI context updated');
+          
+          return { success: true, message: 'Context updated' };
+        } catch (error: any) {
+          console.error('[TLA BG] Context update failed:', error);
+          return { success: false, error: error.message };
+        }
+
       default:
         console.log('[TLA BG] Unknown message type:', request.type);
-        return { success: true, message: 'Unknown message type' };
+        return { success: false, error: 'Unknown message type' };
     }
   }
 
-  private async callProxy(prompt: string): Promise<string> {
-    console.log('[TLA BG] Calling proxy with prompt length:', prompt.length);
-    
+  private async storePatterns(insights: string[]) {
     try {
-      const response = await fetch(this.proxyUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: prompt
-          }]
-        })
-      });
-
-      console.log('[TLA BG] Proxy response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[TLA BG] Proxy error response:', errorText);
-        throw new Error(`Proxy error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.content && data.content[0] && data.content[0].text) {
-        console.log('[TLA BG] Got valid response from Claude');
-        return data.content[0].text;
-      } else {
-        console.error('[TLA BG] Invalid response format:', data);
-        throw new Error('Invalid response format from proxy');
-      }
-    } catch (error) {
-      console.error('[TLA BG] Proxy call failed:', error);
-      throw error;
-    }
-  }
-
-  private async analyzeGame(state: any): Promise<any> {
-    console.log('[TLA BG] Starting game analysis...');
-    
-    // Simplified state for logging
-    const summary = {
-      villages: state?.villages?.size || 0,
-      currentVillageId: state?.currentVillageId,
-      hasResources: !!state?.villages?.get?.(state?.currentVillageId)?.resources
-    };
-    console.log('[TLA BG] Game state summary:', summary);
-
-    const prompt = `You are a Travian Legends expert. Analyze this game state and provide exactly 3 strategic recommendations.
-
-Game State:
-${JSON.stringify(state, null, 2).substring(0, 3000)}...
-
-Provide specific, actionable recommendations based on the actual game data.
-
-Return ONLY a valid JSON object with this exact structure:
-{
-  "recommendations": [
-    {
-      "action": "Specific action to take",
-      "reason": "Why this is important now",
-      "priority": "critical",
-      "village": "Village name if specific to one village"
-    },
-    {
-      "action": "Another specific action",
-      "reason": "Why this matters",
-      "priority": "high"
-    },
-    {
-      "action": "Third action",
-      "reason": "Why to do this",
-      "priority": "medium"
-    }
-  ]
-}`;
-
-    try {
-      const response = await this.callProxy(prompt);
-      
-      // Try to extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        console.log('[TLA BG] Successfully parsed AI recommendations');
-        return parsed;
-      }
-      
-      throw new Error('Could not parse AI response as JSON');
-    } catch (error) {
-      console.error('[TLA BG] Failed to get/parse AI analysis:', error);
-      
-      // Return fallback recommendations
-      return {
-        recommendations: [
-          { 
-            action: 'Build clay pit to level 5', 
-            reason: 'Clay production is your bottleneck', 
-            priority: 'high',
-            village: state?.villages?.get?.(state?.currentVillageId)?.villageName || 'Main' 
-          },
-          {
-            action: 'Train 10 defensive troops',
-            reason: 'Increase village defense',
-            priority: 'medium'
-          },
-          {
-            action: 'Scout nearby inactive villages',
-            reason: 'Find farming opportunities',
-            priority: 'low'
-          }
-        ]
+      // Add timestamp to patterns
+      const pattern = {
+        timestamp: new Date().toISOString(),
+        insights: insights
       };
+      
+      // Get existing patterns
+      const stored = await chrome.storage.local.get(['patterns']);
+      const patterns = stored.patterns || [];
+      
+      // Add new pattern (keep last 50)
+      patterns.unshift(pattern);
+      if (patterns.length > 50) {
+        patterns.pop();
+      }
+      
+      // Store updated patterns
+      await chrome.storage.local.set({ patterns });
+      console.log('[TLA BG] Stored', insights.length, 'new insights');
+    } catch (error) {
+      console.error('[TLA BG] Failed to store patterns:', error);
     }
   }
 }
@@ -272,9 +263,9 @@ Return ONLY a valid JSON object with this exact structure:
 // Initialize service
 const bgService = new BackgroundService();
 
-// Keep service alive
+// Keep service alive with less frequent heartbeat
 setInterval(() => {
-  console.log('[TLA BG] Heartbeat - service alive');
-}, 30000);
+  console.log('[TLA BG] Elite AI service alive');
+}, 60000); // Once per minute
 
-console.log('[TLA BG] Background script loaded');
+console.log('[TLA BG] Elite AI background script loaded');
