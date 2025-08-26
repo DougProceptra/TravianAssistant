@@ -1,0 +1,284 @@
+/* packages/extension/src/content/chat-ui.css */
+/* Travian Assistant Chat UI Styles */
+
+/* Chat Button */
+#ta-chat-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  z-index: 999998;
+}
+
+#ta-chat-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+#ta-chat-button.active {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* Chat Container */
+.ta-chat-container {
+  position: fixed;
+  width: 400px;
+  height: 500px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.ta-chat-container.minimized {
+  height: auto;
+}
+
+.ta-chat-container.dragging {
+  opacity: 0.9;
+  transition: none;
+}
+
+/* Chat Header */
+.ta-chat-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+
+.ta-drag-handle {
+  cursor: move;
+  padding: 0 8px;
+  font-size: 18px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.ta-drag-handle:hover {
+  opacity: 1;
+}
+
+.ta-chat-title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+  text-align: center;
+}
+
+.ta-chat-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.ta-chat-controls button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  font-size: 14px;
+}
+
+.ta-chat-controls button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Chat Content */
+.ta-chat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ta-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8f9fa;
+}
+
+/* Messages */
+.ta-message {
+  margin-bottom: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ta-message-role {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6c757d;
+  margin-bottom: 4px;
+}
+
+.ta-user .ta-message-role {
+  color: #667eea;
+  text-align: right;
+}
+
+.ta-message-content {
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.ta-user .ta-message-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin-left: 20%;
+  text-align: right;
+}
+
+.ta-ai .ta-message-content {
+  background: white;
+  color: #212529;
+  margin-right: 20%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Example Prompts */
+.ta-example-prompts {
+  padding: 12px;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+}
+
+.ta-prompt-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6c757d;
+  margin-bottom: 8px;
+}
+
+.ta-prompt-item {
+  display: inline-block;
+  padding: 6px 12px;
+  margin: 4px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ta-prompt-item:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* Input Container */
+.ta-chat-input-container {
+  display: flex;
+  padding: 12px;
+  background: white;
+  border-top: 1px solid #e9ecef;
+  border-radius: 0 0 12px 12px;
+}
+
+.ta-chat-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #dee2e6;
+  border-radius: 24px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.ta-chat-input:focus {
+  border-color: #667eea;
+}
+
+.ta-chat-input:disabled {
+  background: #f8f9fa;
+  cursor: not-allowed;
+}
+
+.ta-send-button {
+  margin-left: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ta-send-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.ta-send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Scrollbar Styling */
+.ta-chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ta-chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ta-chat-messages::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.ta-chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .ta-chat-container {
+    width: 90%;
+    height: 70%;
+    left: 5% !important;
+    top: 15% !important;
+  }
+}
