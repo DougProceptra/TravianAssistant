@@ -11,197 +11,184 @@
 
 ---
 
-*Last Updated: August 26, 2025, 15:42 PST*
-*Session Status: ACTIVE - Calculator Implementation Complete*
+*Last Updated: August 26, 2025, 16:10 PST*
+*Session Status: COMPLETE - Ready for Testing*
 
-## PROJECT STATUS SUMMARY
+## MAJOR PIVOT: FROM CALCULATOR TO ELITE AI ASSISTANT
 
-### ✅ WORKING COMPONENTS
-1. **Data Collection**: Extension detecting all 7 villages from `/dorf3.php`
-2. **Storage**: Villages stored in IndexedDB (accountSnapshots, villageSnapshots)
-3. **Parser**: Overview parser fixed and working (v0.5.4)
-4. **AI Framework**: Settlement advisor component created
-5. **Extension**: v0.5.1 running in safe mode (collecting minimal data)
-6. **Game Constants**: Complete Travian data extracted from Kirilloid ✅
-7. **Settlement Calculator**: Bottleneck detection and prediction engine ✅
+### What We Built vs What We Need
+**Original Plan**: Travian calculator with AI suggestions
+**Reality Check**: Doug has 15 years experience - doesn't need basic calculations
+**New Direction**: Elite AI strategist providing non-obvious competitive advantages
 
-### 🚀 TODAY'S PROGRESS (Aug 26, Session 2)
+## TODAY'S ACCOMPLISHMENTS (Aug 26)
 
-#### Phase 1: Kirilloid Analysis ✅
-1. Cloned and analyzed Kirilloid repository
-2. Identified all data categories (buildings, troops, formulas)
-3. Created extraction scripts for game data
+### Phase 1: Data Extraction ✅
+- Cloned Kirilloid repository
+- Extracted game constants (buildings, costs, CP values)
+- Created `travian-constants.ts` with core mechanics
+- Built basic settlement calculator
 
-#### Phase 2: Game Data Module ✅
-Created `/packages/extension/src/game-data/travian-constants.ts`:
-- Building costs, CP values, prerequisites
-- Culture point requirements (200 for 2nd village)
-- Settler costs per tribe
-- Resource production rates
-- Server speed modifiers
-- Helper functions for calculations
+### Phase 2: Realization & Pivot ✅
+**Key Insight**: Calculators are rigid. Travian is dynamic. Elite players need adaptive AI, not formulas.
 
-#### Phase 3: Settlement Calculator ✅
-Created `/packages/extension/src/calculators/settlement-calculator.ts`:
-- **Bottleneck Detection**: Identifies if CP, resources, or buildings limit settlement
-- **Time Prediction**: Calculates hours to settlement
-- **Recommendations**: Generates actionable advice based on bottleneck
-- **Hour-by-Hour Plan**: Complete strategy from minute 1 to settlement
+Issues with pure calculator approach:
+- Can't adapt when attacked
+- Ignores psychological factors
+- Misses political dynamics
+- No learning from experience
+- Treats all servers identically
 
-## KEY ACCOMPLISHMENTS
+### Phase 3: Elite AI Architecture ✅
+Created three critical components:
 
-### Game Constants Extracted
-```typescript
-// Critical data now available:
-- Building costs with multipliers (k=1.28 for buildings, k=1.67 for fields)
-- CP generation: Main Building=2, Embassy=4, Academy=4, Town Hall=5
-- Settler costs: Romans=23,800 total resources
-- Prerequisites: Main→5, Barracks→3, Academy→10, Residence→10
-- Build time formulas with Main Building reduction
+1. **Elite System Instructions** (`elite-player-instructions.md`)
+   - Thinks like top-20 player, not helper
+   - Considers psychology, timing, server politics
+   - Focuses on non-obvious insights
+   - Challenges conventional wisdom
+
+2. **Strategic Decision Prompts** (`elite-decision-prompts.md`)
+   - Daily strategic reviews
+   - Attack/defense analysis
+   - Diplomacy with game theory
+   - Win condition assessment
+   - Innovation opportunities
+
+3. **Context Management** (`context-manager.ts`)
+   - Integrates with Doug's context_tools
+   - Stores patterns after sessions
+   - Queries before major decisions
+   - Learns from outcomes
+   - Builds opponent profiles
+
+## THE REAL ARCHITECTURE
+
+```
+Game State → AI Analysis (with Context) → Strategic Insights
+                    ↑                           ↓
+            Historical Patterns          Learn & Store
 ```
 
-### Settlement Calculator Logic
-The calculator identifies THREE parallel races:
-1. **CP Race**: Need 200 culture points
-2. **Resource Race**: Need ~23,800 resources for settlers
-3. **Building Race**: Complete prerequisite chain
+Not: "Build Main Building level 5 by hour 72"
+But: "Building at 3am reveals sleep schedule. Consider deception pattern."
 
-Whichever takes longest determines settlement time!
+## FILES CREATED TODAY
 
-### Bottleneck-Driven Recommendations
-- **If CP limited**: Build Embassy, Town Hall, consider parties
-- **If Resource limited**: Calculate ROI for field upgrades
-- **If Building limited**: Show exact build order needed
+### Data/Calculator Phase
+- `/scripts/analyze-kirilloid.sh`
+- `/scripts/extract-game-data.sh`
+- `/scripts/extract-settlement-data.sh`
+- `/packages/extension/src/game-data/travian-constants.ts`
+- `/packages/extension/src/calculators/settlement-calculator.ts`
+- `/packages/extension/src/calculators/settlement-calculator-v2.ts`
 
-## IMMEDIATE NEXT STEPS
+### Elite AI Phase
+- `/packages/extension/src/ai/elite-player-instructions.md` ⭐
+- `/packages/extension/src/ai/elite-decision-prompts.md` ⭐
+- `/packages/extension/src/ai/context-manager.ts` ⭐
 
-### 1. Test the Calculator (Simple Script)
+### Documentation
+- `/docs/KIRILLOID_INTEGRATION_PLAN.md`
+- `/docs/AI_SETTLEMENT_LOGIC.md`
+
+## CRITICAL INSIGHTS GAINED
+
+1. **Data Extraction Incomplete**: 
+   - Missing Vikings, Spartans tribes
+   - Only got T5, not T3/T4 variants
+   - No troop data, hero mechanics, adventures
+   - BUT: Have enough for beta testing
+
+2. **Architecture Must Be AI-First**:
+   - Calculators = rigid, predictable
+   - AI = adaptive, learns, surprises opponents
+   - Context is everything in competitive play
+
+3. **Doug Needs Elite Insights, Not Basics**:
+   - Skip "how to build a warehouse"
+   - Focus on "why enemies think you're weak"
+   - Provide counter-intuitive strategies
+
+## READY FOR TESTING
+
+### What Works Now
+✅ Game constants available for reference
+✅ Elite AI instructions ready
+✅ Decision prompts for critical moments
+✅ Context management framework
+✅ Extension collecting game state
+
+### Testing Priority
+1. **Connect game state to AI prompts**
+2. **Send to Claude via Vercel proxy**
+3. **Display strategic insights in HUD**
+4. **Start storing patterns with context_tools**
+
+### What to Test First
+- Daily strategic review with current game state
+- Settlement location decision (beyond simple distance)
+- Response to being scouted
+- Resource crisis resolution
+
+## IMMEDIATE NEXT SESSION TASKS
+
+### Technical Integration
 ```bash
-# Create a test script in Replit
-cat > test-calculator.js << 'EOF'
-// Quick test of settlement calculator
-const gameState = {
-  resources: { wood: 750, clay: 750, iron: 750, crop: 750 },
-  production: { wood: 30, clay: 30, iron: 30, crop: 30 },
-  buildings: new Map([
-    [15, 3], // Main Building level 3
-    [1, 2],  // Woodcutter level 2
-    [2, 2],  // Clay pit level 2
-  ]),
-  tribe: 'Romans',
-  serverSpeed: '1x',
-  goldAvailable: 0,
-  currentCP: 15,
-  buildingQueue: [],
-  serverStartTime: new Date('2025-08-20'),
-  currentServerTime: new Date(),
-};
+# Pull latest code
+cd ~/workspace
+git pull origin main
 
-// Would calculate bottleneck and predict settlement time
-console.log('Test ready - calculator logic implemented in TypeScript');
-EOF
+# Test AI prompt generation
+node test-ai-prompts.js
+
+# Connect to Vercel endpoint
+curl -X POST https://travian-proxy-simple.vercel.app/api/anthropic \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "[game state] + [elite prompt]"}'
 ```
 
-### 2. Connect to Extension
-- Import calculator in settlement-advisor.ts
-- Pass current game state from collectors
-- Display predictions in HUD
-
-### 3. Add Claude Integration
-- Format game state for AI analysis
-- Send to Vercel proxy endpoint
-- Display AI recommendations alongside calculator
-
-## DATA FLOW NOW COMPLETE
-```
-Game State → Data Collector → Game Constants + Calculator → Prediction
-                                      ↓
-                            Claude AI (via Vercel) → Enhanced Recommendations
-```
-
-## FILES CREATED THIS SESSION
-- `/scripts/analyze-kirilloid.sh` - Explores Kirilloid structure
-- `/scripts/extract-game-data.sh` - Extracts specific data
-- `/scripts/extract-settlement-data.sh` - Settlement-focused extraction
-- `/scripts/sync-replit.sh` - GitHub sync helper
-- `/docs/KIRILLOID_INTEGRATION_PLAN.md` - Full integration roadmap
-- `/docs/AI_SETTLEMENT_LOGIC.md` - AI optimization algorithms
-- `/packages/extension/src/game-data/travian-constants.ts` - Game data ✅
-- `/packages/extension/src/calculators/settlement-calculator.ts` - Calculator ✅
-
-## CRITICAL PATH TO BETA (Aug 29)
-
-### ✅ Today (Aug 26) - COMPLETED:
-- ✅ Understand Kirilloid structure
-- ✅ Define AI optimization logic
-- ✅ Extract game constants to TypeScript
-- ✅ Create settlement calculator
-
-### Tomorrow (Aug 27):
-- [ ] Build preference UI component (tribe, gold strategy)
-- [ ] Connect calculator to actual game state
-- [ ] Test predictions against real game
-- [ ] Hook up Claude via Vercel proxy
-
-### Wednesday (Aug 28):
-- [ ] Display recommendations in HUD
-- [ ] Internal testing with your game
-- [ ] Fix any calculation errors
-- [ ] Prepare team guide
-
-### Thursday (Aug 29):
-- [ ] Beta release to team
-- [ ] Monitor accuracy
-- [ ] Collect feedback
-
-## VALIDATION NEEDED
-
-### Calculator Accuracy Test
-With the data we extracted:
-- Main Building L1 costs: 70 wood, 40 clay, 60 iron, 20 crop
-- Level 2 cost = base × 1.28 = 90 wood, 51 clay, 77 iron, 26 crop
-- CP from Main Building L5 = 2+4+6+8+10 = 30 CP total
-
-This matches Travian's actual values! ✅
-
-### Settlement Time Estimates
-Based on calculator logic:
-- **F2P Optimal**: Day 7 (168 hours)
-- **With Gold**: Day 5-6 (120-144 hours)
-- **Perfect Play**: Day 4 possible (96 hours)
-
-## KEY INSIGHTS
-
-1. **Kirilloid provided everything needed** - All formulas extracted successfully
-2. **Bottleneck identification is the key** - Not just ROI calculations
-3. **The calculator can predict accurately** - We have the exact game formulas
-4. **Ready for AI integration** - Calculator provides the facts, AI adds strategy
+### First Test Scenario
+1. Export current game state from extension
+2. Apply "Daily Strategic Review" prompt
+3. Send to Claude with elite instructions
+4. Evaluate quality of insights
+5. Store patterns that emerge
 
 ## SUCCESS METRICS
 
-✅ Game constants extracted and structured
-✅ Calculator logic implemented
-✅ Bottleneck detection working
-✅ Recommendations generated
-⏳ Need to test with live game data
-⏳ Need to connect to extension UI
+### Not Success
+❌ Calculating building costs accurately
+❌ Predicting settlement to the hour
+❌ Following optimal build order
 
-## NEXT IMMEDIATE ACTION
+### Real Success
+✅ Identifying non-obvious opportunities
+✅ Predicting opponent behavior
+✅ Winning through superior strategy
+✅ Achieving more with less time investment
 
-Pull latest to Replit and test the calculator:
+## KEY DECISIONS DOCUMENTED
 
-```bash
-cd ~/workspace
-git pull origin main
-cd packages/extension
-npm install
+1. **Pivot from Calculator to AI**: Calculators exist. Elite AI doesn't.
+2. **Context Over Constants**: Patterns matter more than formulas
+3. **Psychology Over Math**: Human behavior drives Travian
+4. **Learn and Adapt**: Each server is unique
 
-# Test the calculator modules exist
-ls -la src/game-data/
-ls -la src/calculators/
-```
+## RISKS & MITIGATIONS
 
-Then we can create a simple test to validate the calculations work correctly.
+| Risk | Mitigation |
+|------|------------|
+| AI gives generic advice | Elite system instructions enforce competitive thinking |
+| Missing game data | Use AI to reason about unknowns |
+| Context gets stale | Continuous learning via context_tools |
+| Too complex for beta | Start with daily review, expand from there |
+
+## HANDOFF READY
+
+Everything committed to GitHub. Architecture defined. Ready for integration testing.
+
+The system now thinks like an elite player, not a calculator.
 
 ---
-*Session continuing. Calculator implementation complete. Ready for integration testing.*
+*Session complete. Architecture pivoted from calculator to elite AI assistant. Ready for testing.*
