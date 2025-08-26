@@ -12,61 +12,88 @@
 
 ---
 
-*Last Updated: August 26, 2025, 14:35 PST*
+*Last Updated: August 26, 2025, 14:40 PST*
 *Session Health: 🟢 Fresh Session*
 
-## CURRENT STATE
-- **Version**: v0.5.1 - Data discovery phase
-- **Priority**: Complete data domain mapping for AI insights
-- **Timeline**: Beta by Aug 29, Production Sep 9
-- **Success Metric**: 4-8 hours faster settlement via AI assistance
+## CURRENT FOCUS
+Building comprehensive data collectors to feed AI-powered settlement optimization that saves 4-8 hours.
 
-## KEY DECISIONS TODAY
-- Focus on comprehensive data collection before UI
-- Building AI-powered assistant, not just visualization tool
-- Need to map complete data domain for meaningful insights
-- Track full architecture to prevent drift
+## TODAY'S PRIORITIES
+1. ✅ Data domain specification created (`/docs/DATA_DOMAIN_SPEC.md`)
+2. 🔄 Implement master data collector system
+3. 🔄 Test with Doug's active game
+4. 🔄 Build settlement advisor AI prompts
 
-## DATA COLLECTION STATUS
-Recent work (Aug 25):
-- Created multiple inspector tools for discovering game data
-- Found ResourceBarPlus selectors that work
-- Discovered sub-tab structure in game interface
-- Identified key data sources: dorf3.php, AJAX calls, JS objects
+## KEY DECISIONS
+- **Architecture First**: Full data collection before UI
+- **AI-Powered**: Not just visualization, but strategic advice
+- **Beta Timeline**: Aug 29 (3 days)
+- **Production**: Sep 9
+- **Success Metric**: 4-8 hours faster settlement
 
-## IMMEDIATE TASKS
-1. Define complete data domain specification
-2. Create data collectors in GitHub (NOT session)
-3. Test collectors on live game
-4. Build AI prompt engineering for settlement optimization
+## DISCOVERED INSPECTOR TOOLS
+Found multiple inspector scripts in `/scripts/`:
+- `inspect-travian-data.js` - Basic page inspector
+- `inspect-travian-data-v2.js` - Enhanced version
+- `inspect-all-pages.js` - Multi-page crawler
+- `simple-page-inspector.js` - Lightweight inspector
 
-## ARCHITECTURE REFERENCE
-- `/docs/APPLICATION_DESIGN_V2.md` - Safe scraping approach
-- `/docs/DEVELOPMENT_ROADMAP_v3.md` - Full V3 roadmap  
-- `/docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` - Original spec
+These provide foundation for understanding game structure.
+
+## IMPLEMENTATION PLAN
+
+### Phase 1: Data Collectors (Today-Tomorrow)
+1. Create master collector orchestrator
+2. Implement overview parser (dorf3.php)
+3. Add AJAX interceptor
+4. Build memory/storage collectors
+5. Test on live game
+
+### Phase 2: AI Integration (Aug 27-28)
+1. Settlement timing calculator
+2. Claude prompt engineering
+3. Action recommendation system
+4. Test with beta users
+
+### Phase 3: Extension Polish (Aug 29)
+1. Package for team distribution
+2. Simple installation process
+3. Documentation
+4. Beta release
+
+## NEXT IMMEDIATE ACTIONS
+1. Create `/packages/extension/src/collectors/` structure
+2. Implement `master-collector.ts`
+3. Build `overview-parser.ts` based on inspector findings
+4. Test selectors on Doug's game
+
+## TESTING COMMANDS
+```bash
+# In Replit after sync
+cd /home/runner/TravianAssistant
+git pull origin main
+npm install
+npm run build:extension
+
+# Test inspector on game
+node scripts/simple-page-inspector.js
+```
+
+## FILES TO CREATE
+- `/packages/extension/src/collectors/master-collector.ts`
+- `/packages/extension/src/collectors/overview-collector.ts`
+- `/packages/extension/src/collectors/ajax-interceptor.ts`
+- `/packages/extension/src/collectors/memory-collector.ts`
+- `/packages/extension/src/ai/settlement-advisor.ts`
+- `/packages/extension/src/ai/prompt-builder.ts`
 
 ## VERIFIED WORKING
 - Vercel Proxy: https://travian-proxy-simple.vercel.app/api/proxy
-- Claude AI: Sonnet 4 integration tested and functional
-- Chrome Extension: Basic structure deployed
+- Chrome Extension structure exists
+- Inspector tools functional
 
-## NEXT ACTIONS
-1. Complete data domain specification document
-2. Implement collectors in GitHub repo
-3. Test on Doug's active game
-4. Build settlement advisor prompts
-
-## DEBUG TOOLS
-```javascript
-// Run these in browser console when testing
-window.TLA?.debug()
-localStorage.getItem('travian_')  // Check for game storage
-document.querySelector('#villages')  // Test overview selector
-```
-
-## SESSION RULES REMINDER
-- Architecture discussions = YES
-- Strategic decisions = YES  
-- Code implementation = GITHUB ONLY
-- Script snippets = OK if brief
-- Full code dumps = NEVER
+## NOTES
+- Use existing inspector findings for selectors
+- Focus on settlement optimization first
+- Keep AI prompts concise but comprehensive
+- Test everything on live game before beta
