@@ -1,77 +1,120 @@
 // Conversational AI Interface
 // Connects chat UI to Claude via background service
-// v0.5.1 - Fixed error handling and safe string operations
+// v0.6.5 - Fixed initialization flow and message types
 
 export class ChatAI {
   private conversationHistory: Array<{role: string, content: string}> = [];
+  private userInitialized: boolean = false;
   
   constructor() {
     console.log('[TLA Chat] Conversational AI initialized');
+    this.checkInitialization();
+  }
+  
+  // Check if user is already initialized
+  private async checkInitialization() {
+    try {
+      const stored = await chrome.storage.sync.get(['userEmail']);
+      if (stored.userEmail) {
+        this.userInitialized = true;
+        console.log('[TLA Chat] User already initialized');
+      }
+    } catch (error) {
+      console.error('[TLA Chat] Failed to check initialization:', error);
+    }
+  }
+  
+  // Check if input looks like an email
+  private isEmail(text: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(text.trim());
   }
   
   async askQuestion(question: string, gameState: any): Promise<string> {
     try {
+      // Check if this is an email for initialization
+      if (!this.userInitialized && this.isEmail(question)) {
+        console.log('[TLA Chat] Detected email, initializing user...');
+        
+        // Send SET_USER_EMAIL message
+        const initResponse = await chrome.runtime.sendMessage({
+          type: 'SET_USER_EMAIL',
+          email: question.trim()
+        });
+        
+        if (initResponse.success && initResponse.userId) {
+          this.userInitialized = true;
+          console.log('[TLA Chat] User initialized with ID:', initResponse.userId);
+          return 'User initialized! You can now ask me strategic questions about your Travian game.';
+        } else {
+          throw new Error(initResponse.error || 'Failed to initialize user');
+        }
+      }
+      
+      // Check if user is initialized
+      if (!this.userInitialized) {
+        return 'Please enter your email address first to initialize your personalized AI strategist.';
+      }
+      
       // Add question to history
       this.conversationHistory.push({ role: 'user', content: question });
       
-      // Build context-aware prompt
-      const prompt = this.buildPrompt(question, gameState);
-      
-      // Send to background service
+      // Send CHAT_MESSAGE to background
+      console.log('[TLA Chat] Sending chat message...');
       const response = await chrome.runtime.sendMessage({
-        type: 'ASK_QUESTION',
-        question: prompt
+        type: 'CHAT_MESSAGE',
+        message: question,
+        gameState: this.simplifyGameState(gameState)
       });
       
-      if (response.success && response.answer) {
+      if (response.success && response.response) {
         // Add response to history
-        this.conversationHistory.push({ role: 'assistant', content: response.answer });
-        return response.answer;
+        this.conversationHistory.push({ role: 'assistant', content: response.response });
+        return response.response;
       } else {
         throw new Error(response.error || 'Failed to get AI response');
       }
     } catch (error) {
-      console.error('[TLA Chat] Error asking question:', error);
-      return 'Sorry, I couldn\'t process that question. Please try again.';
+      console.error('[TLA Chat] Error:', error);
+      
+      // Provide helpful error messages
+      if (error.message?.includes('Receiving end does not exist')) {
+        return 'Background service not responding. Please reload the extension from chrome://extensions/';
+      }
+      
+      return `Error: ${error.message || 'Failed to connect to AI service'}`;
     }
   }
   
-  private buildPrompt(question: string, gameState: any): string {
-    // Safely extract game data
-    const villages = gameState?.villages || [];
-    const currentVillageId = gameState?.currentVillageId;
-    const currentVillage = villages.find((v: any) => v.id === currentVillageId) || villages[0] || {};
-    const totals = gameState?.totals || {};
+  // Simplify game state to reduce message size
+  private simplifyGameState(gameState: any): any {
+    if (!gameState) return null;
     
-    // Build conversation history string safely
-    const historyString = this.conversationHistory.slice(-4).map(msg => {
-      const content = msg.content || '';
-      // Safely handle substring - check length first
-      const preview = content.length > 100 
-        ? content.substring(0, 100) + '...' 
-        : content;
-      return `${msg.role}: ${preview}`;
-    }).join('\n');
+    const villages = gameState.villages || [];
+    const currentVillage = villages.find((v: any) => v.id === gameState.currentVillageId) || villages[0];
     
-    return `You are a Travian Legends expert assistant. The player is asking for strategic advice.
-
-CURRENT GAME STATE:
-- Villages: ${villages.length}
-- Current Village: ${currentVillage.villageName || 'Unknown'}
-- Resources: Wood ${currentVillage.resources?.wood || 0}, Clay ${currentVillage.resources?.clay || 0}, Iron ${currentVillage.resources?.iron || 0}, Crop ${currentVillage.resources?.crop || 0}
-- Production: Wood +${currentVillage.production?.wood || 0}/hr, Clay +${currentVillage.production?.clay || 0}/hr, Iron +${currentVillage.production?.iron || 0}/hr, Crop +${currentVillage.production?.crop || 0}/hr
-- Total Population: ${totals.population || 0}
-
-CONVERSATION HISTORY:
-${historyString}
-
-PLAYER'S QUESTION: ${question}
-
-Provide a concise, actionable answer. Include specific numbers and timings when possible. Keep response under 200 words.`;
+    return {
+      villages: villages.map((v: any) => ({
+        id: v.id,
+        name: v.name || v.villageName,
+        population: v.population,
+        resources: v.resources,
+        production: v.production
+      })),
+      currentVillageId: gameState.currentVillageId,
+      totals: gameState.totals,
+      alerts: gameState.alerts?.slice(0, 3), // Only top 3 alerts
+      timestamp: gameState.timestamp
+    };
   }
   
   getSuggestedQuestions(gameState: any): string[] {
     const suggestions = [];
+    
+    // If not initialized, suggest email
+    if (!this.userInitialized) {
+      return ['Enter your email to get started'];
+    }
     
     // Basic questions always available
     suggestions.push('What should I build next?');
@@ -115,6 +158,14 @@ Provide a concise, actionable answer. Include specific numbers and timings when 
   clearHistory() {
     this.conversationHistory = [];
     console.log('[TLA Chat] Conversation history cleared');
+  }
+  
+  // Reset user initialization (for testing)
+  async resetUser() {
+    this.userInitialized = false;
+    this.conversationHistory = [];
+    await chrome.storage.sync.remove(['userEmail', 'aiChatConfig']);
+    console.log('[TLA Chat] User reset - email initialization required');
   }
 }
 
