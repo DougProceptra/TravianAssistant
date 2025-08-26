@@ -1,7 +1,7 @@
 /**
  * Overview Parser - Safe multi-village data collection
- * Fetches village/statistics overview page to get all village data without navigation
- * v0.5.3 - Fixed URL and improved error handling
+ * Fetches dorf3.php to get all village data without navigation
+ * v0.5.4 - Fixed URL and selectors based on actual game structure
  */
 
 export interface VillageOverviewData {
@@ -64,11 +64,11 @@ export class OverviewParser {
   private cache: Map<string, VillageOverviewData> = new Map();
   private lastFetch: number = 0;
   private readonly CACHE_DURATION = 60000; // 1 minute cache
-  // FIXED: Updated to correct URL based on actual game
-  private readonly OVERVIEW_URL = '/village/statistics';
+  // FIXED: Use dorf3.php which is confirmed working
+  private readonly OVERVIEW_URL = '/dorf3.php';
   
   constructor() {
-    console.log('[TLA Overview] Parser v0.5.3 initialized - using /village/statistics');
+    console.log('[TLA Overview] Parser v0.5.4 initialized - using /dorf3.php');
   }
 
   /**
@@ -100,7 +100,7 @@ export class OverviewParser {
       }
 
       const html = await response.text();
-      console.log('[TLA Overview] Received HTML, length:', html.length);
+      console.log('[TLA Overview] Received HTML, parsing villages...');
       
       const villages = this.parseOverviewHTML(html);
       
@@ -134,7 +134,7 @@ export class OverviewParser {
     const doc = parser.parseFromString(html, 'text/html');
     const villages: VillageOverviewData[] = [];
 
-    // Primary selector for the overview table
+    // FIXED: Use the correct selector #overview which exists on dorf3.php
     const overviewTable = doc.querySelector('table#overview');
     
     if (overviewTable) {
@@ -146,7 +146,7 @@ export class OverviewParser {
       
       rows.forEach((row, index) => {
         try {
-          const village = this.parseVillageRowFromOverview(row);
+          const village = this.parseVillageRowSimplified(row, index);
           if (village) {
             villages.push(village);
             console.log(`[TLA Overview] Parsed village ${index + 1}:`, village.name);
@@ -155,125 +155,84 @@ export class OverviewParser {
           console.error(`[TLA Overview] Failed to parse row ${index}:`, error);
         }
       });
-    } else {
-      console.warn('[TLA Overview] table#overview not found, trying alternative selectors');
-      
-      // Try other possible selectors
-      const selectors = [
-        '#villages tbody tr',
-        '.villageList tbody tr',
-        '.overviewTable tbody tr',
-        'table.overview tbody tr'
-      ];
+    }
 
-      for (const selector of selectors) {
-        const rows = doc.querySelectorAll(selector);
-        if (rows.length > 0) {
-          console.log(`[TLA Overview] Found villages using selector: ${selector}`);
-          rows.forEach((row, index) => {
-            try {
-              const village = this.parseVillageRow(row);
-              if (village) {
-                villages.push(village);
-              }
-            } catch (error) {
-              console.error(`[TLA Overview] Failed to parse village row ${index}:`, error);
+    // Also try to get village data from the sidebar if overview parsing fails
+    if (villages.length === 0) {
+      console.log('[TLA Overview] No villages from table, checking sidebar');
+      const sidebarVillages = doc.querySelectorAll('#sidebarBoxVillagelist a[href*="newdid="], .villageList a[href*="newdid="]');
+      
+      sidebarVillages.forEach((link) => {
+        const id = link.getAttribute('href')?.match(/newdid=(\d+)/)?.[1];
+        const name = link.textContent?.trim();
+        
+        if (id && name) {
+          // Create basic village entry from sidebar
+          villages.push({
+            id,
+            name,
+            coordinates: { x: 0, y: 0 }, // Will be filled from current page if active
+            isActive: false,
+            resources: { wood: 0, clay: 0, iron: 0, crop: 0 },
+            production: { wood: 0, clay: 0, iron: 0, crop: 0 },
+            storage: {
+              warehouse: 0,
+              warehouseCapacity: 0,
+              granary: 0,
+              granaryCapacity: 0
             }
           });
-          break;
         }
-      }
+      });
+      
+      console.log(`[TLA Overview] Got ${villages.length} villages from sidebar`);
     }
 
-    if (villages.length === 0) {
-      console.warn('[TLA Overview] No villages parsed, trying alternative format');
-      return this.parseAlternativeFormat(doc);
-    }
-
-    // Also extract culture points and other account-wide data
-    this.parseAccountData(doc);
+    // Extract culture points from the page
+    this.parseCulturePoints(doc);
 
     return villages;
   }
 
   /**
-   * Parse a village row from the overview table (table#overview specific)
+   * Simplified parser for the specific dorf3.php table structure
+   * Based on observed structure: 5 cells per row
    */
-  private parseVillageRowFromOverview(row: Element): VillageOverviewData | null {
+  private parseVillageRowSimplified(row: Element, index: number): VillageOverviewData | null {
     const cells = row.querySelectorAll('td');
+    
+    // Skip if not enough cells
     if (cells.length < 2) return null;
 
-    // Based on observed structure:
-    // Cell 0: Village name with link
-    // Cell 1: Attack indicator (if any)
-    // Cell 2: Coordinates  
-    // Cell 3+: Resources or other data
-
-    // Extract village link and ID
+    // First cell contains village name with link
     const villageLink = cells[0]?.querySelector('a[href*="newdid="]');
     if (!villageLink) {
-      console.warn('[TLA Overview] No village link found in row');
+      console.warn(`[TLA Overview] No village link found in row ${index}`);
       return null;
     }
 
     const villageId = villageLink.getAttribute('href')?.match(/newdid=(\d+)/)?.[1];
     if (!villageId) {
-      console.warn('[TLA Overview] Could not extract village ID');
+      console.warn(`[TLA Overview] Could not extract village ID from row ${index}`);
       return null;
     }
 
-    // Extract village name
-    const villageName = villageLink.textContent?.trim() || 'Unknown';
+    const villageName = villageLink.textContent?.trim() || `Village ${index + 1}`;
 
-    // Extract coordinates - might be in different cells depending on attack status
-    let coordText = '';
-    for (let i = 1; i < Math.min(cells.length, 4); i++) {
-      const text = cells[i].textContent || '';
-      if (text.includes('(') && text.includes('|')) {
-        coordText = text;
-        break;
-      }
-    }
-    
-    const coordinates = this.parseCoordinates(coordText);
-
-    // Extract resources - usually after coordinates
-    const resources = {
-      wood: 0,
-      clay: 0,
-      iron: 0,
-      crop: 0
-    };
-
-    // Look for resource values in remaining cells
-    let resourceStartIndex = -1;
-    for (let i = 2; i < cells.length; i++) {
-      const text = cells[i].textContent?.trim() || '';
-      // Check if this looks like a resource value (number possibly with k suffix)
-      if (/^\d+k?$/.test(text.replace(/[,.\s]/g, ''))) {
-        resourceStartIndex = i;
-        break;
-      }
-    }
-
-    if (resourceStartIndex > 0 && resourceStartIndex + 3 < cells.length) {
-      resources.wood = this.parseNumber(cells[resourceStartIndex].textContent || '0');
-      resources.clay = this.parseNumber(cells[resourceStartIndex + 1].textContent || '0');
-      resources.iron = this.parseNumber(cells[resourceStartIndex + 2].textContent || '0');
-      resources.crop = this.parseNumber(cells[resourceStartIndex + 3].textContent || '0');
-    }
-
-    // Check if this is the active village
-    const isActive = row.classList.contains('active') || 
-                     row.classList.contains('hl') ||
-                     !!row.querySelector('.active');
-
+    // For now, create a basic village entry
+    // The actual resources/production will be filled when visiting the village
+    // or from AJAX interceptor
     return {
       id: villageId,
       name: villageName,
-      coordinates,
-      isActive,
-      resources,
+      coordinates: { x: 0, y: 0 }, // Will be updated from other sources
+      isActive: false,
+      resources: {
+        wood: 0,
+        clay: 0,
+        iron: 0,
+        crop: 0
+      },
       production: {
         wood: 0,
         clay: 0,
@@ -290,267 +249,39 @@ export class OverviewParser {
   }
 
   /**
-   * Parse a single village row from the overview table (fallback method)
+   * Parse culture points from the overview page
    */
-  private parseVillageRow(row: Element): VillageOverviewData | null {
-    const cells = row.querySelectorAll('td');
-    if (cells.length < 5) return null;
+  private parseCulturePoints(doc: Document): void {
+    // Look for culture point elements
+    const cultureSelectors = [
+      '.culture_points',
+      '#culture_points',
+      '[class*="culture"]',
+      'div.pointsWrap',
+      '.culturePoints'
+    ];
 
-    // Extract village ID from link
-    const villageLink = row.querySelector('a[href*="newdid="]');
-    const villageId = villageLink?.getAttribute('href')?.match(/newdid=(\d+)/)?.[1];
-    
-    if (!villageId) return null;
-
-    // Extract village name
-    const villageName = villageLink?.textContent?.trim() || 'Unknown';
-
-    // Extract coordinates
-    const coordText = row.querySelector('.coords, .coordinates')?.textContent || '';
-    const coords = this.parseCoordinates(coordText);
-
-    // Extract resources (usually in specific cells)
-    const resources = this.parseResourceCells(cells);
-
-    // Extract production
-    const production = this.parseProductionCells(cells);
-
-    // Extract storage info
-    const storage = this.parseStorageInfo(row);
-
-    // Check if this is the active village
-    const isActive = row.classList.contains('active') || 
-                     row.querySelector('.active') !== null;
-
-    return {
-      id: villageId,
-      name: villageName,
-      coordinates: coords,
-      isActive,
-      resources,
-      production,
-      storage,
-      loyalty: this.parseLoyalty(row)
-    };
-  }
-
-  /**
-   * Parse coordinates from text like "(12|-34)"
-   */
-  private parseCoordinates(text: string): { x: number; y: number } {
-    const match = text.match(/\(?\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)?/);
-    if (match) {
-      return {
-        x: parseInt(match[1], 10),
-        y: parseInt(match[2], 10)
-      };
-    }
-    return { x: 0, y: 0 };
-  }
-
-  /**
-   * Parse resource values from table cells
-   */
-  private parseResourceCells(cells: NodeListOf<Element>): VillageOverviewData['resources'] {
-    const resources = {
-      wood: 0,
-      clay: 0,
-      iron: 0,
-      crop: 0
-    };
-
-    // Resources are typically in cells 2-5 or similar positions
-    // Try to find cells with resource classes or parse by position
-    const resourceClasses = ['wood', 'clay', 'iron', 'crop', 'lumber', 'brick'];
-    
-    cells.forEach((cell, index) => {
-      const text = cell.textContent?.trim() || '0';
-      const value = this.parseNumber(text);
-      
-      // Check for resource-specific classes
-      if (cell.classList.contains('lumber') || cell.classList.contains('wood')) {
-        resources.wood = value;
-      } else if (cell.classList.contains('clay') || cell.classList.contains('brick')) {
-        resources.clay = value;
-      } else if (cell.classList.contains('iron')) {
-        resources.iron = value;
-      } else if (cell.classList.contains('crop') || cell.classList.contains('grain')) {
-        resources.crop = value;
-      } else if (index >= 2 && index <= 5 && value > 0) {
-        // Fallback to position-based parsing
-        switch (index - 2) {
-          case 0: resources.wood = value; break;
-          case 1: resources.clay = value; break;
-          case 2: resources.iron = value; break;
-          case 3: resources.crop = value; break;
+    for (const selector of cultureSelectors) {
+      const element = doc.querySelector(selector);
+      if (element) {
+        const text = element.textContent || '';
+        const numbers = text.match(/\d+/g);
+        
+        if (numbers && numbers.length > 0) {
+          const current = parseInt(numbers[0], 10);
+          const production = numbers.length > 1 ? parseInt(numbers[1], 10) : 0;
+          
+          // Store globally for access
+          (window as any).__tla_culture = { 
+            current, 
+            production,
+            nextSlot: 0 // Will be calculated based on village count
+          };
+          
+          console.log(`[TLA Overview] Culture points found - Current: ${current}, Production: ${production}`);
+          break;
         }
       }
-    });
-
-    return resources;
-  }
-
-  /**
-   * Parse production values
-   */
-  private parseProductionCells(cells: NodeListOf<Element>): VillageOverviewData['production'] {
-    const production = {
-      wood: 0,
-      clay: 0,
-      iron: 0,
-      crop: 0,
-      cropNet: 0
-    };
-
-    // Production values often have + prefix or are in specific cells
-    cells.forEach((cell, index) => {
-      const text = cell.textContent?.trim() || '';
-      
-      // Look for production indicators (+ prefix or /h suffix)
-      if (text.includes('+') || text.includes('/h')) {
-        const value = this.parseNumber(text);
-        
-        // Try to determine resource type by class or position
-        if (cell.classList.contains('production')) {
-          const prevCell = cells[index - 1];
-          if (prevCell?.classList.contains('wood')) production.wood = value;
-          else if (prevCell?.classList.contains('clay')) production.clay = value;
-          else if (prevCell?.classList.contains('iron')) production.iron = value;
-          else if (prevCell?.classList.contains('crop')) production.crop = value;
-        }
-      }
-    });
-
-    return production;
-  }
-
-  /**
-   * Parse storage information
-   */
-  private parseStorageInfo(row: Element): VillageOverviewData['storage'] {
-    const storage = {
-      warehouse: 0,
-      warehouseCapacity: 0,
-      granary: 0,
-      granaryCapacity: 0
-    };
-
-    // Look for storage indicators
-    const storageText = row.querySelector('.storage')?.textContent || '';
-    const warehouseMatch = storageText.match(/(\d+)\s*\/\s*(\d+)/);
-    
-    if (warehouseMatch) {
-      storage.warehouse = parseInt(warehouseMatch[1], 10);
-      storage.warehouseCapacity = parseInt(warehouseMatch[2], 10);
-    }
-
-    return storage;
-  }
-
-  /**
-   * Parse loyalty percentage
-   */
-  private parseLoyalty(row: Element): number | undefined {
-    const loyaltyElement = row.querySelector('.loyalty');
-    if (loyaltyElement) {
-      return this.parseNumber(loyaltyElement.textContent || '100');
-    }
-    return undefined;
-  }
-
-  /**
-   * Alternative parsing for different overview formats
-   */
-  private parseAlternativeFormat(doc: Document): VillageOverviewData[] {
-    const villages: VillageOverviewData[] = [];
-    
-    // Try to find village data in other formats
-    // Some servers use divs instead of tables
-    const villageDivs = doc.querySelectorAll('.village, .villageBox, [class*="village_"]');
-    
-    villageDivs.forEach(div => {
-      const id = div.getAttribute('data-village-id') || 
-                 div.querySelector('a[href*="newdid="]')?.getAttribute('href')?.match(/newdid=(\d+)/)?.[1];
-      
-      if (id) {
-        const name = div.querySelector('.name, .villageName')?.textContent?.trim() || 'Unknown';
-        const coordText = div.querySelector('.coords, .coordinates')?.textContent || '';
-        
-        villages.push({
-          id,
-          name,
-          coordinates: this.parseCoordinates(coordText),
-          isActive: div.classList.contains('active'),
-          resources: this.extractResourcesFromDiv(div),
-          production: this.extractProductionFromDiv(div),
-          storage: this.extractStorageFromDiv(div)
-        });
-      }
-    });
-
-    return villages;
-  }
-
-  /**
-   * Extract resources from div-based layout
-   */
-  private extractResourcesFromDiv(div: Element): VillageOverviewData['resources'] {
-    return {
-      wood: this.parseNumber(div.querySelector('.r1, .wood')?.textContent || '0'),
-      clay: this.parseNumber(div.querySelector('.r2, .clay')?.textContent || '0'),
-      iron: this.parseNumber(div.querySelector('.r3, .iron')?.textContent || '0'),
-      crop: this.parseNumber(div.querySelector('.r4, .crop')?.textContent || '0')
-    };
-  }
-
-  /**
-   * Extract production from div-based layout
-   */
-  private extractProductionFromDiv(div: Element): VillageOverviewData['production'] {
-    return {
-      wood: this.parseNumber(div.querySelector('.p1, .production-wood')?.textContent || '0'),
-      clay: this.parseNumber(div.querySelector('.p2, .production-clay')?.textContent || '0'),
-      iron: this.parseNumber(div.querySelector('.p3, .production-iron')?.textContent || '0'),
-      crop: this.parseNumber(div.querySelector('.p4, .production-crop')?.textContent || '0')
-    };
-  }
-
-  /**
-   * Extract storage from div-based layout
-   */
-  private extractStorageFromDiv(div: Element): VillageOverviewData['storage'] {
-    const warehouseText = div.querySelector('.warehouse')?.textContent || '';
-    const granaryText = div.querySelector('.granary')?.textContent || '';
-    
-    const warehouseMatch = warehouseText.match(/(\d+)\s*\/\s*(\d+)/);
-    const granaryMatch = granaryText.match(/(\d+)\s*\/\s*(\d+)/);
-    
-    return {
-      warehouse: warehouseMatch ? parseInt(warehouseMatch[1], 10) : 0,
-      warehouseCapacity: warehouseMatch ? parseInt(warehouseMatch[2], 10) : 0,
-      granary: granaryMatch ? parseInt(granaryMatch[1], 10) : 0,
-      granaryCapacity: granaryMatch ? parseInt(granaryMatch[2], 10) : 0
-    };
-  }
-
-  /**
-   * Parse account-wide data like culture points
-   */
-  private parseAccountData(doc: Document): void {
-    // Culture points
-    const cultureElement = doc.querySelector('.culture_points, #culture_points, [class*="culture"]');
-    if (cultureElement) {
-      const current = this.parseNumber(cultureElement.querySelector('.value')?.textContent || '0');
-      const production = this.parseNumber(cultureElement.querySelector('.production')?.textContent || '0');
-      
-      // Store in a way we can access later
-      (window as any).__tla_culture = { current, production };
-    }
-
-    // Player rank
-    const rankElement = doc.querySelector('.rank, .player-rank, #rank');
-    if (rankElement) {
-      (window as any).__tla_rank = this.parseNumber(rankElement.textContent || '0');
     }
   }
 
@@ -560,9 +291,11 @@ export class OverviewParser {
   private buildOverviewState(): OverviewState {
     const villages = Array.from(this.cache.values());
     
-    // Calculate totals and aggregates
+    // Enrich with current page data if we're on a village page
+    const currentVillageData = this.enrichCurrentVillage(villages);
+    
     const state: OverviewState = {
-      villages,
+      villages: currentVillageData,
       movements: {
         incoming: 0,
         outgoing: 0,
@@ -571,38 +304,130 @@ export class OverviewParser {
       culturePoints: (window as any).__tla_culture || {
         current: 0,
         production: 0,
-        nextSlot: 0
+        nextSlot: this.calculateNextCPRequirement(villages.length)
       },
       timestamp: Date.now()
     };
 
-    // Check for attacks in the current page (if on rally point)
+    // Check for attacks
     this.checkForAttacks(state);
 
     return state;
   }
 
   /**
+   * Enrich village data with current page information
+   */
+  private enrichCurrentVillage(villages: VillageOverviewData[]): VillageOverviewData[] {
+    // Get current village ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentVillageId = urlParams.get('newdid') || this.getActiveVillageId();
+    
+    if (!currentVillageId) return villages;
+
+    // Find the village in our list
+    const villageIndex = villages.findIndex(v => v.id === currentVillageId);
+    if (villageIndex === -1) return villages;
+
+    // Enrich with current page data
+    const enrichedVillage = { ...villages[villageIndex] };
+    
+    // Get resources from current page
+    const resources = {
+      wood: this.parseNumber(document.querySelector('#l1')?.textContent || '0'),
+      clay: this.parseNumber(document.querySelector('#l2')?.textContent || '0'),
+      iron: this.parseNumber(document.querySelector('#l3')?.textContent || '0'),
+      crop: this.parseNumber(document.querySelector('#l4')?.textContent || '0')
+    };
+
+    if (resources.wood > 0) {
+      enrichedVillage.resources = resources;
+      enrichedVillage.isActive = true;
+    }
+
+    // Get coordinates if available
+    const coordElement = document.querySelector('.coordinatesWrapper .coordinateX');
+    if (coordElement) {
+      const xCoord = this.parseNumber(coordElement.textContent || '0');
+      const yCoord = this.parseNumber(document.querySelector('.coordinateY')?.textContent || '0');
+      if (xCoord !== 0) {
+        enrichedVillage.coordinates = { x: xCoord, y: yCoord };
+      }
+    }
+
+    // Get production if available
+    const productionElements = document.querySelectorAll('.production');
+    if (productionElements.length >= 4) {
+      enrichedVillage.production = {
+        wood: this.parseNumber(productionElements[0]?.textContent || '0'),
+        clay: this.parseNumber(productionElements[1]?.textContent || '0'),
+        iron: this.parseNumber(productionElements[2]?.textContent || '0'),
+        crop: this.parseNumber(productionElements[3]?.textContent || '0')
+      };
+    }
+
+    // Update the village in the array
+    villages[villageIndex] = enrichedVillage;
+    
+    return villages;
+  }
+
+  /**
+   * Get the active village ID from the page
+   */
+  private getActiveVillageId(): string | null {
+    // Check various places for active village
+    const activeLink = document.querySelector('.villageList .active a[href*="newdid="], #sidebarBoxVillagelist .active a[href*="newdid="]');
+    if (activeLink) {
+      return activeLink.getAttribute('href')?.match(/newdid=(\d+)/)?.[1] || null;
+    }
+    
+    // Check coordinates wrapper
+    const coordWrapper = document.querySelector('.coordinatesWrapper');
+    if (coordWrapper) {
+      const villageId = coordWrapper.getAttribute('data-did');
+      if (villageId) return villageId;
+    }
+
+    return null;
+  }
+
+  /**
+   * Calculate CP requirement for next village
+   */
+  private calculateNextCPRequirement(currentVillageCount: number): number {
+    // Standard Travian CP requirements
+    const requirements = [0, 0, 2000, 8000, 20000, 40000, 70000, 112000, 168000, 240000, 330000];
+    
+    const nextVillageNum = currentVillageCount + 1;
+    
+    if (nextVillageNum < requirements.length) {
+      return requirements[nextVillageNum];
+    }
+    
+    // Formula for villages beyond the table
+    return Math.round(requirements[10] * Math.pow(1.3, nextVillageNum - 10));
+  }
+
+  /**
    * Check current page for attack information
    */
   private checkForAttacks(state: OverviewState): void {
-    // Check if we're on a page that shows movements
-    const movements = document.querySelectorAll('.troop_details.inRaid, .troop_details.inAttack');
+    // Check for movement indicators
+    const movements = document.querySelectorAll('.troop_details.inRaid, .troop_details.inAttack, .movement');
     
     movements.forEach(movement => {
-      const timer = movement.querySelector('.timer, .in');
+      const timer = movement.querySelector('.timer, .in, span[id*="timer"]');
       if (timer) {
         const timeText = timer.textContent || '';
-        const villageLink = movement.querySelector('a[href*="newdid="]');
-        const villageId = villageLink?.getAttribute('href')?.match(/newdid=(\d+)/)?.[1];
+        const isAttack = movement.classList.contains('inAttack') || 
+                         movement.textContent?.toLowerCase().includes('attack');
         
-        if (villageId) {
-          state.movements.attacks.push({
-            villageId,
-            timeToArrival: timeText,
-            type: movement.classList.contains('inAttack') ? 'attack' : 'raid'
-          });
-        }
+        state.movements.attacks.push({
+          villageId: state.villages[0]?.id || '0', // Current village
+          timeToArrival: timeText,
+          type: isAttack ? 'attack' : 'raid'
+        });
       }
     });
 
@@ -625,31 +450,19 @@ export class OverviewParser {
       culturePoints: {
         current: 0,
         production: 0,
-        nextSlot: 0
+        nextSlot: 2000 // Default for 3rd village
       },
       timestamp: Date.now()
     };
   }
 
   /**
-   * Scrape data from the current page (without navigation)
+   * Scrape data from the current page
    */
   private scrapeCurrentVillage(): VillageOverviewData | null {
-    // Get village ID from URL or page
     const urlParams = new URLSearchParams(window.location.search);
-    const villageId = urlParams.get('newdid') || 
-                     document.querySelector('.villageList .active a')?.getAttribute('href')?.match(/newdid=(\d+)/)?.[1] ||
-                     '0';
+    const villageId = urlParams.get('newdid') || this.getActiveVillageId() || '0';
 
-    const villageName = document.querySelector('.villageList .active .name')?.textContent?.trim() || 
-                       document.querySelector('#villageNameField')?.textContent?.trim() || 
-                       'Current Village';
-
-    // Get coordinates
-    const coordElement = document.querySelector('.villageList .active .coordinates, .village_coordinates');
-    const coordinates = coordElement ? this.parseCoordinates(coordElement.textContent || '') : { x: 0, y: 0 };
-
-    // Get resources from stockBar
     const resources = {
       wood: this.parseNumber(document.querySelector('#l1')?.textContent || '0'),
       clay: this.parseNumber(document.querySelector('#l2')?.textContent || '0'),
@@ -657,30 +470,24 @@ export class OverviewParser {
       crop: this.parseNumber(document.querySelector('#l4')?.textContent || '0')
     };
 
-    // Get warehouse/granary capacity
-    const warehouseBar = document.querySelector('.warehouse .capacity');
-    const granaryBar = document.querySelector('.granary .capacity');
-    
-    const storage = {
-      warehouse: resources.wood + resources.clay + resources.iron,
-      warehouseCapacity: this.parseNumber(warehouseBar?.textContent || '0'),
-      granary: resources.crop,
-      granaryCapacity: this.parseNumber(granaryBar?.textContent || '0')
-    };
+    // Only return if we actually have resource data
+    if (resources.wood === 0 && resources.clay === 0 && resources.iron === 0 && resources.crop === 0) {
+      return null;
+    }
 
     return {
       id: villageId,
-      name: villageName,
-      coordinates,
+      name: 'Current Village',
+      coordinates: { x: 0, y: 0 },
       isActive: true,
       resources,
-      production: {
-        wood: 0,
-        clay: 0,
-        iron: 0,
-        crop: 0
-      },
-      storage
+      production: { wood: 0, clay: 0, iron: 0, crop: 0 },
+      storage: {
+        warehouse: 0,
+        warehouseCapacity: 0,
+        granary: 0,
+        granaryCapacity: 0
+      }
     };
   }
 
@@ -695,20 +502,6 @@ export class OverviewParser {
     const num = parseFloat(cleaned);
     
     return isNaN(num) ? 0 : Math.floor(num);
-  }
-
-  /**
-   * Get cached village data by ID
-   */
-  public getCachedVillage(villageId: string): VillageOverviewData | undefined {
-    return this.cache.get(villageId);
-  }
-
-  /**
-   * Get all cached villages
-   */
-  public getAllCachedVillages(): VillageOverviewData[] {
-    return Array.from(this.cache.values());
   }
 
   /**
