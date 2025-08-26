@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TravianAssistant V3",
-  "version": "0.5.3",
-  "description": "AI-powered strategic advisor for Travian Legends with elite data capture",
+  "version": "0.6.0",
+  "description": "AI-powered strategic advisor for Travian Legends with chat-based insights",
   "permissions": [
     "storage",
     "activeTab",
@@ -16,7 +16,7 @@
     "wss://TravianAssistant.dougdostal.replit.dev/*"
   ],
   "background": {
-    "service_worker": "service_worker.js",
+    "service_worker": "background.js",
     "type": "module"
   },
   "content_scripts": [
