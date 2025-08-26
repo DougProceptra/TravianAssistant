@@ -11,8 +11,8 @@
 
 ---
 
-*Last Updated: August 26, 2025, 14:55 PST*
-*Session Status: COMPLETE - Ready for handoff*
+*Last Updated: August 26, 2025, 15:32 PST*
+*Session Status: ACTIVE - Kirilloid Integration Phase*
 
 ## PROJECT STATUS SUMMARY
 
@@ -21,167 +21,146 @@
 2. **Storage**: Villages stored in IndexedDB (accountSnapshots, villageSnapshots)
 3. **Parser**: Overview parser fixed and working (v0.5.4)
 4. **AI Framework**: Settlement advisor component created
-5. **Extension**: v0.5.1 running in safe mode in Doug's browser
+5. **Extension**: v0.5.1 running in safe mode (collecting minimal data)
 
-### 📊 VERIFIED DATA FLOW
+### 🚀 TODAY'S PROGRESS (Aug 26, Session 2)
+1. **Kirilloid Analysis**: Created comprehensive data extraction plan
+2. **AI Logic Documentation**: Defined settlement optimization algorithm
+3. **Integration Strategy**: Mapped out all available data categories
+4. **Scripts Created**: 
+   - `/scripts/analyze-kirilloid.sh` - Analyzes available data
+   - `/docs/KIRILLOID_INTEGRATION_PLAN.md` - Full integration roadmap
+   - `/docs/AI_SETTLEMENT_LOGIC.md` - Detailed optimization logic
+
+## KIRILLOID DATA CATEGORIES DISCOVERED
+
+### Complete Data Available:
+1. **Buildings**: Costs, CP, prerequisites, effects, times (levels 1-20)
+2. **Troops**: Stats, costs, training times, upkeep, special abilities
+3. **Hero**: Skills, items, adventures, experience curves
+4. **Server Configs**: 1x/2x/3x/5x/10x speeds, tribes, special features
+5. **Game Formulas**: Combat, distance, loyalty, production
+6. **Optimization Algorithms**: ROI, building order, defense efficiency
+
+### Key Insight: Settlement Bottleneck Theory
+The AI must identify which of three bottlenecks limits settlement:
+- **CP Bottleneck**: Need 200 culture points
+- **Resource Bottleneck**: Need ~57k resources for settlers
+- **Building Bottleneck**: Need prerequisite chain complete
+
+The bottleneck determines the entire strategy!
+
+## SETTLEMENT OPTIMIZATION ALGORITHM
+
+### Core Calculation:
 ```
-Travian Game → Extension Scraper → IndexedDB → Master Collector → Settlement Advisor → AI Recommendations
-```
-
-## CRITICAL DISCOVERIES
-
-### 1. Kirilloid's Travian Calculator (http://travian.kirilloid.ru/)
-**GAME CHANGER** - Complete game mechanics database including:
-- Building costs and CP values at every level
-- Troop stats, costs, and training times
-- Hero equipment and adventure data
-- ROI calculators for resource fields
-- Prerequisites and unlock conditions
-- Server speed variants (1x, 2x, 3x, etc.)
-
-**Integration Strategy**:
-1. Extract static data for core buildings (Main Building, Embassy, etc.)
-2. Create `travian-game-data.ts` with constants
-3. Use for ROI calculations and CP optimization
-4. Reference for accurate game mechanics
-
-### 2. Travian Map Data (map.sql)
-- Daily download available from server
-- Contains ALL villages, coordinates, players, alliances
-- Identifies croppers (7c, 9c, 15c)
-- Can be used for:
-  - Finding optimal settlement locations
-  - Identifying abandoned villages for farming
-  - Tracking competitor growth
-  - Alliance territory mapping
-
-## DATA REQUIREMENTS FOR SETTLEMENT OPTIMIZATION
-
-### Currently Collecting ✅
-- Village count and IDs
-- Current resources (wood, clay, iron, crop)
-- Basic production rates
-- Culture points (current)
-
-### Need to Add for Beta 🔄
-1. **Building levels** - Scrape from dorf2.php
-2. **Tribe selection** - User preference input
-3. **Gold strategy** - User willingness to spend
-4. **Game constants** - From Kirilloid data
-5. **Building queue** - What's currently building
-
-### Future Enhancements 📈
-- Hero stats and adventures
-- Oasis information and farming
-- Daily quest optimization
-- Multi-village CP coordination
-- Alliance coordination features
-
-## SETTLEMENT OPTIMIZATION FACTORS
-
-Doug identified key variables for faster settling:
-1. **Tribe bonuses** (Egyptian waterworks, etc.)
-2. **Gold usage strategy** (NPC, instant build, etc.)
-3. **Resource production optimization** (ROI calculations)
-4. **Culture point generation** (building priorities)
-5. **Building prerequisites** and unlock paths
-6. **Cost/benefit analysis** (payback periods)
-7. **Settlement equation** (balance resources, CP, settlers)
-8. **Hero optimization** (adventures, resource bonus, oasis)
-9. **Raiding strategy** (troop production vs. resource gain)
-10. **Quest rewards** optimization
-
-## FILES CREATED THIS SESSION
-- `/packages/extension/src/collectors/master-collector.ts`
-- `/packages/extension/src/content/overview-parser.ts` (fixed v0.5.4)
-- `/packages/extension/src/ai/settlement-advisor.ts`
-- `/docs/DATA_DOMAIN_SPEC.md`
-- `/scripts/fix-build-and-test.sh`
-
-## NEXT SESSION PRIORITIES
-
-### 1. Integrate Kirilloid Data
-```javascript
-// Create travian-game-data.ts with:
-- Building costs and CP values
-- Troop statistics
-- Hero data
-- Tribe-specific bonuses
+Settlement_Time = MAX(
+  Time_to_200_CP,
+  Time_to_accumulate_resources,
+  Time_to_complete_buildings
+)
 ```
 
-### 2. Enhance Data Collection
-```javascript
-// Add collectors for:
-- Building levels (dorf2.php scraper)
-- Hero stats
-- Quest progress
-- Gold balance
-```
+### Dynamic Decision Framework:
+1. **Every hour**: Recalculate which bottleneck is limiting
+2. **Adjust strategy**: Focus on removing current bottleneck
+3. **Gold efficiency**: Use premium currency to address bottlenecks
+4. **ROI threshold**: Only upgrade if payback < hours to settlement
 
-### 3. Build User Preference UI
-```javascript
-// Collect from user:
-- Tribe selection
-- Gold spending strategy
-- Target settlement day
-- Play hours per day
-```
+### Expected Settlement Times:
+- F2P Conservative: Day 8-9 (192-216 hours)
+- F2P Aggressive: Day 7 (168 hours)  
+- Light Gold: Day 6 (144 hours)
+- Heavy Gold: Day 5 (120 hours)
+- Perfect Play + Max Gold: Day 4 (96 hours)
 
-### 4. Connect AI to UI
-- Add "Get Settlement Advice" button
-- Display recommendations in HUD
-- Connect to Claude via Vercel proxy
-- Show time to settlement
+## IMMEDIATE NEXT STEPS
 
-### 5. Implement ROI Calculator
-```javascript
-// Using Kirilloid data:
-ROI = (Resource gain * Hours until settlement) / Upgrade cost
-CP efficiency = CP gained / (Resource cost * Build time)
-```
-
-## BETA TIMELINE
-- **Aug 26**: ✅ Data collection working, AI framework built
-- **Aug 27**: Integrate Kirilloid data + preference UI
-- **Aug 28**: Connect AI + test with team
-- **Aug 29**: Beta release target
-
-## SUCCESS METRICS
-- **Goal**: 4-8 hours faster settlement
-- **Current**: Can collect game state and analyze
-- **Needed**: Game constants + user prefs + AI connection
-- **Confidence**: HIGH with Kirilloid data integration
-
-## TESTING COMMANDS
+### 1. Run Kirilloid Analysis (Doug to execute):
 ```bash
-# In Replit
 cd ~/workspace
-git pull origin main
-cd packages/extension
-npm install
-npm run build
-
-# Extension location: packages/extension/dist/
-# Load in Chrome: chrome://extensions/ → Load unpacked
+chmod +x scripts/analyze-kirilloid.sh
+./scripts/analyze-kirilloid.sh
 ```
 
-## KEY INSIGHTS
-1. **Kirilloid is the missing piece** - Provides all game mechanics data
-2. **map.sql enables strategic planning** - Find optimal settlement spots
-3. **ROI calculation is critical** - Don't upgrade if won't pay back before settlement
-4. **User preferences matter** - Gold strategy dramatically affects approach
-5. **Extension is working** - Data collection successful, just need AI integration
+### 2. Extract Core Game Data:
+- Building costs/CP for Main Building, Academy, Residence
+- Settler costs per tribe
+- CP requirements for villages (200, 500, 1000)
+- Build time formulas
 
-## ARCHITECTURE DECISIONS
-1. **Integrated, not standalone** - Settlement advisor part of extension
-2. **Three-tier data approach**:
-   - Static (game constants from Kirilloid)
-   - Dynamic (scraped game state)
-   - Preferences (user configuration)
-3. **Hybrid data strategy** - Ship with static, add dynamic post-beta
+### 3. Create Calculator Modules:
+- `settlement-calculator.ts` - Predicts time to settlement
+- `bottleneck-detector.ts` - Identifies limiting factor
+- `action-recommender.ts` - Suggests next moves
 
-## HANDOFF READY ✅
-All context preserved. Next session can start with Kirilloid data integration and continue toward beta release on Aug 29.
+### 4. Test Pre-Game Analysis:
+Have AI generate complete hour-by-hour plan from minute 1
+
+## DATA FLOW ARCHITECTURE
+```
+Kirilloid Data (Static)
+       +
+Game State (Dynamic)     →  AI Calculator  →  Recommendations
+       +                     
+User Preferences
+```
+
+## CRITICAL PATH TO BETA (Aug 29)
+
+### Today (Aug 26):
+- ✅ Understand Kirilloid structure
+- ✅ Define AI optimization logic
+- 🔄 Extract game constants to TypeScript
+- ⏳ Create basic calculator
+
+### Tomorrow (Aug 27):
+- Build preference UI component
+- Connect calculators to game state
+- Test settlement predictions
+- Create hour-by-hour action plan
+
+### Wednesday (Aug 28):
+- Connect to Claude via Vercel
+- Display recommendations in HUD
+- Internal testing and debugging
+- Prepare team onboarding
+
+### Thursday (Aug 29):
+- Beta release to team
+- Monitor performance
+- Collect feedback
+- Hotfix critical issues
+
+## KEY DECISIONS MADE
+
+1. **AI doesn't just calculate ROI** - It understands the complete game state and identifies bottlenecks dynamically
+2. **Kirilloid provides complete game mechanics** - No need to guess formulas
+3. **Extension needs minimal additional data** - Mainly building levels and queue status
+4. **Settlement optimization is three parallel races** - CP vs Resources vs Buildings
+
+## QUESTIONS RESOLVED
+
+1. **ROI Formula**: Not simple division - must consider time horizon
+2. **AI Role**: Not just math, but strategic bottleneck identification  
+3. **Data Source**: Kirilloid has everything we need for calculations
+4. **Beta Scope**: Focus on settlement, expand to combat later
+
+## TESTING VALIDATION
+
+When Doug runs the analysis script, we expect to find:
+- TypeScript models for all game entities
+- Calculation functions for game mechanics
+- Server configuration variants
+- Complete data for T5 (current version)
+
+## SUCCESS CRITERIA FOR SESSION
+
+✅ Comprehensive understanding of available data
+✅ Clear AI optimization algorithm defined
+✅ Integration plan documented
+⏳ Game constants extracted (pending script execution)
+⏳ Basic calculator implemented (next step)
 
 ---
-*Session complete. All discoveries documented. Ready for next session.*
+*Session in progress. Awaiting Kirilloid analysis results.*
