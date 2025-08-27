@@ -1,7 +1,7 @@
 // Centralized version management
 // Update this file when releasing new versions
 
-export const VERSION = '0.7.0';
+export const VERSION = '0.7.9';
 export const VERSION_NAME = 'Chat AI Integration';
 export const BUILD_DATE = new Date().toISOString();
 

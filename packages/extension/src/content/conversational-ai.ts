@@ -323,7 +323,7 @@ function createChatInterface(): HTMLElement {
     
     try {
       // Get current game state
-      const gameState = await safeScraper.scrapeCurrentState();
+      const gameState = await safeScraper.getGameState();
       
       // Send to AI
       const response = await chrome.runtime.sendMessage({
