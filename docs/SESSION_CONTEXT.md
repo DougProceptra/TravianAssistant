@@ -2,7 +2,6 @@
 
 ## ⚠️ PERMANENT PROJECT INFORMATION ⚠️
 **Repository**: `dougproceptra/travianassistant` (GitHub)
-- Always use this repository location
 - Owner: dougproceptra
 - Repo: travianassistant
 - Main branch: main
@@ -11,156 +10,139 @@
 **ALL CODE IS WRITTEN TO GITHUB - NEVER DUMP CODE IN SESSION**
 - Code goes in GitHub repos, NOT in chat sessions
 - Use git commits for all implementation work
-- Session is for discussion, decisions, and architecture
-- Small script snippets for Replit execution are OK
-- Full implementations must go directly to GitHub files
 - Workflow: GitHub → Pull to Replit → Deploy
 
 ---
 
-*Last Updated: August 26, 2025, 13:10 PST*
-*Session Status: FIXED - v0.6.4 Ready for Build and Testing*
+*Last Updated: August 26, 2025, 17:30 PST*
+*Session Status: INCOMPLETE - Version Management Issues*
 
-## CRITICAL FIX COMPLETED
+## CURRENT STATUS: v0.7.0 Partially Fixed
 
-### Issue Found and Fixed
-**Problem**: Chat interface loading but not working due to missing `getAllCachedVillages()` method
-- safe-scraper.ts called `overviewParser.getAllCachedVillages()` 
-- Method didn't exist in overview-parser.ts
-- This caused content script to crash, preventing chat from getting game state
+### What Works
+- ✅ 7 villages detected successfully
+- ✅ Overview parser fetching from dorf3.php
+- ✅ Safe scraper collecting data
+- ✅ Chat UI renders and opens
+- ✅ Email detection code (`isEmail`) now in build
 
-**Solution**: Added missing method to overview-parser.ts
-- Returns cached villages array as expected
-- Maintains compatibility with safe-scraper data flow
-- Preserves Vercel proxy architecture
+### What's Broken
+- ❌ Version numbers inconsistent across components
+- ❌ Background service crash: `Failed to construct 'URL': Invalid URL`
+- ❌ Chat fails with "Failed to get response"
+- ❌ Email initialization flow not working end-to-end
+- ❌ Multiple version numbers showing (0.5.1, 0.6.0, 0.6.4, 0.7.0)
 
-## CURRENT VERSION: 0.6.4
+## VERSION CHAOS SUMMARY
 
-### Architecture (Confirmed Working)
+### Current Version Mismatches
+- manifest.json: Shows 0.6.4 (should be 0.7.0)
+- content.js: Shows "v0.5.1" in console
+- background.js: Shows "v0.6.0" in console
+- Package.json: Shows 0.6.0
+- Build scripts: Auto-increment to 0.6.4
+
+### Required Fix
+ALL components must show v0.7.0 consistently:
+1. manifest.json
+2. package.json
+3. Console logs in content.js
+4. Console logs in background.js
+5. Any UI elements showing version
+
+## TECHNICAL ISSUES
+
+### Build System Problem
+Vite not properly including updated modules:
+- vite.config.simple.ts only builds 4 entry points
+- Doesn't follow imports properly
+- conversational-ai.ts was not being included until manually added to imports
+
+### Background Service Error (NEW)
+```javascript
+background.js:20 Uncaught (in promise) TypeError: Failed to construct 'URL': Invalid URL
+    at l.initialize (background.js:20:97)
 ```
-Game Page → Safe Scraper → Overview Parser (FIXED)
-     ↓           ↓              ↓
-   Data      dorf3.php     Cache Villages
-     ↓           ↓              ↓
-Chat UI → Background → AI Client → Vercel Proxy → Claude
-     ↑                      ↑
-Draggable Position    Editable System Message
-```
+This crashes the background service, preventing chat from working.
 
-### Key Components Status
-- ✅ **Chat UI**: Draggable, position-saving interface
-- ✅ **Background Service**: Running and responding
-- ✅ **AI Client**: Natural conversation, email-based user IDs  
-- ✅ **Vercel Proxy**: https://travian-proxy-simple.vercel.app/api/proxy
-- ✅ **Data Collection**: Safe scraping from dorf3.php
-- ✅ **Overview Parser**: v0.5.5 with getAllCachedVillages fix
+### Email Detection Status
+- Source file HAS the fix (conversational-ai.ts lines 28, 36)
+- Build now INCLUDES it (grep shows 2 occurrences)
+- But chat still fails due to background service crash
 
-## BUILD & DEPLOYMENT INSTRUCTIONS
+## FILES MODIFIED THIS SESSION
 
-### In Replit:
+1. `/packages/extension/src/content/overview-parser.ts` - Added getAllCachedVillages() method
+2. `/packages/extension/src/content/conversational-ai.ts` - Added email detection and initialization
+3. `/packages/extension/manifest.json` - Attempted v0.7.0 update (inconsistent)
+4. `/packages/extension/src/content/index.ts` - Added import for conversational-ai
+
+## BUILD PROCESS
+
+### Working Build Command
 ```bash
-# Pull latest fix
-cd ~/workspace
-git pull origin main
-
-# Build extension
-cd packages/extension
-npm install
-npm run build-nobump  # Avoid version increment
-
-# Package for download
-cd dist
-zip -r ../../travian-assistant-v0.6.4.zip *
-cd ../..
+cd ~/workspace/packages/extension
+npx vite build --config vite.config.simple.ts
+cp manifest.json dist/
+cp public/*.html dist/ 2>/dev/null || true
+cp public/*.css dist/ 2>/dev/null || true
+cp public/*.png dist/ 2>/dev/null || true
 ```
 
-### Load in Chrome:
-1. Download the zip from Replit
-2. Extract to a folder
-3. Go to `chrome://extensions/`
-4. Enable Developer mode
-5. Click "Load unpacked"
-6. Select the extracted folder
+### Verification Commands
+```bash
+# Check if email fix is in build
+grep -c "isEmail" dist/content.js  # Should return 2+
 
-### Test Chat:
-1. Go to Travian game page
-2. Click chat button (💬)
-3. Enter email for user ID initialization
-4. Ask natural strategy questions
+# Check versions
+grep version dist/manifest.json
+grep -o "v[0-9]\.[0-9]\.[0-9]" dist/content.js | head -1
+grep -o "v[0-9]\.[0-9]\.[0-9]" dist/background.js | head -1
+```
 
-## FEATURES WORKING
+## ARCHITECTURE UNDERSTANDING
 
-### Chat AI (v0.6.x)
-- Natural language conversation
-- No forced JSON structures
-- Editable system messages with templates
-- Email-based user IDs (SHA-256 hashed)
-- Draggable/minimizable interface
-- Clear error messages (no fake responses)
+### Data Flow
+1. Game page loads → content.js initializes
+2. Safe scraper fetches village data from dorf3.php
+3. Chat button clicked → chat UI opens
+4. User types message → should detect email format
+5. If email: Send SET_USER_EMAIL to background
+6. If not email: Send CHAT_MESSAGE to background
+7. Background forwards to Vercel proxy
+8. Vercel proxy calls Claude API
+9. Response flows back through chain
 
-### Data Collection (Safe Mode)
-- Fetches overview from dorf3.php
-- No page navigation required
-- AJAX interception for updates
-- Current page scraping
-- 7 villages detected successfully
+### Current Failure Point
+Background service crashes on initialization due to URL construction error, breaking entire message flow.
 
-### System Message Templates
-- Default: Elite strategist
-- Early Game: Economic dominance
-- Mid Game: Artifact positioning
-- Artifacts: Deception and timing
-- Endgame: WW logistics
-- Custom: User-defined
+## NEXT SESSION REQUIREMENTS
 
-## KNOWN ISSUES
+### Must Fix
+1. **Version Consistency**: All components must show v0.7.0
+2. **Background URL Error**: Fix the URL construction crash
+3. **End-to-End Test**: Email initialization → chat working
+4. **Clean Build Process**: Consistent, repeatable builds
 
-### Non-Critical
-- WebSocket to Replit backend failing (not needed for chat)
-- Some console warnings about CSP (doesn't affect functionality)
+### Quality Standards
+- Version numbers must be consistent across ALL files
+- Console logs must show correct versions
+- No "let's try this" debugging - research and fix properly
+- Test each fix before claiming it works
+- Document actual state, not theoretical state
 
-### Working Despite Errors
-- Chat works even if data collection has issues
-- AI can answer general strategy without village data
-- System continues after non-critical failures
+## USER DETAILS
+- Email: dostal.doug@gmail.com  
+- Server: lusobr.x2.lusobrasileiro.travian.com
+- Villages: 7 (names: 000-006)
+- Rank: ~786
+- Vercel Proxy: https://travian-proxy-simple.vercel.app/api/proxy (confirmed working)
 
-## SUCCESS METRICS
-
-### Technical ✅
-- Extension loads without errors
-- Background service active
-- Chat interface functional
-- Vercel proxy connected
-- Data scraping operational
-
-### User Experience ✅
-- Click chat button to open
-- Natural conversation flow
-- Draggable window
-- Position remembered
-- Real strategic advice
-
-## NEXT STEPS
-
-### Immediate
-1. Build with fix (v0.6.4)
-2. Test chat with real questions
-3. Verify AI responses quality
-
-### Future Enhancements
-- Fix IndexedDB/Chrome Storage mismatch
-- Add context learning integration
-- Implement team sharing features
-- Add opponent profiling
-
-## TROUBLESHOOTING
-
-| Issue | Solution |
-|-------|----------|
-| Chat not responding | Check Vercel proxy is accessible |
-| No village data | Normal - chat works without it |
-| Background errors | WebSocket optional, ignore |
-| Version mismatch | Hard refresh page (Ctrl+Shift+R) |
+## LESSONS LEARNED
+- Version management was poorly handled
+- Build system complexity not properly understood
+- Changes claimed but not verified
+- Testing inadequate before declaring success
 
 ---
-*Fix applied: getAllCachedVillages method added to maintain data flow compatibility*
+*Session ended due to quality concerns. Next session must demonstrate attention to detail and consistent version management.*
