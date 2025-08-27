@@ -1,22 +1,22 @@
 // packages/extension/src/background.ts
-// v0.7.0 - Fixed URL construction error
+// v0.8.0 - Updated to use local V3 backend
 
 import { backendSync } from './background/backend-sync';
-import TravianChatAI from './ai/ai-chat-client';
 import { VERSION } from './version';
 
 console.log(`[TLA BG] Background service starting... v${VERSION}`);
 
-const PROXY_URL = 'https://travian-proxy-simple.vercel.app/api/proxy';
+// Use local backend for chat
+const LOCAL_BACKEND_URL = 'http://localhost:3000';
+const VERCEL_PROXY_URL = 'https://travian-proxy-simple.vercel.app/api/proxy';
 
 class BackgroundService {
-  private proxyUrl: string = PROXY_URL;
+  private backendUrl: string = LOCAL_BACKEND_URL;
   private initialized: boolean = false;
-  private chatAI: TravianChatAI | null = null;
+  private sessionId: string = `session-${Date.now()}`;
 
   constructor() {
     console.log(`[TLA BG] Constructing background service v${VERSION}`);
-    // Defer AI client initialization to avoid URL construction issues
     this.initialize().catch(err => {
       console.error('[TLA BG] Failed to initialize:', err);
     });
@@ -29,25 +29,27 @@ class BackgroundService {
     }
 
     try {
-      // Check if proxy URL is configured
-      const stored = await chrome.storage.sync.get(['proxyUrl', 'userEmail']);
-      if (stored.proxyUrl) {
-        this.proxyUrl = stored.proxyUrl;
-        console.log('[TLA BG] Using custom proxy URL:', this.proxyUrl);
+      // Check if backend is accessible
+      const healthCheck = await fetch(`${this.backendUrl}/health`).catch(() => null);
+      if (!healthCheck || !healthCheck.ok) {
+        console.warn('[TLA BG] Local backend not accessible, chat will be limited');
+      } else {
+        const health = await healthCheck.json();
+        console.log('[TLA BG] Backend connected:', health);
       }
       
-      // Initialize AI client after confirming proxy URL
-      this.chatAI = new TravianChatAI(this.proxyUrl);
-      console.log('[TLA BG] AI client initialized');
+      // Check stored settings
+      const stored = await chrome.storage.sync.get(['userEmail', 'backendUrl']);
+      if (stored.backendUrl) {
+        this.backendUrl = stored.backendUrl;
+        console.log('[TLA BG] Using custom backend URL:', this.backendUrl);
+      }
       
       if (stored.userEmail) {
-        await this.chatAI.initialize(stored.userEmail);
-        console.log('[TLA BG] User ID initialized');
+        console.log('[TLA BG] User email found:', stored.userEmail);
       }
     } catch (err) {
       console.error('[TLA BG] Storage/initialization error:', err);
-      // Create AI client with default URL as fallback
-      this.chatAI = new TravianChatAI(PROXY_URL);
     }
 
     // Set up message listener
@@ -70,80 +72,79 @@ class BackgroundService {
 
     this.initialized = true;
     console.log('[TLA BG] Background service initialized');
-    console.log('[TLA BG] Proxy URL:', this.proxyUrl);
+    console.log('[TLA BG] Backend URL:', this.backendUrl);
     console.log('[TLA BG] Version:', VERSION);
   }
 
   private async handleMessage(request: any, sender: any): Promise<any> {
     console.log('[TLA BG] Handling message type:', request.type);
     
-    // Ensure AI client exists
-    if (!this.chatAI && request.type !== 'PING') {
-      console.log('[TLA BG] AI client not initialized, creating now');
-      this.chatAI = new TravianChatAI(this.proxyUrl);
-    }
-    
     switch (request.type) {
       case 'PING':
-        return { success: true, message: `Chat AI service v${VERSION} is running` };
+        return { success: true, message: `TravianAssistant v${VERSION} is running` };
 
       case 'SET_USER_EMAIL':
         try {
-          if (!this.chatAI) {
-            this.chatAI = new TravianChatAI(this.proxyUrl);
-          }
-          const userId = await this.chatAI.initialize(request.email);
           await chrome.storage.sync.set({ userEmail: request.email });
-          return { success: true, userId };
-        } catch (error: any) {
-          return { success: false, error: error.message };
-        }
-
-      case 'UPDATE_SYSTEM_MESSAGE':
-        try {
-          if (!this.chatAI) {
-            return { success: false, error: 'AI client not initialized' };
+          // Initialize chat session with backend
+          const response = await fetch(`${this.backendUrl}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: 'Initialize user',
+              email: request.email,
+              sessionId: this.sessionId
+            })
+          });
+          
+          if (response.ok) {
+            return { success: true, userId: request.email };
           }
-          await this.chatAI.updateSystemMessage(request.message);
-          return { success: true, message: 'System message updated' };
+          return { success: true, userId: request.email, backendStatus: 'offline' };
         } catch (error: any) {
-          return { success: false, error: error.message };
+          // Backend might be offline, but we can still store the email
+          await chrome.storage.sync.set({ userEmail: request.email });
+          return { success: true, userId: request.email, backendStatus: 'offline' };
         }
 
       case 'CHAT_MESSAGE':
         try {
-          if (!this.chatAI) {
-            return { success: false, error: 'AI client not initialized' };
-          }
           console.log('[TLA BG] Processing chat message...');
-          const gameState = request.gameState;
-          const response = await this.chatAI.chat(request.message, gameState);
-          return { success: true, response };
+          const { message, gameState } = request;
+          
+          // Get stored email
+          const stored = await chrome.storage.sync.get(['userEmail']);
+          
+          // Call local backend
+          const response = await fetch(`${this.backendUrl}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message,
+              email: stored.userEmail || 'anonymous',
+              gameState: gameState || {},
+              sessionId: this.sessionId
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Backend error: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          return { 
+            success: true, 
+            response: data.response,
+            recommendations: data.recommendations 
+          };
         } catch (error: any) {
           console.error('[TLA BG] Chat failed:', error);
-          return { success: false, error: error.message };
+          // Fallback to simple response if backend is offline
+          return { 
+            success: true, 
+            response: "I'm currently offline. Please ensure the TravianAssistant backend is running on port 3000. You can start it with: cd backend && npm run server"
+          };
         }
-
-      case 'GET_EXAMPLE_PROMPTS':
-        if (!this.chatAI) {
-          return { success: false, error: 'AI client not initialized' };
-        }
-        const prompts = this.chatAI.getExamplePrompts();
-        return { success: true, prompts };
-
-      case 'GET_SYSTEM_TEMPLATES':
-        if (!this.chatAI) {
-          return { success: false, error: 'AI client not initialized' };
-        }
-        const templates = this.chatAI.getSystemMessageTemplates();
-        return { success: true, templates };
-
-      case 'OPEN_SETTINGS':
-        // Open settings page in new tab
-        chrome.tabs.create({
-          url: chrome.runtime.getURL('popup/settings.html')
-        });
-        return { success: true };
 
       case 'GET_GAME_STATE':
         // Request game state from content script
@@ -163,17 +164,69 @@ class BackgroundService {
       case 'SYNC_GAME_STATE':
         try {
           const gameState = request.gameState;
-          // Optional backend sync
-          let syncResult = { success: false };
-          try {
-            syncResult = await backendSync.syncGameState(gameState);
-          } catch (err) {
-            console.log('[TLA BG] Backend sync skipped:', err);
+          
+          // Send to backend for analysis
+          const response = await fetch(`${this.backendUrl}/api/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gameState })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            return { 
+              success: true, 
+              recommendations: data.recommendations,
+              metrics: data.metrics 
+            };
           }
-          return { success: true, backendSync: syncResult.success };
+          
+          return { success: false, error: 'Backend sync failed' };
+        } catch (error: any) {
+          console.log('[TLA BG] Backend sync skipped:', error.message);
+          return { success: false, error: error.message };
+        }
+
+      case 'SYNC_MAP':
+        try {
+          // Trigger map sync on backend
+          const response = await fetch(`${this.backendUrl}/api/sync-map`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            return { success: true, stats: data.stats };
+          }
+          
+          return { success: false, error: 'Map sync failed' };
         } catch (error: any) {
           return { success: false, error: error.message };
         }
+
+      case 'GET_EXAMPLE_PROMPTS':
+        return { 
+          success: true, 
+          prompts: [
+            "What should I focus on right now?",
+            "Analyze my current resource production",
+            "When should I settle my next village?",
+            "What troops should I build?",
+            "How can I improve my defense?",
+            "What's the optimal build order for this village?",
+            "Should I join an alliance?",
+            "How do I prepare for artifacts?"
+          ]
+        };
+
+      case 'OPEN_SETTINGS':
+        // Open settings page in new tab
+        chrome.tabs.create({
+          url: chrome.runtime.getURL('popup/settings.html')
+        });
+        return { success: true };
 
       default:
         console.log('[TLA BG] Unknown message type:', request.type);
@@ -185,9 +238,15 @@ class BackgroundService {
 // Initialize service
 const bgService = new BackgroundService();
 
-// Keep service alive with less frequent heartbeat
+// Keep service alive with heartbeat
 setInterval(() => {
-  console.log(`[TLA BG] Chat AI service alive - v${VERSION}`);
+  console.log(`[TLA BG] TravianAssistant service alive - v${VERSION}`);
+  
+  // Optionally check backend health
+  fetch('http://localhost:3000/health')
+    .then(res => res.json())
+    .then(health => console.log('[TLA BG] Backend status:', health.status))
+    .catch(() => console.log('[TLA BG] Backend offline'));
 }, 60000); // Once per minute
 
-console.log(`[TLA BG] Chat AI background script loaded - v${VERSION}`);
+console.log(`[TLA BG] Background script loaded - v${VERSION}`);
