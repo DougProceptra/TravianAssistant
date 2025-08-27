@@ -1,5 +1,8 @@
 # TravianAssistant Session Context
 
+## ⚠️ MANDATORY READING INSTRUCTION ⚠️
+**You must read every word of this document. You must read it 3 times. The first as a senior architect guiding the work of an application. The second time is as a developer that will be executing the steps and directions emanating from document and the third time as business analyst making sure you understand the functions and processes being addressed and how they affect the game. You cannot proceed until you fully comprehend every aspect of the SESSION_CONTEXT.md document.**
+
 ## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
 - Owner: **DougProceptra** (NOT dougyb83, NOT DougZackowski)  
@@ -22,7 +25,7 @@
 
 ### ✅ What Was Fixed This Session
 1. **getAllCachedVillages error**: FIXED - Was using `.size` on array, changed to `.length`
-2. **Chat not responding**: FIXED - Changed `.get()` to `.find()` in ai-chat-client.ts line 161
+2. **Chat not responding**: FIXED - Changed `.get()` on `.find()` in ai-chat-client.ts line 161
 3. **Data collection**: WORKING - Successfully parsing all 8 villages
 4. **Chat connection**: WORKING - Connects to Vercel proxy and gets AI responses
 
