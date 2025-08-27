@@ -1,5 +1,13 @@
 # TravianAssistant Session Context
 
+## ⚠️ MANDATORY FIRST STEP FOR EACH SESSION ⚠️
+**RUN STATUS CHECK FIRST**:
+```bash
+cd ~/workspace
+node scripts/check-dev-status.js
+```
+This ensures you're working with a clean environment before proceeding.
+
 ## ⚠️ CRITICAL REPOSITORY LOCATION ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
 - Owner: **DougProceptra** (NOT DougZackowski)
@@ -15,7 +23,7 @@
 
 ---
 
-*Last Updated: August 27, 2025, 06:30 PST*
+*Last Updated: August 27, 2025, 15:05 PST*
 *Session Status: HANDOFF READY - v0.7.9 Working*
 
 ## CURRENT STATUS: v0.7.9 Functional
@@ -144,11 +152,12 @@ cd packages/extension
 - `/packages/extension/src/version.ts` - Version constant
 
 ## CRITICAL NOTES FOR NEXT AGENT
-1. **USE CORRECT REPO**: DougProceptra/TravianAssistant (NOT DougZackowski)
-2. **BUILD WITH**: `./build-simple.sh` (auto-increments version)
-3. **TEST IN**: Chrome with F12 console open on Travian game page
-4. **KNOWN GOOD**: v0.7.9 loads and initializes successfully
-5. **FOCUS ON**: Chat persistence and AI integration testing
+1. **RUN STATUS CHECK FIRST**: `node scripts/check-dev-status.js`
+2. **USE CORRECT REPO**: DougProceptra/TravianAssistant (NOT DougZackowski)
+3. **BUILD WITH**: `./build-simple.sh` (auto-increments version)
+4. **TEST IN**: Chrome with F12 console open on Travian game page
+5. **KNOWN GOOD**: v0.7.9 loads and initializes successfully
+6. **FOCUS ON**: Chat persistence and AI integration testing
 
 ---
 *Extension is functional but needs chat persistence and AI testing to be fully operational.*
