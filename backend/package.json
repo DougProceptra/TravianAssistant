@@ -1,42 +1,22 @@
 {
-  "name": "travian-assistant-backend",
+  "name": "travian-assistant-backend-v3",
   "version": "3.0.0",
-  "description": "TravianAssistant V3 Backend - AI-powered strategic command center",
-  "main": "start.js",
+  "description": "TravianAssistant V3 Backend - AI-powered strategic advisor",
+  "main": "server.js",
   "scripts": {
-    "start": "node start.js",
-    "start:prod": "NODE_ENV=production node start.js",
-    "start:sqlite": "USE_SQLITE=true node start.js",
-    "dev": "nodemon start.js",
+    "init-db": "node init-db.js",
+    "import-map": "node import-map.js",
     "server": "node server.js",
-    "server:sqlite": "node server-sqlite.js",
-    "init-db": "node ../scripts/init-db-v3.js",
-    "import-map": "node ../scripts/import-map.js",
-    "setup": "npm run init-db && npm run import-map",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "npm run init-db && npm run server",
+    "start": "npm run server",
+    "setup": "npm install && npm run init-db"
   },
-  "keywords": [
-    "travian",
-    "backend",
-    "websocket",
-    "api",
-    "ai",
-    "strategy"
-  ],
-  "author": "DougProceptra",
-  "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.3",
-    "better-sqlite3": "^12.2.0",
+    "better-sqlite3": "^9.6.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "mongoose": "^7.5.0",
-    "sqlite3": "^5.1.6",
-    "ws": "^8.14.2"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "node-fetch": "^2.7.0"
   },
   "engines": {
     "node": ">=14.0.0"
