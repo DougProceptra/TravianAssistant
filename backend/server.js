@@ -1,320 +1,333 @@
+#!/usr/bin/env node
+
+/**
+ * TravianAssistant V3 - Backend Server
+ * Provides AI chat, game analysis, and data management
+ */
+
 const express = require('express');
 const cors = require('cors');
-const WebSocket = require('ws');
-const mongoose = require('mongoose');
-require('dotenv').config();
+const Database = require('better-sqlite3');
+const fetch = require('node-fetch');
+const cron = require('node-cron');
+const path = require('path');
+const MapImporter = require('./import-map');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+const DB_PATH = path.join(__dirname, '..', 'travian.db');
 
-// Replit-aware port configuration
-const PORT = process.env.PORT || 3002;
-const IS_REPLIT = process.env.REPL_ID || process.env.REPLIT_DB_URL;
-const IS_PRODUCTION = process.env.NODE_ENV === 'production' || process.env.REPLIT_DEPLOYMENT;
+// Database connection
+const db = new Database(DB_PATH);
+db.pragma('journal_mode = WAL');
 
-// Build CORS origins based on environment
-const getCorsOrigins = () => {
-  const origins = [
-    'chrome-extension://*',
-    'http://localhost:*',
-    'http://127.0.0.1:*'
-  ];
-  
-  if (IS_REPLIT) {
-    // Add Replit-specific origins
-    const replName = process.env.REPL_SLUG || 'TravianAssistant';
-    const replOwner = process.env.REPL_OWNER || '*';
-    
-    origins.push(
-      `https://${replName}.${replOwner}.repl.co`,
-      `https://${replName}-*.${replOwner}.repl.co`,
-      'https://*.replit.dev',
-      'https://*.repl.co',
-      'https://*.replit.app'
-    );
-  }
-  
-  // Allow custom CORS origin from environment
-  if (process.env.CORS_ORIGIN) {
-    origins.push(...process.env.CORS_ORIGIN.split(','));
-  }
-  
-  return origins;
-};
-
-// Enable CORS for extension and Replit
+// Middleware
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = getCorsOrigins();
-    
-    // Check if origin matches any allowed pattern
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (allowed.includes('*')) {
-        // Convert wildcard to regex
-        const regex = new RegExp('^' + allowed.replace(/\*/g, '.*') + '$');
-        return regex.test(origin);
-      }
-      return allowed === origin;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.log('⚠️ CORS blocked origin:', origin);
-      callback(null, true); // Be permissive in development
-    }
-  },
+  origin: ['chrome-extension://*', 'http://localhost:*', 'https://*.travian.com'],
   credentials: true
 }));
+app.use(express.json({ limit: '10mb' }));
 
-app.use(express.json());
-
-// MongoDB connection (optional - comment out if not using)
-if (process.env.MONGODB_URI) {
-  mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-  }).then(() => {
-    console.log('✅ Connected to MongoDB');
-  }).catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    console.log('ℹ️ Running without database');
-  });
-} else {
-  console.log('ℹ️ No MongoDB URI provided, running in-memory mode');
-}
-
-// In-memory storage for when MongoDB is not available
-const memoryStore = {
-  villages: new Map(),
-  accounts: new Map(),
-  alerts: []
-};
-
-// Health check endpoint (required for testing)
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-    environment: IS_PRODUCTION ? 'production' : 'development',
-    platform: IS_REPLIT ? 'replit' : 'local',
-    database: process.env.MONGODB_URI ? 'mongodb' : 'in-memory',
-    uptime: process.uptime()
-  });
+// Request logging
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  if (req.body && Object.keys(req.body).length) {
+    console.log('Body preview:', JSON.stringify(req.body).substring(0, 200));
+  }
+  next();
 });
 
-// Village sync endpoint
-app.post('/api/villages', async (req, res) => {
-  const { accountId, village, villages } = req.body;
-  console.log('📊 Received village data:', { 
-    accountId, 
-    villageName: village?.name,
-    villageId: village?.id,
-    villageCount: villages?.length 
-  });
+// ==================== CHAT ENDPOINT (FIX FOR EXTENSION) ====================
+app.post('/api/chat', async (req, res) => {
+  console.log('🤖 Chat request received');
   
-  // Store in memory
-  if (accountId) {
-    if (!memoryStore.villages.has(accountId)) {
-      memoryStore.villages.set(accountId, []);
+  try {
+    const { message, email, gameState, sessionId } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Store user message
+    const storeMsg = db.prepare(`
+      INSERT INTO chat_history (role, content, game_state, session_id)
+      VALUES (?, ?, ?, ?)
+    `);
+    
+    storeMsg.run('user', message, JSON.stringify(gameState || {}), sessionId || 'default');
+    
+    // Get conversation history
+    const history = db.prepare(`
+      SELECT role, content FROM chat_history 
+      WHERE session_id = ? 
+      ORDER BY timestamp DESC 
+      LIMIT 20
+    `).all(sessionId || 'default').reverse();
+    
+    // Build context for Claude
+    const systemPrompt = buildSystemPrompt(gameState);
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...history.map(h => ({ role: h.role, content: h.content })),
+      { role: 'user', content: message }
+    ];
+    
+    // Call Claude via proxy
+    console.log('📡 Calling Anthropic API...');
+    const response = await fetch('https://travian-proxy-simple.vercel.app/api/proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2000,
+        messages: messages.slice(-10), // Keep context manageable
+        temperature: 0.7,
+        system: systemPrompt
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('❌ Anthropic API error:', error);
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.content?.[0]?.text || 'I apologize, but I couldn\'t generate a response.';
+    
+    // Store AI response
+    storeMsg.run('assistant', aiResponse, JSON.stringify(gameState || {}), sessionId || 'default');
+    
+    // Generate recommendations if needed
+    const recommendations = analyzeGameState(gameState);
+    
+    res.json({
+      response: aiResponse,
+      recommendations: recommendations,
+      sessionId: sessionId || 'default'
+    });
+    
+    console.log('✅ Chat response sent');
+    
+  } catch (error) {
+    console.error('❌ Chat error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process chat request',
+      details: error.message 
+    });
+  }
+});
+
+// ==================== GAME STATE ANALYSIS ====================
+app.post('/api/analyze', (req, res) => {
+  console.log('🎮 Analyzing game state');
+  
+  try {
+    const { gameState } = req.body;
+    
+    // Store snapshot
+    const stmt = db.prepare(`
+      INSERT INTO player_snapshots (villages, resources, troops, buildings, research, hero, data)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    stmt.run(
+      JSON.stringify(gameState.villages || []),
+      JSON.stringify(gameState.resources || {}),
+      JSON.stringify(gameState.troops || {}),
+      JSON.stringify(gameState.buildings || {}),
+      JSON.stringify(gameState.research || {}),
+      JSON.stringify(gameState.hero || {}),
+      JSON.stringify(gameState)
+    );
+    
+    // Generate recommendations
+    const recommendations = analyzeGameState(gameState);
+    
+    // Store recommendations
+    const recStmt = db.prepare(`
+      INSERT INTO recommendations (priority, action_type, action_data, reasoning)
+      VALUES (?, ?, ?, ?)
+    `);
+    
+    for (const rec of recommendations) {
+      recStmt.run(rec.priority, rec.type, JSON.stringify(rec.data), rec.reasoning);
     }
     
-    if (villages && Array.isArray(villages)) {
-      memoryStore.villages.set(accountId, villages);
-    } else if (village) {
-      const stored = memoryStore.villages.get(accountId);
-      const index = stored.findIndex(v => v.id === village.id);
-      if (index >= 0) {
-        stored[index] = { ...stored[index], ...village, lastUpdate: new Date() };
-      } else {
-        stored.push({ ...village, lastUpdate: new Date() });
-      }
-    }
-  }
-  
-  res.json({ 
-    success: true, 
-    message: 'Village data received',
-    timestamp: new Date().toISOString(),
-    stored: memoryStore.villages.get(accountId)?.length || 0
-  });
-});
-
-// Get all villages for an account
-app.get('/api/villages/:accountId', async (req, res) => {
-  const { accountId } = req.params;
-  console.log('📋 Fetching villages for account:', accountId);
-  
-  const villages = memoryStore.villages.get(accountId) || [];
-  
-  res.json({
-    accountId,
-    villages,
-    count: villages.length,
-    source: process.env.MONGODB_URI ? 'database' : 'memory'
-  });
-});
-
-// Create or update account
-app.post('/api/account', async (req, res) => {
-  const { accountId, serverUrl, accountName, tribe } = req.body;
-  console.log('👤 Creating/updating account:', accountId);
-  
-  memoryStore.accounts.set(accountId, {
-    accountId,
-    serverUrl,
-    accountName,
-    tribe,
-    created: memoryStore.accounts.get(accountId)?.created || new Date(),
-    updated: new Date()
-  });
-  
-  res.json({
-    success: true,
-    account: memoryStore.accounts.get(accountId)
-  });
-});
-
-// Root endpoint
-app.get('/', (req, res) => {
-  const baseUrl = IS_REPLIT 
-    ? `https://${process.env.REPL_SLUG || 'TravianAssistant'}.${process.env.REPL_OWNER || 'repl'}.co`
-    : `http://localhost:${PORT}`;
+    res.json({
+      success: true,
+      recommendations: recommendations,
+      metrics: calculateMetrics(gameState)
+    });
     
-  res.json({ 
-    message: 'TravianAssistant Backend API',
-    version: '1.0.0',
-    environment: {
-      platform: IS_REPLIT ? 'replit' : 'local',
-      mode: IS_PRODUCTION ? 'production' : 'development',
-      port: PORT
-    },
-    endpoints: {
-      health: '/api/health',
-      villages: '/api/villages',
-      account: '/api/account',
-      websocket: baseUrl.replace('https://', 'wss://').replace('http://', 'ws://')
-    },
-    stats: {
-      accounts: memoryStore.accounts.size,
-      villages: Array.from(memoryStore.villages.values()).flat().length,
-      uptime: Math.floor(process.uptime()) + ' seconds'
-    }
-  });
-});
-
-// Start HTTP server
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log('\n========================================');
-  console.log('🚀 TravianAssistant Backend Started');
-  console.log('========================================');
-  console.log(`📍 Environment: ${IS_PRODUCTION ? 'PRODUCTION' : 'DEVELOPMENT'}`);
-  console.log(`🖥️ Platform: ${IS_REPLIT ? 'Replit' : 'Local'}`);
-  console.log(`🔌 Port: ${PORT}`);
-  console.log(`💾 Database: ${process.env.MONGODB_URI ? 'MongoDB' : 'In-Memory'}`);
-  
-  if (IS_REPLIT) {
-    const replName = process.env.REPL_SLUG || 'TravianAssistant';
-    const replOwner = process.env.REPL_OWNER || 'your-username';
-    console.log(`\n🌐 Access URLs:`);
-    console.log(`   Preview: https://${replName}.${replOwner}.repl.co`);
-    console.log(`   API: https://${replName}.${replOwner}.repl.co/api/health`);
-    console.log(`   WebSocket: wss://${replName}.${replOwner}.repl.co`);
-  } else {
-    console.log(`\n🌐 Access URLs:`);
-    console.log(`   Local: http://localhost:${PORT}`);
-    console.log(`   API: http://localhost:${PORT}/api/health`);
-    console.log(`   WebSocket: ws://localhost:${PORT}`);
+  } catch (error) {
+    console.error('❌ Analysis error:', error);
+    res.status(500).json({ error: 'Analysis failed', details: error.message });
   }
-  console.log('========================================\n');
 });
 
-// WebSocket setup
-const wss = new WebSocket.Server({ server });
+// ==================== MAP SYNC ENDPOINT ====================
+app.post('/api/sync-map', async (req, res) => {
+  console.log('🗺️ Map sync requested');
+  
+  try {
+    const importer = new MapImporter();
+    await importer.run();
+    
+    res.json({ 
+      success: true, 
+      message: 'Map data synced successfully',
+      stats: await importer.getStats()
+    });
+  } catch (error) {
+    console.error('❌ Map sync error:', error);
+    res.status(500).json({ error: 'Map sync failed', details: error.message });
+  }
+});
 
-// Track connected clients
-const clients = new Map();
-
-wss.on('connection', (ws, req) => {
-  const clientIp = req.socket.remoteAddress;
-  console.log('🔌 WebSocket client connected from:', clientIp);
+// ==================== HEALTH CHECK ====================
+app.get('/health', (req, res) => {
+  const stats = db.prepare(`
+    SELECT 
+      (SELECT COUNT(*) FROM villages) as villages,
+      (SELECT COUNT(*) FROM recommendations WHERE completed = 0) as pending_recommendations,
+      (SELECT COUNT(*) FROM chat_history WHERE date(timestamp) = date('now')) as chats_today
+  `).get();
   
-  // Send initial connection success
-  ws.send(JSON.stringify({ 
-    type: 'connection_established',
-    timestamp: new Date().toISOString(),
-    server: IS_REPLIT ? 'replit' : 'local'
-  }));
-  
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-      console.log('📨 Received WebSocket message:', data.type);
-      
-      if (data.type === 'auth') {
-        // Store authenticated client
-        clients.set(data.accountId, ws);
-        console.log('✅ Client authenticated:', data.accountId);
-        
-        ws.send(JSON.stringify({ 
-          type: 'auth_success',
-          accountId: data.accountId
-        }));
-      } else if (data.type === 'village_update') {
-        // Broadcast village update to other clients
-        console.log('📡 Broadcasting village update');
-        broadcast(data, ws);
-      }
-    } catch (error) {
-      console.error('❌ WebSocket message error:', error);
-      ws.send(JSON.stringify({ 
-        type: 'error',
-        message: 'Invalid message format'
-      }));
-    }
-  });
-  
-  ws.on('close', () => {
-    console.log('🔌 WebSocket client disconnected');
-    // Remove from clients map
-    for (const [accountId, client] of clients.entries()) {
-      if (client === ws) {
-        clients.delete(accountId);
-        break;
-      }
-    }
-  });
-  
-  ws.on('error', (error) => {
-    console.error('❌ WebSocket error:', error);
+  res.json({
+    status: 'healthy',
+    version: '3.0.0',
+    database: 'connected',
+    stats
   });
 });
 
-// Broadcast to all connected clients except sender
-function broadcast(data, sender) {
-  wss.clients.forEach((client) => {
-    if (client !== sender && client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
-  });
+// ==================== HELPER FUNCTIONS ====================
+function buildSystemPrompt(gameState) {
+  const villages = gameState?.villages || [];
+  const resources = gameState?.resources || {};
+  
+  return `You are an expert Travian Legends strategist assistant. You're helping a player who:
+- Has ${villages.length} villages
+- Is playing Egyptians tribe
+- Current resources: Wood ${resources.wood || 0}, Clay ${resources.clay || 0}, Iron ${resources.iron || 0}, Crop ${resources.crop || 0}
+
+Provide strategic advice focused on:
+1. Optimal resource field development
+2. Building priorities for growth
+3. Troop composition recommendations
+4. Settlement timing and location
+5. Alliance coordination strategies
+
+Be specific, actionable, and consider the current game state. Reference actual game mechanics and provide calculations when helpful.`;
 }
+
+function analyzeGameState(gameState) {
+  const recommendations = [];
+  
+  if (!gameState) {
+    return recommendations;
+  }
+  
+  // Check resource balance
+  const resources = gameState.resources || {};
+  const totalResources = (resources.wood || 0) + (resources.clay || 0) + 
+                         (resources.iron || 0) + (resources.crop || 0);
+  
+  if (totalResources < 1000) {
+    recommendations.push({
+      priority: 1,
+      type: 'RESOURCE_FOCUS',
+      data: { focus: 'fields' },
+      reasoning: 'Low total resources - focus on resource field development'
+    });
+  }
+  
+  // Check for building queue
+  if (!gameState.buildingQueue || gameState.buildingQueue.length === 0) {
+    recommendations.push({
+      priority: 2,
+      type: 'BUILD_QUEUE_EMPTY',
+      data: { suggestion: 'Start a building' },
+      reasoning: 'Building queue is empty - losing valuable time'
+    });
+  }
+  
+  // Check village count vs server age
+  const villages = gameState.villages || [];
+  if (villages.length < 2 && gameState.serverAge > 7) {
+    recommendations.push({
+      priority: 1,
+      type: 'SETTLEMENT_NEEDED',
+      data: { target: 'second_village' },
+      reasoning: 'Server is over 7 days old but only 1 village - need to expand'
+    });
+  }
+  
+  return recommendations;
+}
+
+function calculateMetrics(gameState) {
+  return {
+    resourceProduction: calculateResourceProduction(gameState),
+    populationTotal: calculatePopulation(gameState),
+    militaryStrength: calculateMilitaryStrength(gameState)
+  };
+}
+
+function calculateResourceProduction(gameState) {
+  // Simplified calculation - would be more complex in production
+  return {
+    wood: 100,
+    clay: 100,
+    iron: 100,
+    crop: 100
+  };
+}
+
+function calculatePopulation(gameState) {
+  return (gameState.villages || []).reduce((sum, v) => sum + (v.population || 0), 0);
+}
+
+function calculateMilitaryStrength(gameState) {
+  const troops = gameState.troops || {};
+  return Object.values(troops).reduce((sum, count) => sum + count, 0);
+}
+
+// ==================== SCHEDULED TASKS ====================
+// Schedule map sync for 6am ET daily
+cron.schedule('0 6 * * *', async () => {
+  console.log('⏰ Running scheduled map sync...');
+  try {
+    const importer = new MapImporter();
+    await importer.run();
+  } catch (error) {
+    console.error('❌ Scheduled map sync failed:', error);
+  }
+}, {
+  timezone: 'America/New_York'
+});
+
+// ==================== SERVER STARTUP ====================
+app.listen(PORT, () => {
+  console.log('🚀 TravianAssistant V3 Backend Server');
+  console.log('=====================================');
+  console.log(`📡 Server running on port ${PORT}`);
+  console.log(`🗄️ Database: ${DB_PATH}`);
+  console.log(`⏰ Map sync scheduled: 6am ET daily`);
+  console.log('\n📍 Endpoints:');
+  console.log(`   POST ${PORT}/api/chat - AI chat interaction`);
+  console.log(`   POST ${PORT}/api/analyze - Game state analysis`);
+  console.log(`   POST ${PORT}/api/sync-map - Manual map sync`);
+  console.log(`   GET  ${PORT}/health - Server health check`);
+  console.log('\n✅ Ready to assist with Travian strategy!');
+});
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('⚠️ SIGTERM received, closing server...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
-});
-
 process.on('SIGINT', () => {
-  console.log('⚠️ SIGINT received, closing server...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
+  console.log('\n👋 Shutting down gracefully...');
+  db.close();
+  process.exit(0);
 });
