@@ -1,232 +1,440 @@
-// Conversational AI Interface
-// Connects chat UI to Claude via background service
-// v0.6.5 - Fixed initialization flow and message types
+// packages/extension/src/content/conversational-ai.ts
+// Chat interface for natural conversation with AI
+// v0.7.0 - Fixed email detection
 
-export class ChatAI {
-  private conversationHistory: Array<{role: string, content: string}> = [];
-  private userInitialized: boolean = false;
+import { safeScraper } from './safe-scraper';
+import { overviewParser } from './overview-parser';
+import { VERSION } from '../version';
+
+export function initConversationalAI() {
+  console.log(`[TLA Chat] Initializing conversational AI v${VERSION}...`);
   
-  constructor() {
-    console.log('[TLA Chat] Conversational AI initialized');
-    this.checkInitialization();
-  }
+  // Create chat button
+  const chatButton = createChatButton();
+  document.body.appendChild(chatButton);
   
-  // Check if user is already initialized
-  private async checkInitialization() {
-    try {
-      const stored = await chrome.storage.sync.get(['userEmail']);
-      if (stored.userEmail) {
-        this.userInitialized = true;
-        console.log('[TLA Chat] User already initialized');
-      }
-    } catch (error) {
-      console.error('[TLA Chat] Failed to check initialization:', error);
+  // Create chat interface (hidden initially)
+  const chatInterface = createChatInterface();
+  document.body.appendChild(chatInterface);
+  
+  // Toggle chat on button click
+  chatButton.addEventListener('click', () => {
+    const isVisible = chatInterface.style.display === 'block';
+    chatInterface.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible) {
+      // Focus input when opening
+      const input = chatInterface.querySelector('#tla-chat-input') as HTMLInputElement;
+      input?.focus();
+      
+      // Check if user email is set
+      checkUserInitialization();
     }
-  }
+  });
   
-  // Check if input looks like an email
-  private isEmail(text: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(text.trim());
-  }
+  console.log(`[TLA Chat] Chat interface initialized v${VERSION}`);
+}
+
+function isEmail(text: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(text.trim());
+}
+
+function createChatButton(): HTMLElement {
+  const button = document.createElement('div');
+  button.id = 'tla-chat-button';
+  button.innerHTML = `
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+      <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+    </svg>
+  `;
   
-  async askQuestion(question: string, gameState: any): Promise<string> {
+  // Style the button
+  button.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #8B4513, #A0522D);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    transition: transform 0.2s, box-shadow 0.2s;
+  `;
+  
+  // Hover effect
+  button.addEventListener('mouseenter', () => {
+    button.style.transform = 'scale(1.1)';
+    button.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.4)';
+  });
+  
+  button.addEventListener('mouseleave', () => {
+    button.style.transform = 'scale(1)';
+    button.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+  });
+  
+  return button;
+}
+
+function createChatInterface(): HTMLElement {
+  const chat = document.createElement('div');
+  chat.id = 'tla-chat-interface';
+  chat.innerHTML = `
+    <div class="tla-chat-header">
+      <span class="tla-chat-title">TravianAssistant AI Chat</span>
+      <span class="tla-chat-version">v${VERSION}</span>
+      <button class="tla-chat-close">×</button>
+    </div>
+    <div class="tla-chat-messages" id="tla-chat-messages">
+      <div class="tla-chat-welcome">
+        Welcome! I'm your strategic advisor. Ask me anything about your Travian game.
+        <br><br>
+        <strong>First time?</strong> Type your email to get started.
+      </div>
+    </div>
+    <div class="tla-chat-input-area">
+      <input type="text" id="tla-chat-input" placeholder="Type your message or email..." />
+      <button id="tla-chat-send">Send</button>
+    </div>
+    <div class="tla-chat-suggestions" id="tla-chat-suggestions" style="display: none;">
+      <div class="tla-suggestion">What should I focus on right now?</div>
+      <div class="tla-suggestion">Analyze my current position</div>
+      <div class="tla-suggestion">How can I grow faster?</div>
+      <div class="tla-suggestion">What are my defensive options?</div>
+    </div>
+  `;
+  
+  // Style the chat interface
+  chat.style.cssText = `
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 380px;
+    height: 500px;
+    background: rgba(20, 20, 20, 0.95);
+    border: 2px solid #8B4513;
+    border-radius: 12px;
+    display: none;
+    flex-direction: column;
+    z-index: 9998;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  `;
+  
+  // Add styles
+  const style = document.createElement('style');
+  style.textContent = `
+    .tla-chat-header {
+      background: linear-gradient(135deg, #8B4513, #A0522D);
+      padding: 12px;
+      border-radius: 10px 10px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: white;
+    }
+    
+    .tla-chat-title {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    
+    .tla-chat-version {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    
+    .tla-chat-close {
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .tla-chat-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    
+    .tla-chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      color: white;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    
+    .tla-chat-welcome {
+      background: rgba(139, 69, 19, 0.2);
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .tla-chat-message {
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .tla-chat-user {
+      background: rgba(70, 130, 180, 0.2);
+      text-align: right;
+      margin-left: 40px;
+    }
+    
+    .tla-chat-ai {
+      background: rgba(139, 69, 19, 0.15);
+      margin-right: 40px;
+    }
+    
+    .tla-chat-input-area {
+      display: flex;
+      padding: 12px;
+      border-top: 1px solid rgba(139, 69, 19, 0.3);
+    }
+    
+    #tla-chat-input {
+      flex: 1;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(139, 69, 19, 0.5);
+      border-radius: 6px;
+      color: white;
+      font-size: 14px;
+      margin-right: 8px;
+    }
+    
+    #tla-chat-input:focus {
+      outline: none;
+      border-color: #8B4513;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    
+    #tla-chat-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    
+    #tla-chat-send {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #8B4513, #A0522D);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    #tla-chat-send:hover {
+      transform: scale(1.05);
+    }
+    
+    #tla-chat-send:active {
+      transform: scale(0.95);
+    }
+    
+    .tla-chat-suggestions {
+      padding: 8px;
+      border-top: 1px solid rgba(139, 69, 19, 0.3);
+    }
+    
+    .tla-suggestion {
+      padding: 6px 10px;
+      margin: 4px 0;
+      background: rgba(139, 69, 19, 0.1);
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .tla-suggestion:hover {
+      background: rgba(139, 69, 19, 0.3);
+      color: white;
+    }
+    
+    .tla-chat-loading {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      animation: pulse 1.4s infinite;
+      margin: 0 2px;
+    }
+    
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.6; transform: scale(1); }
+      40% { opacity: 1; transform: scale(1.2); }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // Add event handlers
+  const closeBtn = chat.querySelector('.tla-chat-close');
+  const input = chat.querySelector('#tla-chat-input') as HTMLInputElement;
+  const sendBtn = chat.querySelector('#tla-chat-send');
+  const suggestions = chat.querySelectorAll('.tla-suggestion');
+  
+  closeBtn?.addEventListener('click', () => {
+    chat.style.display = 'none';
+  });
+  
+  const sendMessage = async () => {
+    const message = input.value.trim();
+    if (!message) return;
+    
+    // Check if it's an email
+    if (isEmail(message)) {
+      await handleEmailInitialization(message);
+      input.value = '';
+      return;
+    }
+    
+    // Display user message
+    addMessage(message, 'user');
+    input.value = '';
+    
+    // Show loading
+    const loadingId = addMessage(
+      '<span class="tla-chat-loading"></span><span class="tla-chat-loading"></span><span class="tla-chat-loading"></span>',
+      'ai'
+    );
+    
     try {
-      // Check if this is an email for initialization
-      if (!this.userInitialized && this.isEmail(question)) {
-        console.log('[TLA Chat] Detected email, initializing user...');
-        
-        // Send SET_USER_EMAIL message
-        const initResponse = await chrome.runtime.sendMessage({
-          type: 'SET_USER_EMAIL',
-          email: question.trim()
-        });
-        
-        if (initResponse.success && initResponse.userId) {
-          this.userInitialized = true;
-          console.log('[TLA Chat] User initialized with ID:', initResponse.userId);
-          return 'User initialized! You can now ask me strategic questions about your Travian game.';
-        } else {
-          throw new Error(initResponse.error || 'Failed to initialize user');
-        }
-      }
+      // Get current game state
+      const gameState = await safeScraper.scrapeCurrentState();
       
-      // Check if user is initialized
-      if (!this.userInitialized) {
-        return 'Please enter your email address first to initialize your personalized AI strategist.';
-      }
-      
-      // Add question to history
-      this.conversationHistory.push({ role: 'user', content: question });
-      
-      // Send CHAT_MESSAGE to background
-      console.log('[TLA Chat] Sending chat message...');
+      // Send to AI
       const response = await chrome.runtime.sendMessage({
         type: 'CHAT_MESSAGE',
-        message: question,
-        gameState: this.simplifyGameState(gameState)
+        message: message,
+        gameState: gameState
       });
       
-      if (response.success && response.response) {
-        // Add response to history
-        this.conversationHistory.push({ role: 'assistant', content: response.response });
-        return response.response;
+      // Remove loading and show response
+      removeMessage(loadingId);
+      
+      if (response.success) {
+        addMessage(response.response, 'ai');
       } else {
-        throw new Error(response.error || 'Failed to get AI response');
+        addMessage(`Error: ${response.error}`, 'ai');
       }
     } catch (error) {
+      removeMessage(loadingId);
+      addMessage('Failed to get response. Please try again.', 'ai');
       console.error('[TLA Chat] Error:', error);
+    }
+  };
+  
+  sendBtn?.addEventListener('click', sendMessage);
+  
+  input?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  });
+  
+  // Handle suggestion clicks
+  suggestions.forEach(suggestion => {
+    suggestion.addEventListener('click', () => {
+      input.value = suggestion.textContent || '';
+      sendMessage();
+    });
+  });
+  
+  return chat;
+}
+
+function addMessage(content: string, type: 'user' | 'ai'): string {
+  const messagesContainer = document.querySelector('#tla-chat-messages');
+  if (!messagesContainer) return '';
+  
+  const messageDiv = document.createElement('div');
+  const messageId = `msg-${Date.now()}`;
+  messageDiv.id = messageId;
+  messageDiv.className = `tla-chat-message tla-chat-${type}`;
+  messageDiv.innerHTML = content;
+  
+  messagesContainer.appendChild(messageDiv);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  
+  return messageId;
+}
+
+function removeMessage(messageId: string) {
+  const message = document.getElementById(messageId);
+  message?.remove();
+}
+
+async function handleEmailInitialization(email: string) {
+  addMessage(`Setting up with email: ${email}`, 'user');
+  
+  const loadingId = addMessage(
+    'Initializing your profile<span class="tla-chat-loading"></span><span class="tla-chat-loading"></span><span class="tla-chat-loading"></span>',
+    'ai'
+  );
+  
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'SET_USER_EMAIL',
+      email: email
+    });
+    
+    removeMessage(loadingId);
+    
+    if (response.success) {
+      addMessage(
+        `Great! I've initialized your profile. I'll learn your playing style over time to give you personalized advice. How can I help you dominate this server?`,
+        'ai'
+      );
       
-      // Provide helpful error messages
-      if (error.message?.includes('Receiving end does not exist')) {
-        return 'Background service not responding. Please reload the extension from chrome://extensions/';
+      // Show suggestions
+      const suggestions = document.querySelector('#tla-chat-suggestions') as HTMLElement;
+      if (suggestions) {
+        suggestions.style.display = 'block';
       }
-      
-      return `Error: ${error.message || 'Failed to connect to AI service'}`;
+    } else {
+      addMessage(`Failed to initialize: ${response.error}`, 'ai');
     }
-  }
-  
-  // Simplify game state to reduce message size
-  private simplifyGameState(gameState: any): any {
-    if (!gameState) return null;
-    
-    const villages = gameState.villages || [];
-    const currentVillage = villages.find((v: any) => v.id === gameState.currentVillageId) || villages[0];
-    
-    return {
-      villages: villages.map((v: any) => ({
-        id: v.id,
-        name: v.name || v.villageName,
-        population: v.population,
-        resources: v.resources,
-        production: v.production
-      })),
-      currentVillageId: gameState.currentVillageId,
-      totals: gameState.totals,
-      alerts: gameState.alerts?.slice(0, 3), // Only top 3 alerts
-      timestamp: gameState.timestamp
-    };
-  }
-  
-  getSuggestedQuestions(gameState: any): string[] {
-    const suggestions = [];
-    
-    // If not initialized, suggest email
-    if (!this.userInitialized) {
-      return ['Enter your email to get started'];
-    }
-    
-    // Basic questions always available
-    suggestions.push('What should I build next?');
-    suggestions.push('How can I increase my resource production?');
-    
-    // Context-aware suggestions
-    const villages = gameState?.villages || [];
-    if (villages.length > 1) {
-      suggestions.push('Which village should I focus on developing?');
-    }
-    
-    const alerts = gameState?.alerts || [];
-    if (alerts.length > 0) {
-      suggestions.push('How do I handle the current alerts?');
-    }
-    
-    // Resource-specific
-    const currentVillage = villages[0];
-    if (currentVillage) {
-      const resources = currentVillage.resources || {};
-      const entries = Object.entries(resources);
-      if (entries.length > 0) {
-        const lowestResource = entries
-          .filter(([key]) => key !== 'free')
-          .sort(([,a], [,b]) => (a as number) - (b as number))[0];
-        
-        if (lowestResource) {
-          suggestions.push(`How can I get more ${lowestResource[0]}?`);
-        }
-      }
-    }
-    
-    // Check for overflow risk
-    if (currentVillage?.alerts?.some((a: any) => a.type === 'overflow')) {
-      suggestions.push('When will my resources overflow?');
-    }
-    
-    return suggestions.slice(0, 4); // Max 4 suggestions
-  }
-  
-  clearHistory() {
-    this.conversationHistory = [];
-    console.log('[TLA Chat] Conversation history cleared');
-  }
-  
-  // Reset user initialization (for testing)
-  async resetUser() {
-    this.userInitialized = false;
-    this.conversationHistory = [];
-    await chrome.storage.sync.remove(['userEmail', 'aiChatConfig']);
-    console.log('[TLA Chat] User reset - email initialization required');
+  } catch (error) {
+    removeMessage(loadingId);
+    addMessage('Failed to initialize. Please try again.', 'ai');
+    console.error('[TLA Chat] Initialization error:', error);
   }
 }
 
-export class StrategicCalculators {
-  static calculateTimeToOverflow(current: number, production: number, capacity: number): number {
-    if (production <= 0) return Infinity;
-    const remaining = capacity - current;
-    if (remaining <= 0) return 0;
-    return remaining / production;
-  }
-  
-  static calculateOptimalNPCRatio(resources: any, needed: any): any {
-    // Validate inputs
-    if (!resources || !needed) return null;
-    
-    const total = (resources.wood || 0) + (resources.clay || 0) + 
-                  (resources.iron || 0) + (resources.crop || 0);
-    const targetTotal = (needed.wood || 0) + (needed.clay || 0) + 
-                       (needed.iron || 0) + (needed.crop || 0);
-    
-    if (total < targetTotal) {
-      return null; // Not enough resources
+async function checkUserInitialization() {
+  try {
+    const stored = await chrome.storage.sync.get(['userEmail']);
+    if (stored.userEmail) {
+      // User already initialized, show suggestions
+      const suggestions = document.querySelector('#tla-chat-suggestions') as HTMLElement;
+      if (suggestions) {
+        suggestions.style.display = 'block';
+      }
     }
-    
-    // Prevent division by zero
-    if (targetTotal === 0) return null;
-    
-    return {
-      wood: Math.floor((needed.wood / targetTotal) * total),
-      clay: Math.floor((needed.clay / targetTotal) * total),
-      iron: Math.floor((needed.iron / targetTotal) * total),
-      crop: Math.floor((needed.crop / targetTotal) * total)
-    };
-  }
-  
-  static estimateBuildingTime(buildingType: string, currentLevel: number, tribe: string = 'Romans'): number {
-    // Simplified building time calculation
-    const baseTime = 300; // 5 minutes base
-    const levelMultiplier = Math.pow(1.5, currentLevel);
-    return Math.floor(baseTime * levelMultiplier);
-  }
-  
-  static formatTime(seconds: number): string {
-    if (seconds === Infinity) return 'Never';
-    if (seconds <= 0) return 'Now';
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    if (hours > 24) {
-      const days = Math.floor(hours / 24);
-      return `${days}d ${hours % 24}h`;
-    }
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    
-    return `${minutes}m`;
+  } catch (error) {
+    console.error('[TLA Chat] Failed to check initialization:', error);
   }
 }
-
-// Export singleton instance
-export const chatAI = new ChatAI();

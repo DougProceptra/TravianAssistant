@@ -1,21 +1,22 @@
 // packages/extension/src/background.ts
-// v0.6.0 - Chat-based AI with editable system messages
+// v0.7.0 - Fixed URL construction error
 
 import { backendSync } from './background/backend-sync';
 import TravianChatAI from './ai/ai-chat-client';
+import { VERSION } from './version';
 
-console.log('[TLA BG] Background service starting... v0.6.0 - Chat AI');
+console.log(`[TLA BG] Background service starting... v${VERSION}`);
 
 const PROXY_URL = 'https://travian-proxy-simple.vercel.app/api/proxy';
 
 class BackgroundService {
   private proxyUrl: string = PROXY_URL;
   private initialized: boolean = false;
-  private chatAI: TravianChatAI;
+  private chatAI: TravianChatAI | null = null;
 
   constructor() {
-    console.log('[TLA BG] Constructing background service with Chat AI');
-    this.chatAI = new TravianChatAI(this.proxyUrl);
+    console.log(`[TLA BG] Constructing background service v${VERSION}`);
+    // Defer AI client initialization to avoid URL construction issues
     this.initialize().catch(err => {
       console.error('[TLA BG] Failed to initialize:', err);
     });
@@ -27,20 +28,26 @@ class BackgroundService {
       return;
     }
 
-    // Check if proxy URL is configured
     try {
+      // Check if proxy URL is configured
       const stored = await chrome.storage.sync.get(['proxyUrl', 'userEmail']);
       if (stored.proxyUrl) {
         this.proxyUrl = stored.proxyUrl;
-        this.chatAI = new TravianChatAI(this.proxyUrl);
-        console.log('[TLA BG] Using custom proxy URL');
+        console.log('[TLA BG] Using custom proxy URL:', this.proxyUrl);
       }
+      
+      // Initialize AI client after confirming proxy URL
+      this.chatAI = new TravianChatAI(this.proxyUrl);
+      console.log('[TLA BG] AI client initialized');
+      
       if (stored.userEmail) {
         await this.chatAI.initialize(stored.userEmail);
         console.log('[TLA BG] User ID initialized');
       }
     } catch (err) {
-      console.error('[TLA BG] Storage error:', err);
+      console.error('[TLA BG] Storage/initialization error:', err);
+      // Create AI client with default URL as fallback
+      this.chatAI = new TravianChatAI(PROXY_URL);
     }
 
     // Set up message listener
@@ -62,19 +69,29 @@ class BackgroundService {
     });
 
     this.initialized = true;
-    console.log('[TLA BG] Background service initialized with Chat AI');
+    console.log('[TLA BG] Background service initialized');
     console.log('[TLA BG] Proxy URL:', this.proxyUrl);
+    console.log('[TLA BG] Version:', VERSION);
   }
 
   private async handleMessage(request: any, sender: any): Promise<any> {
     console.log('[TLA BG] Handling message type:', request.type);
     
+    // Ensure AI client exists
+    if (!this.chatAI && request.type !== 'PING') {
+      console.log('[TLA BG] AI client not initialized, creating now');
+      this.chatAI = new TravianChatAI(this.proxyUrl);
+    }
+    
     switch (request.type) {
       case 'PING':
-        return { success: true, message: 'Chat AI service is running' };
+        return { success: true, message: `Chat AI service v${VERSION} is running` };
 
       case 'SET_USER_EMAIL':
         try {
+          if (!this.chatAI) {
+            this.chatAI = new TravianChatAI(this.proxyUrl);
+          }
           const userId = await this.chatAI.initialize(request.email);
           await chrome.storage.sync.set({ userEmail: request.email });
           return { success: true, userId };
@@ -84,6 +101,9 @@ class BackgroundService {
 
       case 'UPDATE_SYSTEM_MESSAGE':
         try {
+          if (!this.chatAI) {
+            return { success: false, error: 'AI client not initialized' };
+          }
           await this.chatAI.updateSystemMessage(request.message);
           return { success: true, message: 'System message updated' };
         } catch (error: any) {
@@ -92,6 +112,9 @@ class BackgroundService {
 
       case 'CHAT_MESSAGE':
         try {
+          if (!this.chatAI) {
+            return { success: false, error: 'AI client not initialized' };
+          }
           console.log('[TLA BG] Processing chat message...');
           const gameState = request.gameState;
           const response = await this.chatAI.chat(request.message, gameState);
@@ -102,10 +125,16 @@ class BackgroundService {
         }
 
       case 'GET_EXAMPLE_PROMPTS':
+        if (!this.chatAI) {
+          return { success: false, error: 'AI client not initialized' };
+        }
         const prompts = this.chatAI.getExamplePrompts();
         return { success: true, prompts };
 
       case 'GET_SYSTEM_TEMPLATES':
+        if (!this.chatAI) {
+          return { success: false, error: 'AI client not initialized' };
+        }
         const templates = this.chatAI.getSystemMessageTemplates();
         return { success: true, templates };
 
@@ -158,7 +187,7 @@ const bgService = new BackgroundService();
 
 // Keep service alive with less frequent heartbeat
 setInterval(() => {
-  console.log('[TLA BG] Chat AI service alive');
+  console.log(`[TLA BG] Chat AI service alive - v${VERSION}`);
 }, 60000); // Once per minute
 
-console.log('[TLA BG] Chat AI background script loaded');
+console.log(`[TLA BG] Chat AI background script loaded - v${VERSION}`);
