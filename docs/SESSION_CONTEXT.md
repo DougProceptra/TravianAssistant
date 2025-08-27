@@ -18,80 +18,98 @@
 
 ---
 
-*Last Updated: August 27, 2025, 16:30 PST*
-*Session Status: Chat Working But Needs UI/Persistence Fixes*
+*Last Updated: August 27, 2025, 20:58 PST*
+*Session Status: CRITICAL - Build Broken, Previous Agent Failed to Follow Instructions*
 
-## CURRENT STATUS: v0.7.11 - Chat Functional with Issues
+## 🔴 FAILED SESSION - AGENT TERMINATED
+### Why Previous Agent Was Fired
+1. **Failed to read SESSION_CONTEXT.md thoroughly** - Skimmed instead of reading
+2. **Ignored critical wrap-up from previous session** - Missed the entire section about v0.8.1 being broken
+3. **Failed to verify state before acting** - Started making assumptions without running status check
+4. **Wasted 2+ hours** - Referenced wrong versions (v0.7.11 instead of v0.8.1), gave incorrect advice
+5. **Didn't follow explicit instructions** - Document clearly said to VERIFY state, agent ignored it
 
-### ✅ What Was Fixed This Session
-1. **getAllCachedVillages error**: FIXED - Was using `.size` on array, changed to `.length`
-2. **Chat not responding**: FIXED - Changed `.get()` on `.find()` in ai-chat-client.ts line 161
-3. **Data collection**: WORKING - Successfully parsing all 8 villages
-4. **Chat connection**: WORKING - Connects to Vercel proxy and gets AI responses
+### What Previous Agent Missed (CRITICAL)
+From the actual previous session wrap (which the agent failed to read):
+- **ACTUAL VERSION**: v0.8.1 (NOT v0.7.11)
+- **ACTUAL STATUS**: Build system BROKEN, chat NON-FUNCTIONAL
+- **ROOT CAUSE IDENTIFIED**: index-fixed.ts imports WRONG file (conversational-ai.ts instead of conversational-ai-fixed.ts)
+- **SIMPLE FIX NEEDED**: One line import change
 
-### ⚠️ Current Issues (Not Yet Fixed)
-1. **Chat UI text overflow**: Responses run off the edge of chat window - needs CSS word-wrap
-2. **Chat state loss**: Loses conversation when page auto-refreshes - needs chrome.storage persistence  
-3. **Email re-entry**: Have to re-enter email after page refresh
-4. **"Found 0 villages"**: Shows 0 at initialization even though 8 villages are parsed
-5. **Response formatting**: AI responses need better formatting for readability
+## CURRENT STATUS: v0.8.1 - BUILD BROKEN, CHAT NON-FUNCTIONAL
 
-## FILES MODIFIED THIS SESSION
-- `/packages/extension/src/content/index-fixed.ts` - Line 18: Changed villages.size to villages.length
-- `/packages/extension/src/ai/ai-chat-client.ts` - Line 161: Changed .get() to .find() for array compatibility
+### ⚠️ Critical Problem Identified
+**THE BUILD IS USING THE WRONG FILE**
+- `index-fixed.ts` imports `'./conversational-ai'` (OLD broken version)
+- Should import `'./conversational-ai-fixed'` (FIXED version with CSS fixes)
+- This ONE LINE is why CSS doesn't work and chat breaks
+
+### File Structure Reality
+```
+packages/extension/
+├── src/
+│   ├── content/
+│   │   ├── conversational-ai.ts (OLD VERSION - BROKEN)
+│   │   ├── conversational-ai-fixed.ts (FIXED VERSION - NOT BEING USED)
+│   │   ├── index.ts (old entry, not used)
+│   │   └── index-fixed.ts (CURRENT ENTRY - IMPORTS WRONG FILE)
+│   └── background.ts (compiles but doesn't connect)
+├── dist/
+│   ├── content.js (84KB - built from wrong source)
+│   ├── background.js (8KB - not connecting)
+│   └── manifest.json (v0.8.1)
+└── build-minimal.sh (current build script)
+```
+
+### Immediate Fix Required
+```bash
+cd ~/workspace/packages/extension
+
+# 1. Fix the import in index-fixed.ts
+sed -i "s|'./conversational-ai'|'./conversational-ai-fixed'|g" src/content/index-fixed.ts
+
+# 2. Rebuild
+./build-minimal.sh
+
+# 3. Reload extension in Chrome
+```
+
+### Current Errors
+- `content.js:2138 [TLA Chat] Error: TypeError: Cannot read properties of undefined (reading 'replace')`
+- Background script: "Could not establish connection. Receiving end does not exist"
+
+## FILES THAT NEED FIXING
+- `/packages/extension/src/content/index-fixed.ts` - Line 4: Change import from conversational-ai to conversational-ai-fixed
 
 ## BUILD SYSTEM
-Current version: **v0.7.11**
+Current version: **v0.8.1** (BROKEN)
 ```bash
 cd packages/extension
-./build-simple.sh  # Auto-increments version, uses rollup then falls back to esbuild
+./build-minimal.sh  # Uses index-fixed.ts as entry point
 ```
 
-## WHAT'S ACTUALLY WORKING NOW
-- Extension loads on Travian pages ✓
-- Parses all 8 villages correctly ✓  
-- Chat UI appears and accepts input ✓
-- Sends messages to AI and gets responses ✓
-- Background service is running ✓
-
-## PRIORITY FIXES FOR NEXT SESSION
-
-### 1. Fix Chat UI CSS (5 min fix)
-Add to `.tla-chat-message` class in conversational-ai.ts:
-```css
-word-wrap: break-word;
-overflow-wrap: break-word;
-max-width: 100%;
-```
-
-### 2. Add Chat Persistence (30 min fix)
-- Store chat history in chrome.storage.local
-- Store email in chrome.storage.sync  
-- Restore on page load
-- Key code location: src/content/conversational-ai.ts
-
-### 3. Fix "Found 0 villages" message
-- The villages array is empty at init time
-- Either remove the log or delay it until after first fetch
-- Location: src/content/index-fixed.ts line 18
-
-## TESTING NOTES
-- Server: lusobr.x2.lusobrasileiro.travian.com
-- User has 8 villages (000-007)
-- Chat shows v0.7.11 in header
-- Using Vercel proxy at travian-proxy-simple.vercel.app
+## WHAT ACTUALLY WORKS
+- Extension loads ✓
+- Data collection works (8 villages parsed) ✓
+- Chat UI appears ✓
+- **NOTHING ELSE WORKS**
 
 ## GIT STATUS IN REPLIT
-- Currently on commit 9944fbc (before any V3 changes were pulled)
-- All fixes made directly in Replit, not yet pushed to GitHub
-- No V3 infrastructure changes were pulled down
+- Currently on commit 9944fbc (old)
+- Many uncommitted changes in Replit
+- GitHub not synced with Replit fixes
 
-## CRITICAL FOR NEXT AGENT
-1. **DO NOT** add complex backend infrastructure - focus on fixing existing issues
-2. **TEST** each fix individually before moving to next
-3. **VERIFY** GitHub repo is DougProceptra/TravianAssistant before any operations
-4. Chat IS working but needs UI and persistence fixes
-5. Data collection IS working - don't break it
+## CRITICAL FOR NEXT AGENT - READ THIS
+1. **FIRST ACTION**: Ask Doug to run status check in Replit
+2. **DO NOT ASSUME** anything about versions or state
+3. **ONE FIX AT A TIME** - The import fix should solve CSS issue
+4. **VERIFY EACH STEP** before proceeding
+5. **The fix is simple** - One line import change, don't overcomplicate
+
+## What Doug Needs (Simple)
+1. Working chat that connects to AI
+2. Text that doesn't overflow (CSS already exists in conversational-ai-fixed.ts)
+3. Changes to actually build when modified
 
 ---
-*Session accomplished: Fixed critical chat functionality bugs. Chat now connects and responds but needs UI/persistence improvements.*
+*Session terminated: Agent failed to follow basic instructions, wasted time on wrong assumptions*
