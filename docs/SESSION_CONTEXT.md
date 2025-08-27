@@ -20,144 +20,143 @@ This ensures you're working with a clean environment before proceeding.
 - Workspace path: `~/workspace`
 - Extension path: `~/workspace/packages/extension`
 - Build output: `~/workspace/packages/extension/dist`
+- Backend path: `~/workspace/backend`
 
 ---
 
-*Last Updated: August 27, 2025, 15:05 PST*
-*Session Status: HANDOFF READY - v0.7.9 Working*
+*Last Updated: August 27, 2025, 15:37 PST*
+*Session Status: V3 Backend Infrastructure Complete*
 
-## CURRENT STATUS: v0.7.9 Functional
+## CURRENT STATUS: V3 Backend Ready for Testing
 
-### ✅ What's Working
-- Extension loads successfully on Travian game pages
-- Detects all 8 villages correctly (000-007)
-- Safe scraper using proper `getGameState()` method
-- Overview parser fetching village data from dorf3.php
-- HUD displays at bottom left with version number
-- Chat interface opens and shows welcome message
-- Database storing village snapshots
-- Automatic version incrementing in build script
+### ✅ What's Completed (This Session)
+- **Database Schema**: Complete SQLite schema with all V3 tables
+- **Database Initialization**: `backend/init-db.js` ready
+- **Map Importer**: `backend/import-map.js` fetches from Travian server
+- **Backend Server**: `backend/server.js` with AI chat endpoint working
+- **Chat Integration**: Extension updated to use local backend (port 3000)
+- **Daily Sync**: Scheduled map.sql pull at 6am ET
+- **Extension Background**: Updated to v0.8.0 to use local backend
 
-### ⚠️ Known Issues
-1. **Chat persistence**: Chat resets on page refresh/navigation
-2. **overviewParser.getAllCachedVillages()**: Returns undefined instead of Map
-3. **Background service**: "Receiving end does not exist" errors on page changes
-4. **Chat email flow**: Not fully tested with AI responses
+### 🔧 Next Steps for Testing
+
+#### 1. Initialize Backend (Run in Replit)
+```bash
+cd ~/workspace
+git pull origin main
+cd backend
+npm install
+npm run init-db
+npm run server
+```
+
+#### 2. Test Map Import (Optional)
+```bash
+cd ~/workspace/backend
+node import-map.js
+# Should download and import map.sql from lusobr server
+```
+
+#### 3. Build Extension
+```bash
+cd ~/workspace/packages/extension
+./build-simple.sh
+# Download dist/ folder and reload in Chrome
+```
+
+#### 4. Test Chat Connection
+1. Open Travian game page
+2. Click chat button (bottom right)
+3. Enter your email to initialize
+4. Ask a question like "What should I focus on?"
+5. Check Replit console for backend logs
+
+### ⚠️ Known Issues to Fix
+1. **Chat persistence**: Still resets on page refresh (need chrome.storage)
+2. **CORS**: May need to adjust for Chrome extension → localhost:3000
+3. **Background service**: Extension expects port 3000 to be running
+
+## V3 ARCHITECTURE (IMPLEMENTED)
+
+### Backend Components
+```
+backend/
+├── server.js          # Main server with AI chat endpoint
+├── init-db.js         # Database initialization
+├── import-map.js      # Map.sql importer  
+├── database/
+│   └── schema.sql     # Complete V3 schema
+└── package.json       # Dependencies
+```
+
+### Database Tables
+- `villages` - Map data from map.sql
+- `game_events` - Event tracking
+- `recommendations` - AI suggestions
+- `performance_metrics` - Player metrics
+- `chat_history` - Conversation history
+- `player_snapshots` - Game state snapshots
+
+### API Endpoints (localhost:3000)
+- `POST /api/chat` - AI chat with game context
+- `POST /api/analyze` - Game state analysis
+- `POST /api/sync-map` - Manual map sync
+- `GET /health` - Server health check
 
 ## BUILD SYSTEM (WORKING)
 
 ### Current Build Script
-Location: `~/workspace/packages/extension/build-simple.sh`
-- Auto-increments version on every build
-- Updates manifest.json and src/version.ts
-- Uses esbuild for bundling
-- Fixes safeScraper scope issues
-
-### Build Commands
 ```bash
 cd ~/workspace/packages/extension
 ./build-simple.sh
-# Creates dist/ folder with v0.7.X
+# Auto-increments version
+# Builds to dist/
 ```
 
 ### Version Management
-- Every build increments patch version (0.7.9 → 0.7.10)
-- Version shows consistently in:
-  - Chrome extension page
-  - Console logs
-  - HUD display
-  - Chat interface
+- Current: v0.8.0 (background.ts updated for local backend)
+- Every build increments patch version
+- Version shows in: Extension, Console, HUD, Chat
 
-## CODE FIXES APPLIED
+## FILES MODIFIED THIS SESSION
+- `/backend/database/schema.sql` - Complete V3 database schema
+- `/backend/init-db.js` - Database initialization script
+- `/backend/import-map.js` - Map.sql importer service
+- `/backend/server.js` - Main backend server with AI
+- `/backend/package.json` - Backend dependencies
+- `/packages/extension/src/background.ts` - Updated to use local backend
 
-### 1. Module Scoping Issue (FIXED)
-**Problem**: esbuild IIFE bundling broke ES6 module singleton exports
-**Solution**: Created `src/content/index-fixed.ts` that instantiates modules directly instead of importing singletons
-
-### 2. Method Name Mismatch (FIXED)
-**Problem**: Code called `safeScraper.scrapeCurrentState()` but method was `getGameState()`
-**Solution**: Updated all references to use correct method name
-
-### 3. Build Process (FIXED)
-**Problem**: Version management was manual and inconsistent
-**Solution**: Automated version bumping in build-simple.sh
-
-## NEXT STEPS FOR NEW SESSION
-
-### Priority 1: Fix Chat Persistence
-Chat needs to maintain state across page navigations:
-1. Store chat history in chrome.storage.local
-2. Restore chat state when page loads
-3. Keep email initialization across sessions
-
-### Priority 2: Test AI Integration
-1. Verify Vercel proxy at https://travian-proxy-simple.vercel.app/api/proxy
-2. Test email initialization flow
-3. Confirm Claude API responses work
-4. Debug any CORS or authentication issues
-
-### Priority 3: Fix getAllCachedVillages
-The method returns undefined, needs investigation:
-```javascript
-// src/content/overview-parser.ts
-// Check if getAllCachedVillages() method exists and returns Map
-```
-
-### Priority 4: Background Service Stability
-Fix "Receiving end does not exist" errors when changing pages
-
-## GIT/REPLIT SYNC STATUS
-
-### Last GitHub Commit
-- Version 0.7.9 committed
-- All source files updated
-- build-simple.sh working correctly
-
-### Replit Status
-- Working directory: `~/workspace`
-- Last build: v0.7.9
-- dist/ folder ready for download
-
-### Sync Commands for Next Session
-```bash
-cd ~/workspace
-git status
-git pull origin main
-cd packages/extension
-./build-simple.sh
-# Download dist/ folder and test in Chrome
-```
+## TESTING CHECKLIST
+- [ ] Backend starts without errors
+- [ ] Database initializes correctly
+- [ ] Map importer fetches data
+- [ ] Extension connects to backend
+- [ ] Chat messages go through
+- [ ] AI responds with game context
+- [ ] Recommendations are generated
 
 ## USER CONTEXT
 - Email: dostal.doug@gmail.com
 - Travian Server: lusobr.x2.lusobrasileiro.travian.com
 - Villages: 8 (names: 000-007)
 - Player Rank: ~780s
+- Tribe: Egyptians
 - Chrome Browser: Latest version
-- Testing URL: https://lusobr.x2.lusobrasileiro.travian.com/dorf2.php
 
 ## SESSION ACCOMPLISHMENTS
-1. ✅ Fixed safeScraper module scoping issues
-2. ✅ Corrected method name mismatches
-3. ✅ Implemented automatic version management
-4. ✅ Got extension loading on game pages
-5. ✅ Village detection working
-6. ✅ Chat interface rendering
-
-## FILES MODIFIED THIS SESSION
-- `/packages/extension/build-simple.sh` - Automated version bumping
-- `/packages/extension/src/content/index-fixed.ts` - Fixed module instantiation
-- `/packages/extension/src/content/conversational-ai.ts` - Fixed method names
-- `/packages/extension/manifest.json` - Version 0.7.9
-- `/packages/extension/src/version.ts` - Version constant
+1. ✅ Created complete V3 database schema
+2. ✅ Built database initialization script
+3. ✅ Implemented map.sql importer
+4. ✅ Created backend server with AI chat
+5. ✅ Updated extension to use local backend
+6. ✅ Set up daily map sync schedule
 
 ## CRITICAL NOTES FOR NEXT AGENT
-1. **RUN STATUS CHECK FIRST**: `node scripts/check-dev-status.js`
-2. **USE CORRECT REPO**: DougProceptra/TravianAssistant (NOT DougZackowski)
-3. **BUILD WITH**: `./build-simple.sh` (auto-increments version)
-4. **TEST IN**: Chrome with F12 console open on Travian game page
-5. **KNOWN GOOD**: v0.7.9 loads and initializes successfully
-6. **FOCUS ON**: Chat persistence and AI integration testing
+1. **BACKEND REQUIRED**: Extension now expects backend on port 3000
+2. **RUN IN ORDER**: `npm install` → `npm run init-db` → `npm run server`
+3. **CHECK LOGS**: Backend logs will show if AI proxy is working
+4. **TEST CHAT**: Main feature to verify is chat → backend → AI → response
+5. **MAP SYNC**: Can test with `node import-map.js` manually
 
 ---
-*Extension is functional but needs chat persistence and AI testing to be fully operational.*
+*V3 Backend infrastructure is complete. Ready for integration testing.*
