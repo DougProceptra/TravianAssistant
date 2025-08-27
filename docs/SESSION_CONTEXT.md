@@ -3,6 +3,31 @@
 ## ⚠️ MANDATORY READING INSTRUCTION ⚠️
 **You must read every word of this document. You must read it 3 times. The first as a senior architect guiding the work of an application. The second time is as a developer that will be executing the steps and directions emanating from document and the third time as business analyst making sure you understand the functions and processes being addressed and how they affect the game. You cannot proceed until you fully comprehend every aspect of the SESSION_CONTEXT.md document.**
 
+## 🛑 MANDATORY STOP GATES - DO NOT PROCEED WITHOUT THESE
+
+### BEFORE ANY CODE CHANGE:
+- [ ] Run `grep [function] dist/background.js` - VERIFY what's actually there
+- [ ] Run `node -c dist/background.js` - CHECK for syntax errors
+- [ ] State: "The EXACT error I'm fixing is: _____" (no fix without error)
+- [ ] State: "I verified this error exists by: _____" (no assumption)
+
+### IF YOU CANNOT CHECK ALL BOXES, STOP.
+
+## ⚠️ FAILURE COUNTER
+- Attempts without diagnosis: 0 (increment each violation)
+- Files rewritten without verification: 0
+- At 3 failures: AGENT MUST STOP
+
+## 🎯 CURRENT FOCUS (ONE THING ONLY)
+Problem: Background service worker not receiving messages ("Could not establish connection. Receiving end does not exist")
+Verified by: Chrome DevTools console error when sending chat message
+Next diagnostic step: Check if background.js is valid JavaScript using `node -c dist/background.js`
+
+## ENFORCEMENT RULE
+Every successful fix MUST be committed immediately:
+`git add -A && git commit -m "VERIFIED FIX: [specific issue]" && git push`
+If not committed within 5 minutes = IT DIDN'T WORK
+
 ## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
 - Owner: **DougProceptra** (NOT dougyb83, NOT DougZackowski)  
@@ -18,71 +43,49 @@
 
 ---
 
-*Last Updated: August 27, 2025, 20:58 PST*
-*Session Status: CRITICAL - Build Broken, Previous Agent Failed to Follow Instructions*
+*Last Updated: August 27, 2025, 22:45 PST*
+*Session Status: CRITICAL - Background service worker not connecting*
 
-## 🔴 FAILED SESSION - AGENT TERMINATED
-### Why Previous Agent Was Fired
-1. **Failed to read SESSION_CONTEXT.md thoroughly** - Skimmed instead of reading
-2. **Ignored critical wrap-up from previous session** - Missed the entire section about v0.8.1 being broken
-3. **Failed to verify state before acting** - Started making assumptions without running status check
-4. **Wasted 2+ hours** - Referenced wrong versions (v0.7.11 instead of v0.8.1), gave incorrect advice
-5. **Didn't follow explicit instructions** - Document clearly said to VERIFY state, agent ignored it
+## 🔴 CURRENT SESSION - ENFORCEMENT ACTIVE
+### What We Know
+1. **Version**: v0.8.3 built but still not working
+2. **Content script**: Loads and runs successfully
+3. **Background service**: Not receiving messages
+4. **Error**: "Could not establish connection. Receiving end does not exist"
 
-### What Previous Agent Missed (CRITICAL)
-From the actual previous session wrap (which the agent failed to read):
-- **ACTUAL VERSION**: v0.8.1 (NOT v0.7.11)
-- **ACTUAL STATUS**: Build system BROKEN, chat NON-FUNCTIONAL
-- **ROOT CAUSE IDENTIFIED**: index-fixed.ts imports WRONG file (conversational-ai.ts instead of conversational-ai-fixed.ts)
-- **SIMPLE FIX NEEDED**: One line import change
+### What Has Been Tried (DO NOT REPEAT)
+1. Rewriting background.js multiple times - FAILED
+2. Changing imports in conversational-ai-fixed.ts - Already correct
+3. Updating versions - No effect on functionality
 
-## CURRENT STATUS: v0.8.1 - BUILD BROKEN, CHAT NON-FUNCTIONAL
-
-### ⚠️ Critical Problem Identified
-**THE BUILD IS USING THE WRONG FILE**
-- `index-fixed.ts` imports `'./conversational-ai'` (OLD broken version)
-- Should import `'./conversational-ai-fixed'` (FIXED version with CSS fixes)
-- This ONE LINE is why CSS doesn't work and chat breaks
+## CURRENT STATUS: v0.8.3 - BACKGROUND SERVICE NOT CONNECTING
 
 ### File Structure Reality
 ```
 packages/extension/
 ├── src/
 │   ├── content/
-│   │   ├── conversational-ai.ts (OLD VERSION - BROKEN)
-│   │   ├── conversational-ai-fixed.ts (FIXED VERSION - NOT BEING USED)
-│   │   ├── index.ts (old entry, not used)
-│   │   └── index-fixed.ts (CURRENT ENTRY - IMPORTS WRONG FILE)
-│   └── background.ts (compiles but doesn't connect)
+│   │   ├── conversational-ai-fixed.ts (FIXED VERSION - Being used correctly)
+│   │   └── index-fixed.ts (IMPORTS CORRECT FILE)
+│   └── background.ts (NEEDS DIAGNOSIS)
 ├── dist/
-│   ├── content.js (84KB - built from wrong source)
-│   ├── background.js (8KB - not connecting)
-│   └── manifest.json (v0.8.1)
+│   ├── content.js (82KB - working, parsing villages)
+│   ├── background.js (8KB - NOT CONNECTING - NEEDS DIAGNOSIS)
+│   └── manifest.json (v0.8.3)
 └── build-minimal.sh (current build script)
 ```
 
-### Immediate Fix Required
-```bash
-cd ~/workspace/packages/extension
-
-# 1. Fix the import in index-fixed.ts
-sed -i "s|'./conversational-ai'|'./conversational-ai-fixed'|g" src/content/index-fixed.ts
-
-# 2. Rebuild
-./build-minimal.sh
-
-# 3. Reload extension in Chrome
-```
-
 ### Current Errors
-- `content.js:2138 [TLA Chat] Error: TypeError: Cannot read properties of undefined (reading 'replace')`
 - Background script: "Could not establish connection. Receiving end does not exist"
+- This means service worker is not running or not handling messages
 
-## FILES THAT NEED FIXING
-- `/packages/extension/src/content/index-fixed.ts` - Line 4: Change import from conversational-ai to conversational-ai-fixed
+## NEXT REQUIRED ACTION
+1. Run `node -c dist/background.js` to check for syntax errors
+2. Check chrome://extensions service worker console for actual errors
+3. Only then propose ONE fix based on findings
 
 ## BUILD SYSTEM
-Current version: **v0.8.1** (BROKEN)
+Current version: **v0.8.3**
 ```bash
 cd packages/extension
 ./build-minimal.sh  # Uses index-fixed.ts as entry point
@@ -92,24 +95,12 @@ cd packages/extension
 - Extension loads ✓
 - Data collection works (8 villages parsed) ✓
 - Chat UI appears ✓
-- **NOTHING ELSE WORKS**
+- Content script runs ✓
+- **Background service worker NOT WORKING**
 
 ## GIT STATUS IN REPLIT
-- Currently on commit 9944fbc (old)
-- Many uncommitted changes in Replit
-- GitHub not synced with Replit fixes
-
-## CRITICAL FOR NEXT AGENT - READ THIS
-1. **FIRST ACTION**: Ask Doug to run status check in Replit
-2. **DO NOT ASSUME** anything about versions or state
-3. **ONE FIX AT A TIME** - The import fix should solve CSS issue
-4. **VERIFY EACH STEP** before proceeding
-5. **The fix is simple** - One line import change, don't overcomplicate
-
-## What Doug Needs (Simple)
-1. Working chat that connects to AI
-2. Text that doesn't overflow (CSS already exists in conversational-ai-fixed.ts)
-3. Changes to actually build when modified
+- Many uncommitted changes
+- Need to commit once fix is verified
 
 ---
-*Session terminated: Agent failed to follow basic instructions, wasted time on wrong assumptions*
+*Session active: Enforcement gates in place to prevent waste*
