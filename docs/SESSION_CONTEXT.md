@@ -1,162 +1,94 @@
 # TravianAssistant Session Context
 
-## ⚠️ MANDATORY FIRST STEP FOR EACH SESSION ⚠️
-**RUN STATUS CHECK FIRST**:
-```bash
-cd ~/workspace
-node scripts/check-dev-status.js
-```
-This ensures you're working with a clean environment before proceeding.
-
-## ⚠️ CRITICAL REPOSITORY LOCATION ⚠️
+## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
-- Owner: **DougProceptra** (NOT DougZackowski)
+- Owner: **DougProceptra** (NOT dougyb83, NOT DougZackowski)  
 - Repository: **TravianAssistant**
 - Main branch: **main**
-- Clone command: `git clone https://github.com/DougProceptra/TravianAssistant.git`
+- **VERIFY BEFORE ANY WORK**: `git remote -v` should show `origin	https://github.com/DougProceptra/TravianAssistant.git`
 
 ## ⚠️ REPLIT WORKSPACE ⚠️
 **Replit URL**: https://replit.com/@dougdostal/TravianAssistant
 - Workspace path: `~/workspace`
 - Extension path: `~/workspace/packages/extension`
 - Build output: `~/workspace/packages/extension/dist`
-- Backend path: `~/workspace/backend`
 
 ---
 
-*Last Updated: August 27, 2025, 15:37 PST*
-*Session Status: V3 Backend Infrastructure Complete*
+*Last Updated: August 27, 2025, 16:30 PST*
+*Session Status: Chat Working But Needs UI/Persistence Fixes*
 
-## CURRENT STATUS: V3 Backend Ready for Testing
+## CURRENT STATUS: v0.7.11 - Chat Functional with Issues
 
-### ✅ What's Completed (This Session)
-- **Database Schema**: Complete SQLite schema with all V3 tables
-- **Database Initialization**: `backend/init-db.js` ready
-- **Map Importer**: `backend/import-map.js` fetches from Travian server
-- **Backend Server**: `backend/server.js` with AI chat endpoint working
-- **Chat Integration**: Extension updated to use local backend (port 3000)
-- **Daily Sync**: Scheduled map.sql pull at 6am ET
-- **Extension Background**: Updated to v0.8.0 to use local backend
+### ✅ What Was Fixed This Session
+1. **getAllCachedVillages error**: FIXED - Was using `.size` on array, changed to `.length`
+2. **Chat not responding**: FIXED - Changed `.get()` to `.find()` in ai-chat-client.ts line 161
+3. **Data collection**: WORKING - Successfully parsing all 8 villages
+4. **Chat connection**: WORKING - Connects to Vercel proxy and gets AI responses
 
-### 🔧 Next Steps for Testing
-
-#### 1. Initialize Backend (Run in Replit)
-```bash
-cd ~/workspace
-git pull origin main
-cd backend
-npm install
-npm run init-db
-npm run server
-```
-
-#### 2. Test Map Import (Optional)
-```bash
-cd ~/workspace/backend
-node import-map.js
-# Should download and import map.sql from lusobr server
-```
-
-#### 3. Build Extension
-```bash
-cd ~/workspace/packages/extension
-./build-simple.sh
-# Download dist/ folder and reload in Chrome
-```
-
-#### 4. Test Chat Connection
-1. Open Travian game page
-2. Click chat button (bottom right)
-3. Enter your email to initialize
-4. Ask a question like "What should I focus on?"
-5. Check Replit console for backend logs
-
-### ⚠️ Known Issues to Fix
-1. **Chat persistence**: Still resets on page refresh (need chrome.storage)
-2. **CORS**: May need to adjust for Chrome extension → localhost:3000
-3. **Background service**: Extension expects port 3000 to be running
-
-## V3 ARCHITECTURE (IMPLEMENTED)
-
-### Backend Components
-```
-backend/
-├── server.js          # Main server with AI chat endpoint
-├── init-db.js         # Database initialization
-├── import-map.js      # Map.sql importer  
-├── database/
-│   └── schema.sql     # Complete V3 schema
-└── package.json       # Dependencies
-```
-
-### Database Tables
-- `villages` - Map data from map.sql
-- `game_events` - Event tracking
-- `recommendations` - AI suggestions
-- `performance_metrics` - Player metrics
-- `chat_history` - Conversation history
-- `player_snapshots` - Game state snapshots
-
-### API Endpoints (localhost:3000)
-- `POST /api/chat` - AI chat with game context
-- `POST /api/analyze` - Game state analysis
-- `POST /api/sync-map` - Manual map sync
-- `GET /health` - Server health check
-
-## BUILD SYSTEM (WORKING)
-
-### Current Build Script
-```bash
-cd ~/workspace/packages/extension
-./build-simple.sh
-# Auto-increments version
-# Builds to dist/
-```
-
-### Version Management
-- Current: v0.8.0 (background.ts updated for local backend)
-- Every build increments patch version
-- Version shows in: Extension, Console, HUD, Chat
+### ⚠️ Current Issues (Not Yet Fixed)
+1. **Chat UI text overflow**: Responses run off the edge of chat window - needs CSS word-wrap
+2. **Chat state loss**: Loses conversation when page auto-refreshes - needs chrome.storage persistence  
+3. **Email re-entry**: Have to re-enter email after page refresh
+4. **"Found 0 villages"**: Shows 0 at initialization even though 8 villages are parsed
+5. **Response formatting**: AI responses need better formatting for readability
 
 ## FILES MODIFIED THIS SESSION
-- `/backend/database/schema.sql` - Complete V3 database schema
-- `/backend/init-db.js` - Database initialization script
-- `/backend/import-map.js` - Map.sql importer service
-- `/backend/server.js` - Main backend server with AI
-- `/backend/package.json` - Backend dependencies
-- `/packages/extension/src/background.ts` - Updated to use local backend
+- `/packages/extension/src/content/index-fixed.ts` - Line 18: Changed villages.size to villages.length
+- `/packages/extension/src/ai/ai-chat-client.ts` - Line 161: Changed .get() to .find() for array compatibility
 
-## TESTING CHECKLIST
-- [ ] Backend starts without errors
-- [ ] Database initializes correctly
-- [ ] Map importer fetches data
-- [ ] Extension connects to backend
-- [ ] Chat messages go through
-- [ ] AI responds with game context
-- [ ] Recommendations are generated
+## BUILD SYSTEM
+Current version: **v0.7.11**
+```bash
+cd packages/extension
+./build-simple.sh  # Auto-increments version, uses rollup then falls back to esbuild
+```
 
-## USER CONTEXT
-- Email: dostal.doug@gmail.com
-- Travian Server: lusobr.x2.lusobrasileiro.travian.com
-- Villages: 8 (names: 000-007)
-- Player Rank: ~780s
-- Tribe: Egyptians
-- Chrome Browser: Latest version
+## WHAT'S ACTUALLY WORKING NOW
+- Extension loads on Travian pages ✓
+- Parses all 8 villages correctly ✓  
+- Chat UI appears and accepts input ✓
+- Sends messages to AI and gets responses ✓
+- Background service is running ✓
 
-## SESSION ACCOMPLISHMENTS
-1. ✅ Created complete V3 database schema
-2. ✅ Built database initialization script
-3. ✅ Implemented map.sql importer
-4. ✅ Created backend server with AI chat
-5. ✅ Updated extension to use local backend
-6. ✅ Set up daily map sync schedule
+## PRIORITY FIXES FOR NEXT SESSION
 
-## CRITICAL NOTES FOR NEXT AGENT
-1. **BACKEND REQUIRED**: Extension now expects backend on port 3000
-2. **RUN IN ORDER**: `npm install` → `npm run init-db` → `npm run server`
-3. **CHECK LOGS**: Backend logs will show if AI proxy is working
-4. **TEST CHAT**: Main feature to verify is chat → backend → AI → response
-5. **MAP SYNC**: Can test with `node import-map.js` manually
+### 1. Fix Chat UI CSS (5 min fix)
+Add to `.tla-chat-message` class in conversational-ai.ts:
+```css
+word-wrap: break-word;
+overflow-wrap: break-word;
+max-width: 100%;
+```
+
+### 2. Add Chat Persistence (30 min fix)
+- Store chat history in chrome.storage.local
+- Store email in chrome.storage.sync  
+- Restore on page load
+- Key code location: src/content/conversational-ai.ts
+
+### 3. Fix "Found 0 villages" message
+- The villages array is empty at init time
+- Either remove the log or delay it until after first fetch
+- Location: src/content/index-fixed.ts line 18
+
+## TESTING NOTES
+- Server: lusobr.x2.lusobrasileiro.travian.com
+- User has 8 villages (000-007)
+- Chat shows v0.7.11 in header
+- Using Vercel proxy at travian-proxy-simple.vercel.app
+
+## GIT STATUS IN REPLIT
+- Currently on commit 9944fbc (before any V3 changes were pulled)
+- All fixes made directly in Replit, not yet pushed to GitHub
+- No V3 infrastructure changes were pulled down
+
+## CRITICAL FOR NEXT AGENT
+1. **DO NOT** add complex backend infrastructure - focus on fixing existing issues
+2. **TEST** each fix individually before moving to next
+3. **VERIFY** GitHub repo is DougProceptra/TravianAssistant before any operations
+4. Chat IS working but needs UI and persistence fixes
+5. Data collection IS working - don't break it
 
 ---
-*V3 Backend infrastructure is complete. Ready for integration testing.*
+*Session accomplished: Fixed critical chat functionality bugs. Chat now connects and responds but needs UI/persistence improvements.*
