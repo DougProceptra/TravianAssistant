@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TravianAssistant V3",
-  "version": "0.9.3",
+  "version": "0.9.8",
   "description": "AI-powered strategic advisor for Travian Legends with chat-based insights",
   "permissions": [
     "storage",

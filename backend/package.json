@@ -1,24 +1,17 @@
 {
-  "name": "travian-assistant-backend-v3",
-  "version": "3.0.0",
-  "description": "TravianAssistant V3 Backend - AI-powered strategic advisor",
+  "name": "travian-assistant-backend",
+  "version": "0.1.0",
   "main": "server.js",
   "scripts": {
-    "init-db": "node init-db.js",
-    "import-map": "node import-map.js",
-    "server": "node server.js",
-    "dev": "npm run init-db && npm run server",
-    "start": "npm run server",
-    "setup": "npm install && npm run init-db"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "dependencies": {
-    "better-sqlite3": "^9.6.0",
+    "@anthropic-ai/sdk": "^0.60.0",
+    "better-sqlite3": "^12.2.0",
     "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "node-cron": "^3.0.3",
-    "node-fetch": "^2.7.0"
-  },
-  "engines": {
-    "node": ">=14.0.0"
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
   }
 }
