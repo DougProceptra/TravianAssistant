@@ -1,7 +1,7 @@
 // TravianAssistant Background Service Worker
-// v0.8.3 - FIXED CONNECTION
+// v0.8.4 - Added PING handler for testing
 
-console.log('[TLA Background] Service worker starting v0.8.3...');
+console.log('[TLA Background] Service worker starting v0.8.4...');
 
 // The PROXY that actually works
 const PROXY_URL = 'https://travian-proxy-simple.vercel.app/api/proxy';
@@ -12,6 +12,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   
   // Handle different message types
   switch(request.type) {
+    case 'PING':
+      sendResponse({ success: true, message: 'Background service is alive!' });
+      return true;
+      
     case 'ANALYZE_GAME_STATE':
       handleGameAnalysis(request.gameState, sendResponse);
       return true; // CRITICAL: Keep channel open for async
@@ -27,32 +31,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
       
     default:
-      sendResponse({ success: false, error: 'Unknown message type' });
+      sendResponse({ success: false, error: 'Unknown message type: ' + request.type });
       return false;
   }
 });
 
 async function handleGameAnalysis(gameState, sendResponse) {
   try {
+    console.log('[TLA Background] Analyzing game state...');
     const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1000,
         messages: [{
           role: 'user',
-          content: `Analyze this Travian game state: ${JSON.stringify(gameState)}`
+          content: `Analyze this Travian game state and provide strategic recommendations: ${JSON.stringify(gameState)}`
         }]
       })
     });
     
+    if (!response.ok) {
+      throw new Error(`Proxy returned ${response.status}: ${await response.text()}`);
+    }
+    
     const data = await response.json();
-    sendResponse({ 
-      success: true, 
-      analysis: data.content[0].text 
-    });
+    
+    if (data.content && data.content[0] && data.content[0].text) {
+      sendResponse({ 
+        success: true, 
+        analysis: data.content[0].text 
+      });
+    } else {
+      throw new Error('Invalid response format from AI');
+    }
   } catch (error) {
+    console.error('[TLA Background] Analysis error:', error);
     sendResponse({ 
       success: false, 
       error: error.message 
@@ -62,25 +77,40 @@ async function handleGameAnalysis(gameState, sendResponse) {
 
 async function handleChatMessage(message, gameState, sendResponse) {
   try {
+    console.log('[TLA Background] Processing chat message...');
+    
+    // Build a more intelligent prompt
+    const prompt = buildChatPrompt(message, gameState);
+    
     const response = await fetch(PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1500,
         messages: [{
           role: 'user',
-          content: message + '\n\nGame Context: ' + JSON.stringify(gameState)
+          content: prompt
         }]
       })
     });
     
+    if (!response.ok) {
+      throw new Error(`Proxy returned ${response.status}: ${await response.text()}`);
+    }
+    
     const data = await response.json();
-    sendResponse({ 
-      success: true, 
-      response: data.content[0].text 
-    });
+    
+    if (data.content && data.content[0] && data.content[0].text) {
+      sendResponse({ 
+        success: true, 
+        response: data.content[0].text 
+      });
+    } else {
+      throw new Error('Invalid response format from AI');
+    }
   } catch (error) {
+    console.error('[TLA Background] Chat error:', error);
     sendResponse({ 
       success: false, 
       error: error.message 
@@ -88,4 +118,38 @@ async function handleChatMessage(message, gameState, sendResponse) {
   }
 }
 
-console.log('[TLA Background] Service worker ready v0.8.3');
+function buildChatPrompt(message, gameState) {
+  // Extract key information from game state
+  const villages = gameState?.villages || [];
+  const totalPop = villages.reduce((sum, v) => sum + (v.population || 0), 0);
+  const resources = gameState?.resources || {};
+  
+  let prompt = `You are an expert Travian Legends strategic advisor. The player is asking: "${message}"
+
+Current Game State:
+- Villages: ${villages.length}
+- Total Population: ${totalPop}
+- Largest Village: ${Math.max(...villages.map(v => v.population || 0))} pop
+`;
+
+  // Add resource information if available
+  if (resources.wood !== undefined) {
+    prompt += `- Resources: Wood ${resources.wood}, Clay ${resources.clay}, Iron ${resources.iron}, Crop ${resources.crop}
+- Storage: ${resources.warehouseCapacity || 'unknown'}
+- Production: Wood ${resources.woodProduction}/h, Clay ${resources.clayProduction}/h, Iron ${resources.ironProduction}/h, Crop ${resources.cropProduction}/h
+`;
+  }
+
+  prompt += `
+Provide specific, actionable advice. Focus on:
+1. Immediate actions they should take
+2. Resource optimization
+3. Strategic timing considerations
+4. Common mistakes to avoid
+
+Be concise but detailed. Use numbers and specific recommendations where possible.`;
+
+  return prompt;
+}
+
+console.log('[TLA Background] Service worker ready v0.8.4');
