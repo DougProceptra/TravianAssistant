@@ -13,9 +13,10 @@
 
 ### IF YOU CANNOT CHECK ALL BOXES, STOP.
 
-## ⚠️ CRITICAL LESSON LEARNED: NO MORE SED COMMANDS
-**Session Learning**: Multiple sed commands corrupted the code and broke the chat multiple times. 
-**MANDATE**: For UI changes, manually edit files or use precise, tested replacements. NO BLIND SED.
+---
+
+*Last Updated: August 28, 2025, 12:50 PST*
+*Session Status: V4 Architecture Complete - Ready for Implementation*
 
 ## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
@@ -29,120 +30,170 @@
 - Extension path: `~/workspace/packages/extension`
 - Build output: `~/workspace/packages/extension/dist`
 
----
+## 📋 PROJECT OVERVIEW
 
-*Last Updated: August 28, 2025, 01:30 PST*
-*Session Status: CORE WORKING - UI Polish Needed*
+### Mission Statement
+**"Stockfish for Travian"** - Transform Travian gameplay from tedious micromanagement to AI-powered strategic excellence, enabling top-20 competitive play in under 2 hours per day.
 
-## ✅ WORKING VERSION: v0.9.5 - CORE FUNCTIONALITY ACHIEVED
+### Core Requirements (Updated August 28, 2025)
+1. **Deep Strategic AI Analysis** - Not superficial advice like "increase crop production" but specific, actionable intelligence: "Reduce settlement time by 32 minutes with this exact build order"
+2. **Comprehensive Data Collection** - Every game dimension captured and analyzed
+3. **Predictive Modeling** - Account growth, enemy movements, server trends
+4. **Budget Constraints** - $100/month maximum operational cost
+5. **September 9th Launch** - 12 days to production server start
 
-### What Works (CRITICAL SUCCESS)
+## ✅ COMPLETED WORK
+
+### V0.9.5 - Core Chat Functionality (WORKING)
 1. **✅ Chat connects to Claude Sonnet 4** - PRIMARY GOAL ACHIEVED
-2. **✅ Profile indicator shows initialization status**
-3. **✅ Messages scroll properly**
-4. **✅ Chat opens and closes**
-5. **✅ Can send messages and receive AI responses**
-6. **✅ Version management system working**
+2. **✅ API Proxy Working**: https://travian-proxy-simple.vercel.app/api/proxy
+3. **✅ Messages send/receive properly**
+4. **✅ Version management system working**
 
-### What Doesn't Work (UI Polish - Non-Critical)
-1. **❌ Chat window not draggable** - Code inserted but not connected properly
-2. **❌ Resize handle not visible** - resize: both is set but handle hard to see
-3. **❌ Text doesn't wrap in input** - wrap="soft" attribute not applying
+### V4 Architecture Document (COMPLETED TODAY)
+1. **✅ Complete technical specification created**
+2. **✅ Adapted for budget constraints ($100/month)**
+3. **✅ Replit/Supabase/Claude stack defined**
+4. **✅ 12-day implementation roadmap**
+5. **✅ Monetization strategy included**
 
-### Current Status
-- Extension version: **v0.9.5**
-- API Proxy: **https://travian-proxy-simple.vercel.app/api/proxy** ✓ WORKING
-- Model: **claude-sonnet-4-20250514** ✓ WORKING
-- Build: `./build-minimal.sh` ✓ WORKING
+## 🔧 IMMEDIATE PRIORITIES
 
-## ATTEMPTED FIXES THAT FAILED
+### UI Polish (2-3 hours)
+1. **Fix Chat Dragging** - Variables declared but scope issues
+2. **Fix Text Wrapping** - textarea wrap="soft" not applying
+3. **Fix Resize Handle** - CSS resize: both applied but handle tiny
 
-### Dragging Implementation
-- Variables `isDragging`, `dragStartX`, etc. were added but scope issues
-- Event listeners added to header but not firing
-- Problem: Variables declared both globally and locally, causing conflicts
-- Solution for next session: Create single `makeDraggable()` method with all logic contained
+### Week 1 Sprint (Aug 28 - Sept 3)
+**Days 1-2: Infrastructure**
+- [ ] Configure Replit Node.js environment
+- [ ] Set up Supabase free tier
+- [ ] Initialize SQLite for dev
+- [ ] Configure Vercel proxy
 
-### Text Wrapping
-- Tried: `wrap="soft"` attribute
-- Tried: `style="word-wrap: break-word"`
-- Problem: Attributes not being applied or overridden by CSS
-- Solution for next session: Add inline style directly in template string
+**Days 3-4: Core Engine**
+- [ ] Build game state scraper
+- [ ] Implement data collection
+- [ ] Create processing pipelines
+- [ ] Set up Claude integration
 
-### Resize Handle
-- CSS `resize: both` is applied
-- Problem: Default browser handle is tiny and hard to see
-- Solution for next session: Add custom visual indicator (↘ icon in corner)
+**Days 5-7: AI Systems**
+- [ ] Develop Claude prompts
+- [ ] Implement combat simulator
+- [ ] Create resource optimizer
+- [ ] Build tribal intelligence
 
-## FILES TO FIX IN NEXT SESSION
+## 💰 BUDGET & INFRASTRUCTURE
 
-### src/content/conversational-ai-fixed.ts
-This file needs MANUAL editing (no sed!):
+### Stack (Budget-Optimized)
+- **Backend**: Node.js on Replit ($7/month Hacker plan)
+- **Database**: SQLite3 → Supabase PostgreSQL (free tier)
+- **AI**: Claude Sonnet 4 via Vercel proxy (~$50/month)
+- **Caching**: In-memory + Replit KV storage
+- **Notifications**: Browser + Discord webhooks (free)
 
-1. **Fix dragging**: Add complete method at end of class:
-```typescript
-private makeDraggable(): void {
-  const header = this.chatInterface?.querySelector('.tla-chat-header');
-  if (!header) return;
-  
-  let active = false;
-  let currentX = 0;
-  let currentY = 0;
-  let initialX = 0;
-  let initialY = 0;
-  
-  header.addEventListener('mousedown', dragStart);
-  // ... complete implementation
-}
+### Cost Breakdown ($100/month max)
+- Replit Hacker: $7
+- Claude API: ~$50 (with 70% cache reduction)
+- Domain: $1
+- Reserve: $42 for scaling
+
+### Cost Control Measures
+- Aggressive response caching (70% reduction)
+- Batch analyze multiple villages
+- User quotas: 50 analyses/day free
+- Premium tier: $10/month unlimited
+
+## 🎯 KEY TECHNICAL DECISIONS
+
+### AI Strategy
+- Single Claude model for all analysis (cost-effective)
+- Carefully crafted prompts for different analysis types
+- Context persistence through conversation
+- Confidence levels: High/Medium/Low
+
+### Data Architecture
+```sql
+-- Supabase schema (optimized for free tier)
+CREATE TABLE game_states (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    player_id INTEGER NOT NULL,
+    game_data JSONB -- All state in one column
+);
 ```
 
-2. **Fix text wrap**: In the template string:
-```html
-<textarea id="tla-chat-input" 
-          wrap="soft" 
-          style="word-wrap: break-word; white-space: pre-wrap;">
-```
+### Performance Targets (Realistic)
+- API Response: < 500ms average
+- AI Analysis: < 2 seconds complex
+- Data Collection: 5-minute intervals
+- System Availability: 95% uptime
 
-3. **Fix resize indicator**: Add visual element:
-```css
-.resize-indicator {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  content: "↘";
-  padding: 2px;
-}
-```
+## 📊 SUCCESS METRICS
 
-## VERSION MANAGEMENT (WORKING)
-Three places must stay in sync:
-1. `build-minimal.sh` - VERSION="0.9.5"
-2. `src/version.ts` - VERSION = '0.9.5'
-3. `manifest.json` - "version": "0.9.5"
+### Technical
+- Prediction accuracy > 85%
+- Response time < 500ms (95th percentile)
+- Cost < $100/month
 
-## CRITICAL FOR NEXT SESSION
+### User Impact
+- Time savings: 30+ minutes/session
+- Strategic advantage: 25% faster than manual
+- User satisfaction: >4.5/5
+
+### Launch Criteria (Sept 9)
+- [ ] Top-5 settler capability proven
+- [ ] Reduces gameplay to <2 hours/day
+- [ ] Zero critical bugs
+- [ ] Cost monitoring active
+
+## ⚠️ CRITICAL LESSONS LEARNED
 
 ### DO NOT:
-- Use multiple sed commands in sequence
-- Try to insert complex JavaScript with sed
-- Make assumptions about line numbers or formatting
+- Use sed commands for complex edits (corrupts code)
+- Try to insert JavaScript with sed
+- Make assumptions about file state
+- Use expensive ML models or infrastructure
 
 ### DO:
-- Manually edit conversational-ai-fixed.ts in Replit editor
+- Manual edit in Replit editor
 - Test each change individually
 - Commit working versions immediately
-- Focus on Doug's priority: **Making the chat UI usable for aggressive testing**
+- Use Claude's reasoning over complex models
+- Cache aggressively to reduce costs
 
-## PROJECT CONTEXT
-Doug needs the chat UI fully functional because it's the primary way to test what data the agent sees and how it interprets game state. The chat must be:
-- Moveable (draggable) to see game elements underneath
-- Resizable to show more conversation history
-- Have wrapping text for long queries
+## 🚀 NEXT SESSION ACTIONS
 
-## GIT STATUS
-- Repository synced
-- Last commit pushed successfully
-- Clean working directory
+1. **Fix UI Issues** (30 minutes)
+   - Make chat draggable
+   - Fix text wrapping
+   - Make resize handle visible
+
+2. **Start Infrastructure** (2 hours)
+   - Set up Replit project
+   - Configure Supabase
+   - Test Claude integration
+
+3. **Begin Data Collection** (2 hours)
+   - Implement basic scraper
+   - Parse map.sql
+   - Store in database
+
+## 📝 SESSION NOTES
+
+### Current Understanding (Aug 28, 2025)
+- Doug needs deep AI analysis, not superficial advice
+- Budget constraint is firm at $100/month
+- Focus on clever engineering over expensive infrastructure
+- September 9th server start is hard deadline
+- Tool must enable competitive play with 1-2 hours daily
+
+### Key Context
+- 15 years Travian experience (Doug)
+- Egyptian tribe focus for next server
+- Alliance coordination not priority (Doug handles)
+- Predictive modeling essential
+- Must learn and adapt to preferences
 
 ---
-*Session wrap: Core functionality achieved. UI polish needs manual code editing, not sed commands.*
+*Session wrap: V4 architecture complete, ready for implementation sprint starting tomorrow.*
