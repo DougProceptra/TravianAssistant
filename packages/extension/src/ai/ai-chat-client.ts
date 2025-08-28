@@ -158,7 +158,7 @@ Explain your reasoning but keep responses concise and actionable.`;
   }
 
   private summarizeGameState(gameState: GameState): string {
-    const village = gameState.villages?.get(gameState.currentVillageId);
+    const village = gameState.villages?.find(v => v.id === gameState.currentVillageId);
     const serverDay = Math.floor((gameState.serverAge || 0) / 86400);
     
     let summary = `Server day ${serverDay}, Rank #${gameState.playerRank}\n`;

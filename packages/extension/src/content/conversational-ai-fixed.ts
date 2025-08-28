@@ -43,6 +43,34 @@ class ConversationalAI {
     this.chatInterface = this.createChatInterface();
     document.body.appendChild(this.chatInterface);
     
+    // Add drag functionality
+    const header = this.chatInterface.querySelector(".tla-chat-header") as HTMLElement;
+    if (header) {
+      header.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        const rect = this.chatInterface!.getBoundingClientRect();
+        chatStartX = rect.left;
+        chatStartY = rect.top;
+        e.preventDefault();
+      });
+      
+      document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - dragStartX;
+        const deltaY = e.clientY - dragStartY;
+        this.chatInterface!.style.left = (chatStartX + deltaX) + "px";
+        this.chatInterface!.style.top = (chatStartY + deltaY) + "px";
+        this.chatInterface!.style.right = "auto";
+        this.chatInterface!.style.bottom = "auto";
+      });
+      
+      document.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
+    }
+    
     // Toggle chat on button click
     chatButton.addEventListener('click', () => {
       const isVisible = this.chatInterface!.style.display === 'block';
@@ -125,7 +153,7 @@ class ConversationalAI {
     button.style.cssText = `
       position: fixed;
       bottom: 20px;
-      right: 20px;
+      right: 20px; max-width: 400px;
       width: 56px;
       height: 56px;
       background: linear-gradient(135deg, #8B4513, #A0522D);
@@ -156,10 +184,21 @@ class ConversationalAI {
   private createChatInterface(): HTMLElement {
     const chat = document.createElement('div');
     chat.id = 'tla-chat-interface';
+    chat.style.resize = "both";
+    chat.style.overflow = "auto";
+    // Make chat draggable
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let chatStartX = 0;
+    let chatStartY = 0;
+
     chat.innerHTML = `
       <div class="tla-chat-header">
+        <span class="tla-chat-drag-handle" title="Drag to move">☰</span>
         <span class="tla-chat-title">TravianAssistant AI</span>
         <span class="tla-chat-version">v${VERSION}</span>
+        <span class="tla-profile-status">${this.chatState.isInitialized ? "✓ Profile" : "⚠ Setup Required"}</span>
         <button class="tla-chat-clear" title="Clear chat">🗑️</button>
         <button class="tla-chat-close">×</button>
       </div>
@@ -181,10 +220,6 @@ class ConversationalAI {
         }" />
         <button id="tla-chat-send">Send</button>
       </div>
-      <div class="tla-chat-suggestions" id="tla-chat-suggestions" style="display: ${
-        this.chatState.isInitialized ? 'block' : 'none'
-      };">
-        <div class="tla-suggestion">What should I focus on right now?</div>
         <div class="tla-suggestion">Analyze my settlement strategy</div>
         <div class="tla-suggestion">Optimize my build order</div>
         <div class="tla-suggestion">When can I settle next village?</div>
@@ -195,9 +230,10 @@ class ConversationalAI {
     chat.style.cssText = `
       position: fixed;
       bottom: 90px;
-      right: 20px;
+      right: 20px; max-width: 400px;
       width: 400px;
-      height: 550px;
+      height: 480px;
+      max-height: calc(100vh - 120px);
       background: rgba(20, 20, 20, 0.95);
       border: 2px solid #8B4513;
       border-radius: 12px;
@@ -219,6 +255,8 @@ class ConversationalAI {
       .tla-chat-header {
         background: linear-gradient(135deg, #8B4513, #A0522D);
         padding: 12px;
+      cursor: move;
+      user-select: none;
         border-radius: 10px 10px 0 0;
         display: flex;
         justify-content: space-between;
@@ -234,6 +272,41 @@ class ConversationalAI {
       }
       
       .tla-chat-version {
+      }
+
+      
+
+      .tla-profile-status {
+
+        font-size: 11px;
+
+        padding: 2px 6px;
+
+        border-radius: 3px;
+
+        margin-left: 8px;
+
+      }
+
+      
+
+      .tla-profile-status:contains("✓") {
+
+        background: rgba(0, 255, 0, 0.2);
+
+        color: #4f4;
+
+      }
+
+      
+
+      .tla-profile-status:contains("⚠") {
+
+        background: rgba(255, 100, 0, 0.2);
+
+        color: #ffa500;
+
+
         font-size: 11px;
         opacity: 0.7;
       }
@@ -262,7 +335,10 @@ class ConversationalAI {
       
       .tla-chat-messages {
         flex: 1;
+        min-height: 200px;
+        height: calc(100% - 120px);
         overflow-y: auto;
+      overflow-x: hidden;
         padding: 16px;
         color: white;
         font-size: 14px;
@@ -396,7 +472,10 @@ class ConversationalAI {
       }
       
       .tla-chat-suggestions {
-        padding: 8px;
+        padding: 4px;
+        max-height: 100px;
+        overflow-y: auto;
+        font-size: 11px;
         border-top: 1px solid rgba(139, 69, 19, 0.3);
         display: flex;
         flex-direction: column;
@@ -404,7 +483,8 @@ class ConversationalAI {
       }
       
       .tla-suggestion {
-        padding: 8px 12px;
+        padding: 6px 10px;
+        font-size: 12px;
         background: rgba(139, 69, 19, 0.15);
         border-radius: 6px;
         color: rgba(255, 255, 255, 0.7);
@@ -525,13 +605,6 @@ class ConversationalAI {
       }
     });
     
-    // Handle suggestion clicks
-    suggestions.forEach(suggestion => {
-      suggestion.addEventListener('click', () => {
-        input.value = suggestion.textContent || '';
-        sendMessage();
-      });
-    });
   }
 
   private enhanceMessageWithContext(message: string, gameState: any): string {

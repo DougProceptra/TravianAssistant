@@ -5,7 +5,7 @@
 import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
 import { createHUD } from './hud';
-import { initConversationalAI } from './conversational-ai';
+import { initConversationalAI } from './conversational-ai-fixed';
 import { VERSION } from '../version';
 
 console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);

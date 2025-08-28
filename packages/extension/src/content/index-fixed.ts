@@ -2,7 +2,7 @@
 import { SafeScraper } from './safe-scraper';
 import { OverviewParser } from './overview-parser';
 import { createHUD } from './hud';
-import { initConversationalAI } from './conversational-ai';
+import { initConversationalAI } from './conversational-ai-fixed';
 import { VERSION } from '../version';
 
 console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);
@@ -18,7 +18,7 @@ async function initialize() {
   console.log('[TLA Content] Initial scrape complete:', gameState);
   
   const villages = await overviewParser.getAllCachedVillages();
-  console.log(`[TLA Content] Found ${villages.size} villages`);
+  console.log(`[TLA Content] Found ${villages.length} villages`);
   
   const hud = createHUD();
   hud.setVersion(VERSION);
