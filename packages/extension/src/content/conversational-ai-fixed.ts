@@ -1,6 +1,6 @@
 // packages/extension/src/content/conversational-ai-fixed.ts
 // Chat interface for natural conversation with AI
-// v0.9.6 - Fixed dragging scope, text wrap, and resize handle visibility
+// v0.9.11 - Fixed API method call, window persistence, removed sample content
 
 import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
@@ -13,28 +13,43 @@ interface ChatMessage {
   timestamp: number;
 }
 
+interface ChatWindowState {
+  isOpen: boolean;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+}
+
 interface ChatState {
   messages: ChatMessage[];
   userEmail: string | null;
   isInitialized: boolean;
+  windowState: ChatWindowState;
 }
 
 class ConversationalAI {
   private chatState: ChatState = {
     messages: [],
     userEmail: null,
-    isInitialized: false
+    isInitialized: false,
+    windowState: {
+      isOpen: false,
+      position: { x: -1, y: -1 },
+      size: { width: 400, height: 480 }
+    }
   };
   
   private chatInterface: HTMLElement | null = null;
   private autoSaveInterval: number | null = null;
   
-  // FIX 1: Move drag state to class level for proper scope
+  // Drag state at class level for proper scope
   private isDragging: boolean = false;
   private dragStartX: number = 0;
   private dragStartY: number = 0;
   private chatStartX: number = 0;
   private chatStartY: number = 0;
+  
+  // Resize observer for saving size
+  private resizeObserver: ResizeObserver | null = null;
 
   async init() {
     console.log(`[TLA Chat] Initializing conversational AI v${VERSION}...`);
@@ -46,28 +61,28 @@ class ConversationalAI {
     const chatButton = this.createChatButton();
     document.body.appendChild(chatButton);
     
-    // Create chat interface (hidden initially)
+    // Create chat interface
     this.chatInterface = this.createChatInterface();
     document.body.appendChild(this.chatInterface);
     
-    // FIX 1: Setup drag with class-level variables
+    // Setup drag functionality
     this.setupDragFunctionality();
+    
+    // Setup resize observer
+    this.setupResizeObserver();
+    
+    // Restore window state if it was open
+    if (this.chatState.windowState.isOpen) {
+      this.showChat();
+    }
     
     // Toggle chat on button click
     chatButton.addEventListener('click', () => {
       const isVisible = this.chatInterface!.style.display === 'block';
-      this.chatInterface!.style.display = isVisible ? 'none' : 'block';
-      
-      if (!isVisible) {
-        // Focus input when opening
-        const input = this.chatInterface!.querySelector('#tla-chat-input') as HTMLInputElement;
-        input?.focus();
-        
-        // Restore chat history
-        this.restoreChatHistory();
-        
-        // Check if user email is set
-        this.checkUserInitialization();
+      if (isVisible) {
+        this.hideChat();
+      } else {
+        this.showChat();
       }
     });
     
@@ -83,11 +98,52 @@ class ConversationalAI {
     
     console.log(`[TLA Chat] Chat interface initialized v${VERSION}`);
   }
+  
+  private showChat() {
+    if (!this.chatInterface) return;
+    
+    this.chatInterface.style.display = 'block';
+    this.chatState.windowState.isOpen = true;
+    
+    // Apply saved position and size
+    if (this.chatState.windowState.position.x >= 0) {
+      this.chatInterface.style.left = `${this.chatState.windowState.position.x}px`;
+      this.chatInterface.style.top = `${this.chatState.windowState.position.y}px`;
+      this.chatInterface.style.right = 'auto';
+      this.chatInterface.style.bottom = 'auto';
+    }
+    
+    this.chatInterface.style.width = `${this.chatState.windowState.size.width}px`;
+    this.chatInterface.style.height = `${this.chatState.windowState.size.height}px`;
+    
+    // Focus input when opening
+    const input = this.chatInterface.querySelector('#tla-chat-input') as HTMLTextAreaElement;
+    input?.focus();
+    
+    // Restore chat history
+    this.restoreChatHistory();
+    
+    // Check if user email is set
+    this.checkUserInitialization();
+    
+    this.saveState();
+  }
+  
+  private hideChat() {
+    if (!this.chatInterface) return;
+    
+    this.chatInterface.style.display = 'none';
+    this.chatState.windowState.isOpen = false;
+    this.saveState();
+  }
 
   private setupDragFunctionality() {
     const header = this.chatInterface!.querySelector(".tla-chat-header") as HTMLElement;
     if (header) {
       header.addEventListener("mousedown", (e) => {
+        // Don't start drag if clicking on buttons
+        if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+        
         this.isDragging = true;
         this.dragStartX = e.clientX;
         this.dragStartY = e.clientY;
@@ -101,15 +157,37 @@ class ConversationalAI {
         if (!this.isDragging) return;
         const deltaX = e.clientX - this.dragStartX;
         const deltaY = e.clientY - this.dragStartY;
-        this.chatInterface!.style.left = (this.chatStartX + deltaX) + "px";
-        this.chatInterface!.style.top = (this.chatStartY + deltaY) + "px";
+        const newX = this.chatStartX + deltaX;
+        const newY = this.chatStartY + deltaY;
+        
+        this.chatInterface!.style.left = newX + "px";
+        this.chatInterface!.style.top = newY + "px";
         this.chatInterface!.style.right = "auto";
         this.chatInterface!.style.bottom = "auto";
+        
+        // Save position to state
+        this.chatState.windowState.position = { x: newX, y: newY };
       });
       
       document.addEventListener("mouseup", () => {
-        this.isDragging = false;
+        if (this.isDragging) {
+          this.isDragging = false;
+          this.saveState();
+        }
       });
+    }
+  }
+  
+  private setupResizeObserver() {
+    this.resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        this.chatState.windowState.size = { width, height };
+      }
+    });
+    
+    if (this.chatInterface) {
+      this.resizeObserver.observe(this.chatInterface);
     }
   }
 
@@ -117,7 +195,15 @@ class ConversationalAI {
     try {
       const stored = await chrome.storage.local.get(['chatState']);
       if (stored.chatState) {
-        this.chatState = stored.chatState;
+        // Merge stored state with defaults
+        this.chatState = {
+          ...this.chatState,
+          ...stored.chatState,
+          windowState: {
+            ...this.chatState.windowState,
+            ...(stored.chatState.windowState || {})
+          }
+        };
         console.log('[TLA Chat] Loaded chat state:', this.chatState.messages.length, 'messages');
       }
       
@@ -201,17 +287,15 @@ class ConversationalAI {
         <span class="tla-chat-drag-handle" title="Drag to move">☰</span>
         <span class="tla-chat-title">TravianAssistant AI</span>
         <span class="tla-chat-version">v${VERSION}</span>
-        <span class="tla-profile-status">${this.chatState.isInitialized ? "✓ Profile" : "⚠ Setup Required"}</span>
+        <span class="tla-profile-status">${this.chatState.isInitialized ? "✓ Ready" : "⚠ Setup"}</span>
         <button class="tla-chat-clear" title="Clear chat">🗑️</button>
         <button class="tla-chat-close">×</button>
       </div>
       <div class="tla-chat-messages" id="tla-chat-messages">
         <div class="tla-chat-welcome">
-          Welcome! I'm your strategic advisor for Travian.
-          <br><br>
           ${this.chatState.isInitialized 
-            ? `<strong>Ready to assist!</strong> Ask me anything about your game.`
-            : `<strong>First time?</strong> Type your email to get started.`
+            ? `<strong>Ask me about your game strategy.</strong><br>I analyze your villages and provide recommendations.`
+            : `<strong>Welcome to TravianAssistant!</strong><br>Enter your email to get started.`
           }
         </div>
       </div>
@@ -224,19 +308,29 @@ class ConversationalAI {
         <button id="tla-chat-send">Send</button>
       </div>
       <div class="tla-chat-suggestions" id="tla-chat-suggestions">
-        <div class="tla-suggestion">Analyze my settlement strategy</div>
-        <div class="tla-suggestion">Optimize my build order</div>
-        <div class="tla-suggestion">When can I settle next village?</div>
+        <div class="tla-suggestion">How can I help you dominate this server?</div>
+        <div class="tla-suggestion">How large is my largest village?</div>
+        <div class="tla-suggestion">What should I focus on next?</div>
       </div>
     `;
     
-    // Style the chat interface with FIX 3: Better resize handle
+    // Default position and size
+    const defaultRight = 20;
+    const defaultBottom = 90;
+    const defaultWidth = this.chatState.windowState.size.width;
+    const defaultHeight = this.chatState.windowState.size.height;
+    
+    // Style the chat interface
     chat.style.cssText = `
       position: fixed;
-      bottom: 90px;
-      right: 20px;
-      width: 400px;
-      height: 480px;
+      ${this.chatState.windowState.position.x >= 0 
+        ? `left: ${this.chatState.windowState.position.x}px;` 
+        : `right: ${defaultRight}px;`}
+      ${this.chatState.windowState.position.y >= 0 
+        ? `top: ${this.chatState.windowState.position.y}px;` 
+        : `bottom: ${defaultBottom}px;`}
+      width: ${defaultWidth}px;
+      height: ${defaultHeight}px;
       min-width: 320px;
       min-height: 400px;
       max-width: 600px;
@@ -253,7 +347,7 @@ class ConversationalAI {
       overflow: auto;
     `;
     
-    // Add styles with FIX 2: Proper text wrap for input
+    // Add styles
     const style = document.createElement('style');
     style.textContent = `
       #tla-chat-interface {
@@ -261,7 +355,7 @@ class ConversationalAI {
         flex-direction: column;
       }
       
-      /* FIX 3: Custom resize handle */
+      /* Custom resize handle */
       #tla-chat-interface::after {
         content: '';
         position: absolute;
@@ -425,7 +519,6 @@ class ConversationalAI {
         align-items: flex-end;
       }
       
-      /* FIX 2: Use textarea instead of input for proper text wrap */
       #tla-chat-input {
         flex: 1;
         padding: 10px 14px;
@@ -479,7 +572,7 @@ class ConversationalAI {
         max-height: 100px;
         overflow-y: auto;
         border-top: 1px solid rgba(139, 69, 19, 0.3);
-        display: none;
+        display: ${this.chatState.isInitialized ? 'flex' : 'none'};
         flex-direction: column;
         gap: 4px;
       }
@@ -532,12 +625,12 @@ class ConversationalAI {
   private setupEventHandlers(chat: HTMLElement) {
     const closeBtn = chat.querySelector('.tla-chat-close');
     const clearBtn = chat.querySelector('.tla-chat-clear');
-    const input = chat.querySelector('#tla-chat-input') as HTMLTextAreaElement; // Changed to textarea
+    const input = chat.querySelector('#tla-chat-input') as HTMLTextAreaElement;
     const sendBtn = chat.querySelector('#tla-chat-send');
     const suggestions = chat.querySelectorAll('.tla-suggestion');
     
     closeBtn?.addEventListener('click', () => {
-      chat.style.display = 'none';
+      this.hideChat();
     });
     
     clearBtn?.addEventListener('click', () => {
@@ -546,7 +639,7 @@ class ConversationalAI {
       }
     });
     
-    // FIX 2: Auto-resize textarea
+    // Auto-resize textarea
     input?.addEventListener('input', () => {
       input.style.height = 'auto';
       input.style.height = Math.min(input.scrollHeight, 120) + 'px';
@@ -560,25 +653,25 @@ class ConversationalAI {
       if (this.isEmail(message)) {
         await this.handleEmailInitialization(message);
         input.value = '';
-        input.style.height = '40px'; // Reset height
+        input.style.height = '40px';
         return;
       }
       
       // Display user message
       this.addMessage(message, 'user');
       input.value = '';
-      input.style.height = '40px'; // Reset height
+      input.style.height = '40px';
       
       // Show loading
       const loadingId = this.addMessage(
         '<span class="tla-chat-loading"></span><span class="tla-chat-loading"></span><span class="tla-chat-loading"></span>',
         'ai',
-        false // Don't save loading message
+        false
       );
       
       try {
-        // Get current game state
-        const gameState = await safeScraper.scrapeCurrentState();
+        // CRITICAL FIX: Use getGameState() not scrapeCurrentState()
+        const gameState = await safeScraper.getGameState();
         
         // Send to AI with context about game start optimization
         const enhancedMessage = this.enhanceMessageWithContext(message, gameState);
@@ -592,11 +685,11 @@ class ConversationalAI {
         // Remove loading and show response
         this.removeMessage(loadingId);
         
-        if (response.success) {
+        if (response && response.success) {
           const formattedResponse = this.formatAIResponse(response.response);
           this.addMessage(formattedResponse, 'ai');
         } else {
-          this.addMessage(`Error: ${response.error}`, 'ai');
+          this.addMessage(`Failed to get response. Please try again.`, 'ai');
         }
       } catch (error) {
         this.removeMessage(loadingId);
@@ -777,13 +870,13 @@ class ConversationalAI {
       
       this.removeMessage(loadingId);
       
-      if (response.success) {
+      if (response && response.success) {
         this.chatState.userEmail = email;
         this.chatState.isInitialized = true;
         await this.saveState();
         
         this.addMessage(
-          `Great! I've initialized your profile. I'll learn your playing style over time to give you personalized advice.\n\nFor optimal game start, I'll help you:\n• Reach settlement in <7 days\n• Optimize resource production\n• Complete quests efficiently\n• Plan your expansion strategy\n\nHow can I help you dominate this server?`,
+          `Profile initialized! Ask me anything about your game strategy.`,
           'ai'
         );
         
@@ -798,8 +891,14 @@ class ConversationalAI {
         if (input) {
           input.placeholder = 'Ask about your game strategy...';
         }
+        
+        // Update profile status
+        const profileStatus = document.querySelector('.tla-profile-status');
+        if (profileStatus) {
+          profileStatus.textContent = '✓ Ready';
+        }
       } else {
-        this.addMessage(`Failed to initialize: ${response.error}`, 'ai');
+        this.addMessage(`Failed to initialize. Please try again.`, 'ai');
       }
     } catch (error) {
       this.removeMessage(loadingId);
@@ -834,6 +933,12 @@ class ConversationalAI {
         const input = document.querySelector('#tla-chat-input') as HTMLTextAreaElement;
         if (input) {
           input.placeholder = 'Ask about your game strategy...';
+        }
+        
+        // Update profile status
+        const profileStatus = document.querySelector('.tla-profile-status');
+        if (profileStatus) {
+          profileStatus.textContent = '✓ Ready';
         }
       }
     } catch (error) {
