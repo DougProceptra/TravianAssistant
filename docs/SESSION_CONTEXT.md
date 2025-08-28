@@ -13,12 +13,15 @@
 
 ### IF YOU CANNOT CHECK ALL BOXES, STOP.
 
+## ⚠️ CRITICAL LESSON LEARNED: NO MORE SED COMMANDS
+**Session Learning**: Multiple sed commands corrupted the code and broke the chat multiple times. 
+**MANDATE**: For UI changes, manually edit files or use precise, tested replacements. NO BLIND SED.
+
 ## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
 - Owner: **DougProceptra** (NOT dougyb83, NOT DougZackowski)  
 - Repository: **TravianAssistant**
 - Main branch: **main**
-- **VERIFY BEFORE ANY WORK**: `git remote -v` should show `origin	https://github.com/DougProceptra/TravianAssistant.git`
 
 ## ⚠️ REPLIT WORKSPACE ⚠️
 **Replit URL**: https://replit.com/@dougdostal/TravianAssistant
@@ -28,93 +31,118 @@
 
 ---
 
-*Last Updated: August 28, 2025, 01:09 PST*
-*Session Status: SUCCESS - Chat working with Claude Sonnet 4*
+*Last Updated: August 28, 2025, 01:30 PST*
+*Session Status: CORE WORKING - UI Polish Needed*
 
-## ✅ WORKING VERSION: v0.9.3 - COMMITTED
+## ✅ WORKING VERSION: v0.9.5 - CORE FUNCTIONALITY ACHIEVED
 
-### What Works
-1. **Chat connects to Claude Sonnet 4** ✓
-2. **Profile indicator shows initialization status** ✓
-3. **Chat window is resizable** (drag bottom-right corner) ✓
-4. **Messages scroll properly** ✓
-5. **Suggestions removed** (cleaner interface) ✓
-6. **Version management fixed** (no more hardcoding) ✓
+### What Works (CRITICAL SUCCESS)
+1. **✅ Chat connects to Claude Sonnet 4** - PRIMARY GOAL ACHIEVED
+2. **✅ Profile indicator shows initialization status**
+3. **✅ Messages scroll properly**
+4. **✅ Chat opens and closes**
+5. **✅ Can send messages and receive AI responses**
+6. **✅ Version management system working**
+
+### What Doesn't Work (UI Polish - Non-Critical)
+1. **❌ Chat window not draggable** - Code inserted but not connected properly
+2. **❌ Resize handle not visible** - resize: both is set but handle hard to see
+3. **❌ Text doesn't wrap in input** - wrap="soft" attribute not applying
 
 ### Current Status
-- Extension version: **v0.9.3**
-- API Proxy: **https://travian-proxy-simple.vercel.app/api/proxy**
-- Model: **claude-sonnet-4-20250514**
-- Build command: `./build-minimal.sh`
+- Extension version: **v0.9.5**
+- API Proxy: **https://travian-proxy-simple.vercel.app/api/proxy** ✓ WORKING
+- Model: **claude-sonnet-4-20250514** ✓ WORKING
+- Build: `./build-minimal.sh` ✓ WORKING
 
-### Architecture
-```
-Chrome Extension (v0.9.3)
-    ↓
-Background Service Worker (working)
-    ↓
-Vercel Proxy (/api/proxy endpoint)
-    ↓
-Anthropic API (Claude Sonnet 4)
-```
+## ATTEMPTED FIXES THAT FAILED
 
-### Known Issues (Minor UI Polish)
-1. Chat dragging not working (sed commands failed to insert properly)
-2. Resize handle hard to see (needs visual indicator)
-3. Text wrapping in input needs wrap="soft" attribute
-4. Window position not persisted between sessions
+### Dragging Implementation
+- Variables `isDragging`, `dragStartX`, etc. were added but scope issues
+- Event listeners added to header but not firing
+- Problem: Variables declared both globally and locally, causing conflicts
+- Solution for next session: Create single `makeDraggable()` method with all logic contained
 
-### Version Management (FIXED)
-Version now controlled in THREE places that must stay in sync:
-1. `build-minimal.sh` - VERSION variable
-2. `src/version.ts` - VERSION constant
-3. `manifest.json` - version field
+### Text Wrapping
+- Tried: `wrap="soft"` attribute
+- Tried: `style="word-wrap: break-word"`
+- Problem: Attributes not being applied or overridden by CSS
+- Solution for next session: Add inline style directly in template string
 
-Build script uses the VERSION variable to update dist/manifest.json
+### Resize Handle
+- CSS `resize: both` is applied
+- Problem: Default browser handle is tiny and hard to see
+- Solution for next session: Add custom visual indicator (↘ icon in corner)
 
-### Files Structure
-```
-packages/extension/
-├── src/
-│   ├── content/
-│   │   ├── conversational-ai-fixed.ts (CURRENT - working)
-│   │   └── index-fixed.ts (entry point)
-│   ├── background.ts (working)
-│   └── version.ts (VERSION = '0.9.3')
-├── dist/
-│   ├── content.js (built from index-fixed.ts)
-│   ├── background.js (working, connects to proxy)
-│   └── manifest.json (v0.9.3)
-├── build-minimal.sh (VERSION="0.9.3")
-└── manifest.json (source, v0.9.3)
-```
+## FILES TO FIX IN NEXT SESSION
 
-### Proxy Status
-- GitHub repo: travian-proxy-simple
-- Vercel deployment: WORKING
-- Endpoint: /api/proxy
-- Model: claude-sonnet-4-20250514
-- API Key: Set in Vercel environment variables
+### src/content/conversational-ai-fixed.ts
+This file needs MANUAL editing (no sed!):
 
-### How to Test
-```bash
-cd ~/workspace/packages/extension
-./build-minimal.sh
-# Reload extension in Chrome
-# Open game, press Ctrl+Shift+F9 or click chat button
-# Send message - should get Claude Sonnet 4 response
+1. **Fix dragging**: Add complete method at end of class:
+```typescript
+private makeDraggable(): void {
+  const header = this.chatInterface?.querySelector('.tla-chat-header');
+  if (!header) return;
+  
+  let active = false;
+  let currentX = 0;
+  let currentY = 0;
+  let initialX = 0;
+  let initialY = 0;
+  
+  header.addEventListener('mousedown', dragStart);
+  // ... complete implementation
+}
 ```
 
-### Next Session Priorities
-1. Manually fix chat dragging (not with sed)
-2. Add visual resize handle indicator
-3. Persist window position/size in localStorage
-4. Add context-aware suggestions based on game state
+2. **Fix text wrap**: In the template string:
+```html
+<textarea id="tla-chat-input" 
+          wrap="soft" 
+          style="word-wrap: break-word; white-space: pre-wrap;">
+```
+
+3. **Fix resize indicator**: Add visual element:
+```css
+.resize-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  content: "↘";
+  padding: 2px;
+}
+```
+
+## VERSION MANAGEMENT (WORKING)
+Three places must stay in sync:
+1. `build-minimal.sh` - VERSION="0.9.5"
+2. `src/version.ts` - VERSION = '0.9.5'
+3. `manifest.json` - "version": "0.9.5"
+
+## CRITICAL FOR NEXT SESSION
+
+### DO NOT:
+- Use multiple sed commands in sequence
+- Try to insert complex JavaScript with sed
+- Make assumptions about line numbers or formatting
+
+### DO:
+- Manually edit conversational-ai-fixed.ts in Replit editor
+- Test each change individually
+- Commit working versions immediately
+- Focus on Doug's priority: **Making the chat UI usable for aggressive testing**
+
+## PROJECT CONTEXT
+Doug needs the chat UI fully functional because it's the primary way to test what data the agent sees and how it interprets game state. The chat must be:
+- Moveable (draggable) to see game elements underneath
+- Resizable to show more conversation history
+- Have wrapping text for long queries
 
 ## GIT STATUS
-- Last commit: "v0.9.3 - Chat connects to Claude Sonnet 4, resizable window, profile indicator"
+- Repository synced
+- Last commit pushed successfully
 - Clean working directory
-- Pushed to GitHub main branch
 
 ---
-*Session successful: Core functionality achieved - chat works with Claude Sonnet 4*
+*Session wrap: Core functionality achieved. UI polish needs manual code editing, not sed commands.*
