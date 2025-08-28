@@ -3,6 +3,36 @@
 ## ⚠️ MANDATORY READING INSTRUCTION ⚠️
 **You must read every word of this document. You must read it 3 times. The first as a senior architect guiding the work of an application. The second time is as a developer that will be executing the steps and directions emanating from document and the third time as business analyst making sure you understand the functions and processes being addressed and how they affect the game. You cannot proceed until you fully comprehend every aspect of the SESSION_CONTEXT.md document.**
 
+## 🔄 MANDATORY GIT SYNC - DO THIS FIRST! 🔄
+
+### BEFORE ANYTHING ELSE - SYNC WITH GITHUB:
+```bash
+cd ~/workspace
+
+# Check current status
+git status
+
+# If there are uncommitted changes:
+git add -A
+git commit -m "WIP: Session start - saving local changes"
+
+# ALWAYS pull latest from GitHub
+git pull origin main
+
+# If there are conflicts:
+git status  # See which files have conflicts
+# Resolve conflicts manually or use:
+git checkout --theirs .  # To accept remote version
+# OR
+git checkout --ours .    # To keep local version
+
+# Verify sync is complete
+git status
+# Should show: "Your branch is up to date with 'origin/main'"
+```
+
+**⚠️ IF YOU SKIP THIS STEP, YOU MAY BE WORKING ON OUTDATED CODE!**
+
 ## 🛑 MANDATORY DEVELOPMENT PROCESS - NO EXCEPTIONS 🛑
 
 ### BEFORE MAKING ANY CODE CHANGES:
@@ -60,14 +90,14 @@ If you discover ANY quirk, gotcha, or unexpected behavior:
 
 ---
 
-## 🛑 MANDATORY SESSION STARTUP - RUN THIS FIRST 🛑
+## 🛑 MANDATORY SESSION STARTUP - RUN THIS SECOND 🛑
 
-### BEFORE ANY DEVELOPMENT WORK:
+### AFTER GIT SYNC, BEFORE ANY DEVELOPMENT:
 ```bash
 cd ~/workspace
 node scripts/check-dev-status.js
 ```
-**This health check script MUST be run at the start of EVERY session to ensure:**
+**This health check script MUST be run to ensure:**
 - [ ] Git status is clean or changes are known
 - [ ] All critical files exist
 - [ ] Dependencies are installed 
@@ -79,8 +109,8 @@ node scripts/check-dev-status.js
 
 ---
 
-*Last Updated: August 28, 2025, 9:45 PM PST*
-*Session Status: Chat UI Fixed v0.9.11 - API connection resolved*
+*Last Updated: August 28, 2025, 10:00 PM PST*
+*Session Status: Chat UI Fixed v0.9.11 - Testing deployment*
 
 ## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
@@ -126,6 +156,13 @@ node scripts/check-dev-status.js
    - Removed hardcoded sample content
 2. **✅ Data Scraping** - Successfully parsing 8 villages
 3. **✅ API Connection** - Fixed in conversational-ai-fixed.ts (uses getGameState)
+4. **✅ Background Service** - Added PING handler, improved error handling
+
+### Latest Changes (v0.8.4 Background)
+- Added PING handler for testing
+- Improved error messages with status codes
+- Better prompt building with village extraction
+- Updated to claude-3-5-sonnet-20241022 model
 
 ### Critical Fix Applied
 **DISCOVERED**: Build script uses `-fixed.ts` files, not regular `.ts` files!
@@ -150,24 +187,34 @@ Average Village Population: 306
 
 ## 🚀 IMMEDIATE NEXT STEPS
 
-### 1. Deploy and Test v0.9.11
+### 1. Sync and Build
 ```bash
-cd ~/workspace/packages/extension
+# FIRST: Sync with GitHub
+cd ~/workspace
+git pull origin main
+
+# THEN: Build extension
+cd packages/extension
 ./build-simple.sh
+
 # Download dist/ folder and reload extension
 ```
 
-### 2. Verify All Features
+### 2. Run Diagnostic Test
+```javascript
+// Copy entire contents of test-extension.js
+// Paste in browser console on Travian page
+// Review results for any ❌ marks
+```
+
+### 3. Verify All Features
+- [ ] PING test passes
 - [ ] Chat connects to AI successfully
 - [ ] Window position persists on refresh
 - [ ] Window size persists on refresh
 - [ ] Chat stays open if it was open
 - [ ] No sample content appears
 - [ ] AI provides real recommendations
-
-### 3. Document Any New Issues
-- Add to DEVELOPMENT_GUIDE.md
-- Update this file with results
 
 ## 🔧 CURRENT SYSTEM STATE
 
@@ -181,15 +228,18 @@ cd ~/workspace/packages/extension
 - Extension Source: `~/workspace/packages/extension/src/`
 - **Entry Point**: `src/content/index-fixed.ts` (NOT index.ts!)
 - **Chat UI**: `src/content/conversational-ai-fixed.ts` (NOT conversational-ai.ts!)
+- **Background**: `src/background.ts` (v0.8.4 with PING)
 - Extension Build: `~/workspace/packages/extension/dist/`
 - Database: `~/workspace/backend/travian.db`
 - Scripts: `~/workspace/scripts/`
+- **Test Script**: `packages/extension/test-extension.js`
 
 ### Key Scripts
-- `check-dev-status.js` - Health check (RUN FIRST!)
+- `check-dev-status.js` - Health check (RUN AFTER GIT SYNC!)
 - `import-map.js` - Import map.sql data
 - `test-backend-sqlite.js` - Test backend endpoints
 - `build-simple.sh` - Build extension (USES -fixed.ts FILES!)
+- `test-extension.js` - Comprehensive diagnostic test
 
 ## 💰 BUDGET STATUS
 
@@ -226,6 +276,7 @@ cd ~/workspace/packages/extension
 ## ⚠️ CRITICAL LESSONS & WARNINGS
 
 ### DO NOT:
+- Skip Git sync at session start!
 - Edit regular .ts files when -fixed.ts versions exist!
 - Assume which files the build uses - CHECK build-simple.sh!
 - Make changes without tracing the full import chain!
@@ -233,34 +284,46 @@ cd ~/workspace/packages/extension
 - Forget to document discoveries!
 
 ### DO:
-- Run `check-dev-status.js` FIRST every session
+- ALWAYS sync with GitHub first
+- Run `check-dev-status.js` after sync
 - Read DEVELOPMENT_GUIDE.md before coding
 - Trace execution paths before editing
 - Test incrementally (one feature at a time)
 - Update documentation immediately
+- Run test-extension.js for diagnostics
 
 ## 📝 SESSION SUMMARY
 
-### What Was Fixed in v0.9.11
+### What Was Fixed in v0.9.11 + v0.8.4
 1. **Critical Discovery** - Build uses `-fixed.ts` files, not regular ones
 2. **API Method Fixed** - Changed to `getGameState()` in correct file
 3. **Window Persistence** - Full state saving implemented
 4. **Clean UI** - Removed all sample content
+5. **Background Service** - Added PING handler for testing
+6. **Error Handling** - Better error messages throughout
+7. **Test Script** - Comprehensive diagnostic tool created
 
 ### Key Learning
-We were repeatedly fixing the wrong files because we didn't trace the build process. The build script uses `index-fixed.ts` and `conversational-ai-fixed.ts`, NOT the regular versions. This is now documented in multiple places.
+- Must sync with GitHub at session start
+- Build uses `-fixed.ts` files exclusively
+- Always trace execution path before editing
+- Document discoveries immediately
 
 ### Next Session Focus
-1. **Test the deployed fix** - Verify all features work
-2. **Optimize AI prompts** - Make recommendations more strategic
-3. **Expand data collection** - Capture more game state
-4. **Cost analysis** - Measure actual API usage
+1. **Run diagnostic test** - Identify any remaining issues
+2. **Fix any failures** - Address ❌ marks from test
+3. **Optimize AI prompts** - Make recommendations more strategic
+4. **Expand data collection** - Capture more game state
 
 ## 🔄 HANDOFF NOTES
 
-**CRITICAL**: Always check which files the build actually uses before editing! The `-fixed.ts` pattern is non-obvious but crucial. The chat UI should now be fully functional with v0.9.11. Test thoroughly before moving to next features.
+**CRITICAL STEPS**:
+1. Git sync FIRST - `git pull origin main`
+2. Build with `./build-simple.sh`
+3. Run `test-extension.js` in browser console
+4. Fix any ❌ failures before proceeding
 
-The development process at the top of this document is MANDATORY to prevent repeating the same mistakes. Follow it every time.
+The chat UI should be fully functional with v0.9.11. The `-fixed.ts` file pattern is crucial. Test thoroughly with the diagnostic script before moving to new features.
 
 ---
-*End of session. Development process documented, critical fix applied.*
+*End of session. Git sync added to mandatory process, diagnostic test ready.*
