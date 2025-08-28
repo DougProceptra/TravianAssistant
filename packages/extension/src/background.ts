@@ -1,7 +1,7 @@
 // TravianAssistant Background Service Worker
-// v0.8.4 - Added PING handler for testing
+// v0.8.5 - Added SYNC_GAME_STATE handler
 
-console.log('[TLA Background] Service worker starting v0.8.4...');
+console.log('[TLA Background] Service worker starting v0.8.5...');
 
 // The PROXY that actually works
 const PROXY_URL = 'https://travian-proxy-simple.vercel.app/api/proxy';
@@ -14,6 +14,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch(request.type) {
     case 'PING':
       sendResponse({ success: true, message: 'Background service is alive!' });
+      return true;
+      
+    case 'SYNC_GAME_STATE':
+      // Store game state for later use
+      if (request.gameState) {
+        chrome.storage.local.set({ lastGameState: request.gameState }, () => {
+          sendResponse({ success: true, message: 'Game state synced' });
+        });
+      } else {
+        sendResponse({ success: false, error: 'No game state provided' });
+      }
       return true;
       
     case 'ANALYZE_GAME_STATE':
@@ -31,6 +42,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
       
     default:
+      console.log('[TLA Background] Unknown message type:', request.type);
       sendResponse({ success: false, error: 'Unknown message type: ' + request.type });
       return false;
   }
@@ -152,4 +164,4 @@ Be concise but detailed. Use numbers and specific recommendations where possible
   return prompt;
 }
 
-console.log('[TLA Background] Service worker ready v0.8.4');
+console.log('[TLA Background] Service worker ready v0.8.5');
