@@ -13,21 +13,6 @@
 
 ### IF YOU CANNOT CHECK ALL BOXES, STOP.
 
-## ⚠️ FAILURE COUNTER
-- Attempts without diagnosis: 0 (increment each violation)
-- Files rewritten without verification: 0
-- At 3 failures: AGENT MUST STOP
-
-## 🎯 CURRENT FOCUS (ONE THING ONLY)
-Problem: Background service worker not receiving messages ("Could not establish connection. Receiving end does not exist")
-Verified by: Chrome DevTools console error when sending chat message
-Next diagnostic step: Check if background.js is valid JavaScript using `node -c dist/background.js`
-
-## ENFORCEMENT RULE
-Every successful fix MUST be committed immediately:
-`git add -A && git commit -m "VERIFIED FIX: [specific issue]" && git push`
-If not committed within 5 minutes = IT DIDN'T WORK
-
 ## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
 - Owner: **DougProceptra** (NOT dougyb83, NOT DougZackowski)  
@@ -43,64 +28,93 @@ If not committed within 5 minutes = IT DIDN'T WORK
 
 ---
 
-*Last Updated: August 27, 2025, 22:45 PST*
-*Session Status: CRITICAL - Background service worker not connecting*
+*Last Updated: August 28, 2025, 01:09 PST*
+*Session Status: SUCCESS - Chat working with Claude Sonnet 4*
 
-## 🔴 CURRENT SESSION - ENFORCEMENT ACTIVE
-### What We Know
-1. **Version**: v0.8.3 built but still not working
-2. **Content script**: Loads and runs successfully
-3. **Background service**: Not receiving messages
-4. **Error**: "Could not establish connection. Receiving end does not exist"
+## ✅ WORKING VERSION: v0.9.3 - COMMITTED
 
-### What Has Been Tried (DO NOT REPEAT)
-1. Rewriting background.js multiple times - FAILED
-2. Changing imports in conversational-ai-fixed.ts - Already correct
-3. Updating versions - No effect on functionality
+### What Works
+1. **Chat connects to Claude Sonnet 4** ✓
+2. **Profile indicator shows initialization status** ✓
+3. **Chat window is resizable** (drag bottom-right corner) ✓
+4. **Messages scroll properly** ✓
+5. **Suggestions removed** (cleaner interface) ✓
+6. **Version management fixed** (no more hardcoding) ✓
 
-## CURRENT STATUS: v0.8.3 - BACKGROUND SERVICE NOT CONNECTING
+### Current Status
+- Extension version: **v0.9.3**
+- API Proxy: **https://travian-proxy-simple.vercel.app/api/proxy**
+- Model: **claude-sonnet-4-20250514**
+- Build command: `./build-minimal.sh`
 
-### File Structure Reality
+### Architecture
+```
+Chrome Extension (v0.9.3)
+    ↓
+Background Service Worker (working)
+    ↓
+Vercel Proxy (/api/proxy endpoint)
+    ↓
+Anthropic API (Claude Sonnet 4)
+```
+
+### Known Issues (Minor UI Polish)
+1. Chat dragging not working (sed commands failed to insert properly)
+2. Resize handle hard to see (needs visual indicator)
+3. Text wrapping in input needs wrap="soft" attribute
+4. Window position not persisted between sessions
+
+### Version Management (FIXED)
+Version now controlled in THREE places that must stay in sync:
+1. `build-minimal.sh` - VERSION variable
+2. `src/version.ts` - VERSION constant
+3. `manifest.json` - version field
+
+Build script uses the VERSION variable to update dist/manifest.json
+
+### Files Structure
 ```
 packages/extension/
 ├── src/
 │   ├── content/
-│   │   ├── conversational-ai-fixed.ts (FIXED VERSION - Being used correctly)
-│   │   └── index-fixed.ts (IMPORTS CORRECT FILE)
-│   └── background.ts (NEEDS DIAGNOSIS)
+│   │   ├── conversational-ai-fixed.ts (CURRENT - working)
+│   │   └── index-fixed.ts (entry point)
+│   ├── background.ts (working)
+│   └── version.ts (VERSION = '0.9.3')
 ├── dist/
-│   ├── content.js (82KB - working, parsing villages)
-│   ├── background.js (8KB - NOT CONNECTING - NEEDS DIAGNOSIS)
-│   └── manifest.json (v0.8.3)
-└── build-minimal.sh (current build script)
+│   ├── content.js (built from index-fixed.ts)
+│   ├── background.js (working, connects to proxy)
+│   └── manifest.json (v0.9.3)
+├── build-minimal.sh (VERSION="0.9.3")
+└── manifest.json (source, v0.9.3)
 ```
 
-### Current Errors
-- Background script: "Could not establish connection. Receiving end does not exist"
-- This means service worker is not running or not handling messages
+### Proxy Status
+- GitHub repo: travian-proxy-simple
+- Vercel deployment: WORKING
+- Endpoint: /api/proxy
+- Model: claude-sonnet-4-20250514
+- API Key: Set in Vercel environment variables
 
-## NEXT REQUIRED ACTION
-1. Run `node -c dist/background.js` to check for syntax errors
-2. Check chrome://extensions service worker console for actual errors
-3. Only then propose ONE fix based on findings
-
-## BUILD SYSTEM
-Current version: **v0.8.3**
+### How to Test
 ```bash
-cd packages/extension
-./build-minimal.sh  # Uses index-fixed.ts as entry point
+cd ~/workspace/packages/extension
+./build-minimal.sh
+# Reload extension in Chrome
+# Open game, press Ctrl+Shift+F9 or click chat button
+# Send message - should get Claude Sonnet 4 response
 ```
 
-## WHAT ACTUALLY WORKS
-- Extension loads ✓
-- Data collection works (8 villages parsed) ✓
-- Chat UI appears ✓
-- Content script runs ✓
-- **Background service worker NOT WORKING**
+### Next Session Priorities
+1. Manually fix chat dragging (not with sed)
+2. Add visual resize handle indicator
+3. Persist window position/size in localStorage
+4. Add context-aware suggestions based on game state
 
-## GIT STATUS IN REPLIT
-- Many uncommitted changes
-- Need to commit once fix is verified
+## GIT STATUS
+- Last commit: "v0.9.3 - Chat connects to Claude Sonnet 4, resizable window, profile indicator"
+- Clean working directory
+- Pushed to GitHub main branch
 
 ---
-*Session active: Enforcement gates in place to prevent waste*
+*Session successful: Core functionality achieved - chat works with Claude Sonnet 4*
