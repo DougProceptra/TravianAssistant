@@ -1,6 +1,6 @@
 // packages/extension/src/content/conversational-ai-fixed.ts
 // Chat interface for natural conversation with AI
-// v0.8.0 - Fixed CSS overflow, added persistence, improved formatting
+// v0.9.6 - Fixed dragging scope, text wrap, and resize handle visibility
 
 import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
@@ -28,6 +28,13 @@ class ConversationalAI {
   
   private chatInterface: HTMLElement | null = null;
   private autoSaveInterval: number | null = null;
+  
+  // FIX 1: Move drag state to class level for proper scope
+  private isDragging: boolean = false;
+  private dragStartX: number = 0;
+  private dragStartY: number = 0;
+  private chatStartX: number = 0;
+  private chatStartY: number = 0;
 
   async init() {
     console.log(`[TLA Chat] Initializing conversational AI v${VERSION}...`);
@@ -43,33 +50,8 @@ class ConversationalAI {
     this.chatInterface = this.createChatInterface();
     document.body.appendChild(this.chatInterface);
     
-    // Add drag functionality
-    const header = this.chatInterface.querySelector(".tla-chat-header") as HTMLElement;
-    if (header) {
-      header.addEventListener("mousedown", (e) => {
-        isDragging = true;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        const rect = this.chatInterface!.getBoundingClientRect();
-        chatStartX = rect.left;
-        chatStartY = rect.top;
-        e.preventDefault();
-      });
-      
-      document.addEventListener("mousemove", (e) => {
-        if (!isDragging) return;
-        const deltaX = e.clientX - dragStartX;
-        const deltaY = e.clientY - dragStartY;
-        this.chatInterface!.style.left = (chatStartX + deltaX) + "px";
-        this.chatInterface!.style.top = (chatStartY + deltaY) + "px";
-        this.chatInterface!.style.right = "auto";
-        this.chatInterface!.style.bottom = "auto";
-      });
-      
-      document.addEventListener("mouseup", () => {
-        isDragging = false;
-      });
-    }
+    // FIX 1: Setup drag with class-level variables
+    this.setupDragFunctionality();
     
     // Toggle chat on button click
     chatButton.addEventListener('click', () => {
@@ -100,6 +82,35 @@ class ConversationalAI {
     });
     
     console.log(`[TLA Chat] Chat interface initialized v${VERSION}`);
+  }
+
+  private setupDragFunctionality() {
+    const header = this.chatInterface!.querySelector(".tla-chat-header") as HTMLElement;
+    if (header) {
+      header.addEventListener("mousedown", (e) => {
+        this.isDragging = true;
+        this.dragStartX = e.clientX;
+        this.dragStartY = e.clientY;
+        const rect = this.chatInterface!.getBoundingClientRect();
+        this.chatStartX = rect.left;
+        this.chatStartY = rect.top;
+        e.preventDefault();
+      });
+      
+      document.addEventListener("mousemove", (e) => {
+        if (!this.isDragging) return;
+        const deltaX = e.clientX - this.dragStartX;
+        const deltaY = e.clientY - this.dragStartY;
+        this.chatInterface!.style.left = (this.chatStartX + deltaX) + "px";
+        this.chatInterface!.style.top = (this.chatStartY + deltaY) + "px";
+        this.chatInterface!.style.right = "auto";
+        this.chatInterface!.style.bottom = "auto";
+      });
+      
+      document.addEventListener("mouseup", () => {
+        this.isDragging = false;
+      });
+    }
   }
 
   private async loadState() {
@@ -153,7 +164,7 @@ class ConversationalAI {
     button.style.cssText = `
       position: fixed;
       bottom: 20px;
-      right: 20px; max-width: 400px;
+      right: 20px;
       width: 56px;
       height: 56px;
       background: linear-gradient(135deg, #8B4513, #A0522D);
@@ -184,14 +195,6 @@ class ConversationalAI {
   private createChatInterface(): HTMLElement {
     const chat = document.createElement('div');
     chat.id = 'tla-chat-interface';
-    chat.style.resize = "both";
-    chat.style.overflow = "auto";
-    // Make chat draggable
-    let isDragging = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let chatStartX = 0;
-    let chatStartY = 0;
 
     chat.innerHTML = `
       <div class="tla-chat-header">
@@ -213,26 +216,30 @@ class ConversationalAI {
         </div>
       </div>
       <div class="tla-chat-input-area">
-        <input type="text" id="tla-chat-input" placeholder="${
+        <textarea id="tla-chat-input" placeholder="${
           this.chatState.isInitialized 
             ? 'Ask about your game strategy...' 
             : 'Enter your email to start...'
-        }" />
+        }" rows="1"></textarea>
         <button id="tla-chat-send">Send</button>
       </div>
+      <div class="tla-chat-suggestions" id="tla-chat-suggestions">
         <div class="tla-suggestion">Analyze my settlement strategy</div>
         <div class="tla-suggestion">Optimize my build order</div>
         <div class="tla-suggestion">When can I settle next village?</div>
       </div>
     `;
     
-    // Style the chat interface
+    // Style the chat interface with FIX 3: Better resize handle
     chat.style.cssText = `
       position: fixed;
       bottom: 90px;
-      right: 20px; max-width: 400px;
+      right: 20px;
       width: 400px;
       height: 480px;
+      min-width: 320px;
+      min-height: 400px;
+      max-width: 600px;
       max-height: calc(100vh - 120px);
       background: rgba(20, 20, 20, 0.95);
       border: 2px solid #8B4513;
@@ -242,9 +249,11 @@ class ConversationalAI {
       z-index: 9998;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
       backdrop-filter: blur(10px);
+      resize: both;
+      overflow: auto;
     `;
     
-    // Add styles
+    // Add styles with FIX 2: Proper text wrap for input
     const style = document.createElement('style');
     style.textContent = `
       #tla-chat-interface {
@@ -252,11 +261,25 @@ class ConversationalAI {
         flex-direction: column;
       }
       
+      /* FIX 3: Custom resize handle */
+      #tla-chat-interface::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 20px;
+        height: 20px;
+        cursor: se-resize;
+        background: linear-gradient(135deg, transparent 50%, rgba(139, 69, 19, 0.6) 50%);
+        border-bottom-right-radius: 10px;
+        pointer-events: auto;
+      }
+      
       .tla-chat-header {
         background: linear-gradient(135deg, #8B4513, #A0522D);
         padding: 12px;
-      cursor: move;
-      user-select: none;
+        cursor: move;
+        user-select: none;
         border-radius: 10px 10px 0 0;
         display: flex;
         justify-content: space-between;
@@ -272,43 +295,15 @@ class ConversationalAI {
       }
       
       .tla-chat-version {
-      }
-
-      
-
-      .tla-profile-status {
-
-        font-size: 11px;
-
-        padding: 2px 6px;
-
-        border-radius: 3px;
-
-        margin-left: 8px;
-
-      }
-
-      
-
-      .tla-profile-status:contains("✓") {
-
-        background: rgba(0, 255, 0, 0.2);
-
-        color: #4f4;
-
-      }
-
-      
-
-      .tla-profile-status:contains("⚠") {
-
-        background: rgba(255, 100, 0, 0.2);
-
-        color: #ffa500;
-
-
         font-size: 11px;
         opacity: 0.7;
+      }
+      
+      .tla-profile-status {
+        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-left: 8px;
       }
       
       .tla-chat-clear,
@@ -336,9 +331,8 @@ class ConversationalAI {
       .tla-chat-messages {
         flex: 1;
         min-height: 200px;
-        height: calc(100% - 120px);
         overflow-y: auto;
-      overflow-x: hidden;
+        overflow-x: hidden;
         padding: 16px;
         color: white;
         font-size: 14px;
@@ -428,8 +422,10 @@ class ConversationalAI {
         padding: 12px;
         gap: 8px;
         border-top: 1px solid rgba(139, 69, 19, 0.3);
+        align-items: flex-end;
       }
       
+      /* FIX 2: Use textarea instead of input for proper text wrap */
       #tla-chat-input {
         flex: 1;
         padding: 10px 14px;
@@ -438,7 +434,13 @@ class ConversationalAI {
         border-radius: 8px;
         color: white;
         font-size: 14px;
+        font-family: inherit;
         transition: all 0.2s;
+        resize: vertical;
+        min-height: 40px;
+        max-height: 120px;
+        overflow-y: auto;
+        line-height: 1.4;
       }
       
       #tla-chat-input:focus {
@@ -460,6 +462,7 @@ class ConversationalAI {
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
+        min-height: 40px;
       }
       
       #tla-chat-send:hover {
@@ -472,19 +475,17 @@ class ConversationalAI {
       }
       
       .tla-chat-suggestions {
-        padding: 4px;
+        padding: 8px;
         max-height: 100px;
         overflow-y: auto;
-        font-size: 11px;
         border-top: 1px solid rgba(139, 69, 19, 0.3);
-        display: flex;
+        display: none;
         flex-direction: column;
         gap: 4px;
       }
       
       .tla-suggestion {
         padding: 6px 10px;
-        font-size: 12px;
         background: rgba(139, 69, 19, 0.15);
         border-radius: 6px;
         color: rgba(255, 255, 255, 0.7);
@@ -531,7 +532,7 @@ class ConversationalAI {
   private setupEventHandlers(chat: HTMLElement) {
     const closeBtn = chat.querySelector('.tla-chat-close');
     const clearBtn = chat.querySelector('.tla-chat-clear');
-    const input = chat.querySelector('#tla-chat-input') as HTMLInputElement;
+    const input = chat.querySelector('#tla-chat-input') as HTMLTextAreaElement; // Changed to textarea
     const sendBtn = chat.querySelector('#tla-chat-send');
     const suggestions = chat.querySelectorAll('.tla-suggestion');
     
@@ -545,6 +546,12 @@ class ConversationalAI {
       }
     });
     
+    // FIX 2: Auto-resize textarea
+    input?.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    });
+    
     const sendMessage = async () => {
       const message = input.value.trim();
       if (!message) return;
@@ -553,12 +560,14 @@ class ConversationalAI {
       if (this.isEmail(message)) {
         await this.handleEmailInitialization(message);
         input.value = '';
+        input.style.height = '40px'; // Reset height
         return;
       }
       
       // Display user message
       this.addMessage(message, 'user');
       input.value = '';
+      input.style.height = '40px'; // Reset height
       
       // Show loading
       const loadingId = this.addMessage(
@@ -569,7 +578,7 @@ class ConversationalAI {
       
       try {
         // Get current game state
-        const gameState = await safeScraper.getGameState();
+        const gameState = await safeScraper.scrapeCurrentState();
         
         // Send to AI with context about game start optimization
         const enhancedMessage = this.enhanceMessageWithContext(message, gameState);
@@ -605,6 +614,13 @@ class ConversationalAI {
       }
     });
     
+    // Handle suggestions
+    suggestions.forEach(suggestion => {
+      suggestion.addEventListener('click', () => {
+        input.value = suggestion.textContent || '';
+        sendMessage();
+      });
+    });
   }
 
   private enhanceMessageWithContext(message: string, gameState: any): string {
@@ -774,11 +790,11 @@ class ConversationalAI {
         // Show suggestions
         const suggestions = document.querySelector('#tla-chat-suggestions') as HTMLElement;
         if (suggestions) {
-          suggestions.style.display = 'block';
+          suggestions.style.display = 'flex';
         }
         
         // Update input placeholder
-        const input = document.querySelector('#tla-chat-input') as HTMLInputElement;
+        const input = document.querySelector('#tla-chat-input') as HTMLTextAreaElement;
         if (input) {
           input.placeholder = 'Ask about your game strategy...';
         }
@@ -797,7 +813,7 @@ class ConversationalAI {
       // Already initialized from loaded state
       const suggestions = document.querySelector('#tla-chat-suggestions') as HTMLElement;
       if (suggestions) {
-        suggestions.style.display = 'block';
+        suggestions.style.display = 'flex';
       }
       return;
     }
@@ -811,11 +827,11 @@ class ConversationalAI {
         // User already initialized, show suggestions
         const suggestions = document.querySelector('#tla-chat-suggestions') as HTMLElement;
         if (suggestions) {
-          suggestions.style.display = 'block';
+          suggestions.style.display = 'flex';
         }
         
         // Update input placeholder
-        const input = document.querySelector('#tla-chat-input') as HTMLInputElement;
+        const input = document.querySelector('#tla-chat-input') as HTMLTextAreaElement;
         if (input) {
           input.placeholder = 'Ask about your game strategy...';
         }
