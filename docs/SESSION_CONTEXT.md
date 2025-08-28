@@ -3,6 +3,23 @@
 ## ⚠️ MANDATORY READING INSTRUCTION ⚠️
 **You must read every word of this document. You must read it 3 times. The first as a senior architect guiding the work of an application. The second time is as a developer that will be executing the steps and directions emanating from document and the third time as business analyst making sure you understand the functions and processes being addressed and how they affect the game. You cannot proceed until you fully comprehend every aspect of the SESSION_CONTEXT.md document.**
 
+## 🛑 MANDATORY SESSION STARTUP - RUN THIS FIRST 🛑
+
+### BEFORE ANY DEVELOPMENT WORK:
+```bash
+cd ~/workspace
+node scripts/check-dev-status.js
+```
+**This health check script MUST be run at the start of EVERY session to ensure:**
+- [ ] Git status is clean or changes are known
+- [ ] All critical files exist
+- [ ] Dependencies are installed 
+- [ ] Database is initialized
+- [ ] Backend services are ready
+- [ ] Extension build is current
+
+**DO NOT PROCEED if any critical errors are shown!**
+
 ## 🛑 MANDATORY STOP GATES - DO NOT PROCEED WITHOUT THESE
 
 ### BEFORE ANY CODE CHANGE:
@@ -15,8 +32,8 @@
 
 ---
 
-*Last Updated: August 28, 2025, 1:09 PM PST*
-*Session Status: UI Polish Complete ✅ - Starting Infrastructure*
+*Last Updated: August 28, 2025, 1:15 PM PST*
+*Session Status: Infrastructure Setup - Using Existing Backend*
 
 ## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
@@ -41,6 +58,7 @@
 3. **Predictive Modeling** - Account growth, enemy movements, server trends
 4. **Budget Constraints** - $100/month maximum operational cost
 5. **September 9th Launch** - 12 days to production server start
+6. **Multi-Player Support** - Architecture already supports multiple accounts via `account_id`
 
 ## ✅ COMPLETED WORK
 
@@ -56,6 +74,13 @@
 3. **✅ Fixed Resize Handle** - Added visible custom resize handle with gradient
 4. **✅ Committed to main branch** - SHA: c67b1cabf815237ded74bbf1b9f7bfea68b92857
 
+### Existing Backend Infrastructure (DISCOVERED)
+1. **✅ Multi-player architecture** - Full `account_id` support throughout
+2. **✅ SQLite database** - Complete schema with accounts, villages, snapshots, alerts
+3. **✅ WebSocket support** - Real-time updates implemented
+4. **✅ Historical tracking** - Snapshot system for trend analysis
+5. **✅ Alert monitoring** - Overflow/starvation detection
+
 ### V4 Architecture Document (COMPLETED)
 1. **✅ Complete technical specification created**
 2. **✅ Adapted for budget constraints ($100/month)**
@@ -65,45 +90,96 @@
 
 ## 🔧 IMMEDIATE PRIORITIES
 
-### Infrastructure Setup (Starting NOW - 2-4 hours)
-1. **Replit Configuration** (30 min)
-   - [ ] Create new Node.js project
-   - [ ] Install dependencies: express, better-sqlite3, @anthropic-ai/sdk
-   - [ ] Set up environment variables
-   - [ ] Test basic server
+### Use Existing Backend Infrastructure (NOW - 1-2 hours)
+1. **Initialize Database** (15 min)
+   ```bash
+   cd ~/workspace/backend
+   node init-db.js
+   ```
 
-2. **Supabase Setup** (30 min)
-   - [ ] Create free tier account
-   - [ ] Initialize database schema
-   - [ ] Configure connection pooling
-   - [ ] Set up auth (if time)
+2. **Import Map Data** (15 min)
+   ```bash
+   curl -s "https://lusobr.x2.lusobrasileiro.travian.com/map.sql" -o map.sql
+   node import-map.js
+   ```
 
-3. **Data Collection Pipeline** (2 hours)
-   - [ ] Implement map.sql parser
-   - [ ] Create village data scraper
-   - [ ] Build resource tracker
-   - [ ] Set up periodic sync
+3. **Start Backend Server** (5 min)
+   ```bash
+   node server-sqlite-fixed.js
+   # Or use smart starter:
+   node start.js
+   ```
 
-4. **Claude Integration** (1 hour)
-   - [ ] Create prompt templates
-   - [ ] Build context manager
-   - [ ] Implement caching layer
-   - [ ] Test with real game data
+4. **Test Backend Health** (10 min)
+   ```bash
+   node ../scripts/test-backend-sqlite.js
+   ```
+
+5. **Connect Extension to Backend** (30 min)
+   - Update extension to use local backend
+   - Test data sync
+   - Verify WebSocket connection
 
 ## 💰 BUDGET & INFRASTRUCTURE
 
 ### Stack (Budget-Optimized)
 - **Backend**: Node.js on Replit ($7/month Hacker plan)
-- **Database**: SQLite3 → Supabase PostgreSQL (free tier)
+- **Database**: SQLite locally → Supabase PostgreSQL for production (free tier)
 - **AI**: Claude Sonnet 4 via Vercel proxy (~$50/month)
 - **Caching**: In-memory + Replit KV storage
-- **Notifications**: Browser + Discord webhooks (free)
+- **Notifications**: WebSocket + Browser notifications (free)
 
 ### Cost Breakdown ($100/month max)
 - Replit Hacker: $7
 - Claude API: ~$50 (with 70% cache reduction)
 - Domain: $1
 - Reserve: $42 for scaling
+
+## 🗄️ DATABASE ARCHITECTURE
+
+### Existing Schema (Multi-Player Ready)
+```sql
+-- Accounts table for multi-player support
+CREATE TABLE accounts (
+  id TEXT PRIMARY KEY,
+  server_url TEXT NOT NULL,
+  account_name TEXT,
+  tribe TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Villages with account association
+CREATE TABLE villages (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,  -- Links to specific account
+  village_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  coordinates TEXT,
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+-- Snapshots for historical tracking
+CREATE TABLE village_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  village_id TEXT NOT NULL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  resources TEXT NOT NULL,
+  production TEXT NOT NULL,
+  buildings TEXT,
+  troops TEXT,
+  population INTEGER
+);
+
+-- Alert system
+CREATE TABLE alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  message TEXT NOT NULL,
+  resolved INTEGER DEFAULT 0
+);
+```
 
 ## 🎯 KEY TECHNICAL DECISIONS
 
@@ -113,16 +189,11 @@
 - Context persistence through conversation
 - Confidence levels: High/Medium/Low
 
-### Data Architecture
-```sql
--- Supabase schema (optimized for free tier)
-CREATE TABLE game_states (
-    id SERIAL PRIMARY KEY,
-    timestamp TIMESTAMPTZ DEFAULT NOW(),
-    player_id INTEGER NOT NULL,
-    game_data JSONB -- All state in one column
-);
-```
+### Performance Targets (Realistic)
+- API Response: < 500ms average
+- AI Analysis: < 2 seconds complex
+- Data Collection: 5-minute intervals
+- System Availability: 95% uptime
 
 ## 📊 SUCCESS METRICS
 
@@ -131,6 +202,7 @@ CREATE TABLE game_states (
 - [ ] Reduces gameplay to <2 hours/day
 - [ ] Zero critical bugs
 - [ ] Cost monitoring active
+- [ ] Multi-player support tested
 
 ## ⚠️ CRITICAL LESSONS LEARNED
 
@@ -139,9 +211,12 @@ CREATE TABLE game_states (
 - Try to insert JavaScript with sed
 - Make assumptions about file state
 - Use expensive ML models or infrastructure
+- Ignore existing infrastructure - USE WHAT'S BUILT!
 
 ### DO:
-- Manual edit in Replit editor
+- Run `check-dev-status.js` at session start
+- Use existing backend infrastructure
+- Manual edit in Replit editor for complex changes
 - Test each change individually
 - Commit working versions immediately
 - Use Claude's reasoning over complex models
@@ -149,38 +224,46 @@ CREATE TABLE game_states (
 
 ## 🚀 NEXT SESSION ACTIONS
 
-1. **Infrastructure Setup** (NOW - 2:00 PM)
-   - Set up Replit project
-   - Configure Supabase
-   - Test Claude integration
+1. **Health Check** (FIRST THING!)
+   ```bash
+   node scripts/check-dev-status.js
+   ```
 
-2. **Data Collection** (2:00 PM - 4:00 PM)
-   - Implement basic scraper
-   - Parse map.sql
-   - Store in database
+2. **Backend Initialization** (15 min)
+   - Initialize database with existing schema
+   - Import map.sql data
+   - Start server
 
-3. **First AI Analysis** (4:00 PM)
+3. **Test Infrastructure** (30 min)
+   - Verify all endpoints
+   - Test WebSocket connection
+   - Check alert system
+
+4. **First AI Analysis** (1 hour)
+   - Connect to Claude via proxy
    - Test settlement timing calculation
-   - Verify cost per analysis
-   - Measure response time
+   - Measure cost per analysis
 
 ## 📝 SESSION NOTES
 
-### Current Status (1:09 PM Aug 28)
+### Current Status (1:15 PM Aug 28)
 - UI Polish COMPLETE ✅
-- Chat fully functional with drag, resize, text wrap
-- Moving to backend infrastructure
-- 12 days until server launch
-- Focus: Get data flowing TODAY
+- Discovered EXISTING comprehensive backend
+- Multi-player architecture already built
+- WebSocket real-time updates ready
+- Focus: Use existing infrastructure, don't rebuild!
 
-### Key Files Modified Today
-- `packages/extension/src/content/conversational-ai-fixed.ts` - All UI fixes applied
-- Version bumped to 0.9.6
+### Key Discovery
+- Backend already has complete multi-player support
+- SQLite database with full schema exists
+- WebSocket implementation complete
+- Alert system implemented
+- Historical tracking via snapshots ready
 
 ### Next Critical Milestone
-- Working data collection by EOD
-- First AI analysis of real game state
-- Cost validation under $0.10 per analysis
+- Get backend running with real data
+- Test multi-account support
+- Verify cost < $0.10 per AI analysis
 
 ---
-*Session wrap: UI complete, infrastructure sprint beginning.*
+*Session wrap: UI complete, existing backend discovered, ready to leverage built infrastructure.*
