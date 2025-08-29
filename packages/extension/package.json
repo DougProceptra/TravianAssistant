@@ -4,11 +4,20 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "node ./scripts/bump-version.cjs && vite build --config vite.config.ts",
+    "build": "node ./scripts/version-manager.cjs sync && vite build --config vite.config.ts",
+    "build:bump": "node ./scripts/version-manager.cjs bump && vite build --config vite.config.ts",
     "build-nobump": "vite build --config vite.config.ts",
+    "dev": "node ./scripts/version-manager.cjs sync && vite build --watch --config vite.config.ts",
     "watch": "vite build --watch --config vite.config.ts",
+    "version:get": "node ./scripts/version-manager.cjs get",
+    "version:set": "node ./scripts/version-manager.cjs set",
+    "version:bump": "node ./scripts/version-manager.cjs bump",
+    "version:bump:minor": "node ./scripts/version-manager.cjs bump minor",
+    "version:bump:major": "node ./scripts/version-manager.cjs bump major",
+    "version:validate": "node ./scripts/version-manager.cjs validate",
+    "version:sync": "node ./scripts/version-manager.cjs sync",
     "clean": "rimraf dist",
-    "test": "node -e \"import('./src/tests/formula-tests.js').then(m => m.TestScenarios.runAll())\""
+    "test": "node ./scripts/version-manager.cjs validate && node -e \"import('./src/tests/formula-tests.js').then(m => m.TestScenarios.runAll())\""
   },
   "devDependencies": {
     "rimraf": "^5.0.5",
