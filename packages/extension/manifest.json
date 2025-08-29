@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TravianAssistant V3",
-  "version": "0.9.11",
-  "description": "AI-powered strategic advisor for Travian Legends with chat-based insights",
+  "version": "1.0.0",
+  "description": "AI-powered strategic advisor for Travian Legends with Kirilloid-accurate formulas and server speed support",
   "permissions": [
     "storage",
     "activeTab",
@@ -41,7 +41,10 @@
       "128": "icon128.png"
     }
   },
-  "options_page": "options.html",
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -51,6 +54,7 @@
     {
       "resources": [
         "content.css",
+        "options/*",
         "*.png"
       ],
       "matches": [
