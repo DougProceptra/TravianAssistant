@@ -17,9 +17,28 @@ console.log('🔨 Building TravianAssistant Extension v1.0.0...\n');
 // Clean dist directory
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
+  // Keep existing compiled JS files if they exist
+  const keepFiles = ['content.js', 'background.js', 'popup.js'];
+  const existingFiles = {};
+  
+  keepFiles.forEach(file => {
+    const filePath = path.join(distPath, file);
+    if (fs.existsSync(filePath)) {
+      existingFiles[file] = fs.readFileSync(filePath);
+    }
+  });
+  
   fs.rmSync(distPath, { recursive: true });
+  fs.mkdirSync(distPath, { recursive: true });
+  
+  // Restore existing compiled files
+  Object.entries(existingFiles).forEach(([file, content]) => {
+    fs.writeFileSync(path.join(distPath, file), content);
+    console.log(`✅ Restored existing ${file}`);
+  });
+} else {
+  fs.mkdirSync(distPath, { recursive: true });
 }
-fs.mkdirSync(distPath, { recursive: true });
 
 // Create subdirectories
 fs.mkdirSync(path.join(distPath, 'options'), { recursive: true });
@@ -53,21 +72,26 @@ if (fs.existsSync(optionsPath)) {
   });
 }
 
-// For now, use existing compiled JS files if TypeScript compilation fails
-console.log('📦 Copying compiled files...');
-const compiledFiles = [
-  'content.js',
-  'background.js',
-  'popup.js'
-];
+// Check for compiled files
+console.log('📦 Checking compiled JavaScript files...');
+const requiredFiles = ['content.js', 'background.js', 'popup.js'];
+let missingFiles = [];
 
-compiledFiles.forEach(file => {
-  // If file already exists in dist (from previous build), we're good
+requiredFiles.forEach(file => {
   const distFile = path.join(distPath, file);
   if (!fs.existsSync(distFile)) {
-    console.log(`  ⚠️ ${file} not found, extension may not work properly`);
+    missingFiles.push(file);
   }
 });
+
+if (missingFiles.length > 0) {
+  console.log('\n⚠️  Note: Some JavaScript files not found:');
+  missingFiles.forEach(file => console.log(`   - ${file}`));
+  console.log('   These may have been previously compiled. If the extension fails to load,');
+  console.log('   you may need to compile TypeScript sources or use the previous build.\n');
+} else {
+  console.log('✅ All required JavaScript files present');
+}
 
 console.log('\n✅ Build complete! Extension ready in dist/ folder');
 console.log('📦 To install:');
