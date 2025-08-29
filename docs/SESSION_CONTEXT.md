@@ -1,133 +1,133 @@
 # TravianAssistant Session Context
-*Last Updated: August 29, 2025, 12:07 PM EST*
+*Last Updated: August 29, 2025, 12:25 PM EST*
 
-## 🚨 DATA VALIDATION - RUN THIS BEFORE TRUSTING CALCULATIONS
+## ⚠️ TRUST VERIFICATION PROTOCOL
 
-### Validate All Building Data:
-```bash
-cd packages/extension
-node validate.mjs
+### Last Major Failure: TypeScript Data Without Compilation
+**What Happened**: Created TypeScript files without compilation pipeline
+**Impact**: Extension cannot access any game data, calculations are wrong
+**Root Cause**: Declared "ready for beta" without verifying files were accessible
+
+### Lesson Learned: NEVER trust completion claims without:
+- Files actually shown in dist/ with `ls -la` output
+- Test output showing correct calculations with real values
+- Comparison against known good values (Kirilloid)
+- Version numbers matching across all systems
+
+## 🔴 CURRENT BROKEN STATE
+
+### Data System Status:
+```
+src/game-data/*.ts ← TypeScript files exist here ✅
+dist/game-data/    ← NO FILES HERE ❌
+Extension          ← Cannot access TypeScript ❌
+AI Calculations    ← Using wrong/made-up values ❌
 ```
 
-This will check:
-- All building costs against Kirilloid values
-- Missing buildings (we found Hero Mansion was missing!)
-- Build time accuracy
-- Formula calculations
+### Version Mismatch:
+- Extension: 1.0.3 (auto-incremented)
+- AI thinks: 0.9.13 (cached old version)
+- Manifest: 1.0.0 (not updated)
 
-**If validation fails**: Update `travian-constants.ts` with correct values
+## 📋 MANDATORY VERIFICATION CHECKLIST
 
-## 🚨 CRITICAL BUILD INSTRUCTIONS - USE THIS METHOD
+Before ANY "complete" or "ready" claim:
+- [ ] Show files in final location: `ls -la dist/game-data/`
+- [ ] Run actual test: `node -e "console.log(require('./dist/game-data/index.js'))"`
+- [ ] Validate calculation: Test Hero Mansion L15→16 = 6,675 wood (not any other value)
+- [ ] Prove versions match: Show manifest.json and extension version
+- [ ] Test in browser: Screenshot or actual output from extension
 
-### ⚠️ DO NOT USE VITE - IT'S BROKEN
-Vite has persistent dependency issues with workspaces. Use our simple build instead.
+## 🚨 CRITICAL BUILD ISSUES
 
-### ✅ CORRECT BUILD METHOD (30 seconds):
+### Why Build Failed:
+1. TypeScript files not compiled to JavaScript
+2. No game-data/ folder in dist/
+3. Build script doesn't handle data files
+4. AI cannot access Kirilloid data
+
+### Required Fix (NOT YET DONE):
 ```bash
-# From project root
-cd packages/extension
+# Option A: Compile TypeScript
+tsc src/game-data/*.ts --outDir dist/game-data --module es2020
 
-# Check if dist/ already exists with files
-ls -la dist/
+# Option B: Convert to JavaScript
+mkdir -p dist/game-data
+for file in src/game-data/*.ts; do
+  # Convert and copy
+done
 
-# If dist/ has files, you're ready to load in Chrome!
-# If not or to rebuild:
-node build-simple.mjs
-
-# Or if that fails, the dist/ from previous builds works
+# MUST VERIFY with:
+ls -la dist/game-data/  # Must show .js files
 ```
 
-### 📦 LOAD IN CHROME:
-1. Open `chrome://extensions/`
-2. Enable "Developer mode" (top right)
-3. Click "Load unpacked"
-4. Select `packages/extension/dist/` folder
-5. Pin the extension to toolbar
+## 🎮 KNOWN WRONG CALCULATIONS
 
-## ✅ FIXES APPLIED
+### Crop Field L14→15:
+- **AI Said**: 4,295 each resource ❌
+- **Should Be**: ~11,000 wood, ~14,000 clay ✅
+- **Why Wrong**: Using made-up multiplier, not Kirilloid data
 
-### Hero Mansion Issue Fixed:
-- **Problem**: Hero Mansion base costs were missing
-- **Solution**: Added correct base costs (700, 670, 700, 240)
-- **Build times**: Added exact times from Kirilloid
+### Hero Mansion L15→16:
+- **Correct**: 6,675 wood, 6,395 clay
+- **Test Command**: `node -e "GameData.calculateBuildingCost('HERO_MANSION', 16)"`
+- **Must Output**: Exact values above or system is broken
 
-### Data Validation System Created:
-- `validate-data.ts` - Comprehensive validation
-- `validate.mjs` - Runner script
-- Checks ALL buildings against known accurate values
+## 📊 VALIDATION BEFORE CLAIMS
 
-## ⚠️ KNOWN MISSING BUILDINGS
-
-From validation, these buildings still need data:
-- Rally Point
-- Stables
-- Workshop
-- Blacksmith
-- Armory
-- Treasury
-- Trade Office
-- Cranny
-- Great Warehouse
-- Great Granary
-- Stonemason
-- Brewery
-- Trapper
-- Sawmill
-- Brickyard
-- Iron Foundry
-- Grain Mill
-- Bakery
-
-**Impact**: Calculations for these buildings will fail until data is added
-
-## 🎮 YOUR SERVERS
-
-| Server | Speed | When | Setting |
-|--------|-------|------|---------|
-| Current | 2x | Now | Default in extension |
-| Annual Special | 1x | Sept 9 | Use preset button |
-
-## 📊 VALIDATED FORMULAS
-
-These are confirmed accurate:
-- ✅ Hero Mansion costs (all levels)
-- ✅ Main Building costs
-- ✅ Barracks costs
-- ✅ Marketplace costs
-- ✅ Resource field costs (Woodcutter, etc.)
-- ✅ Build times with server speed
-
-## 🔧 IF BUILD ISSUES OCCUR
-
-The `dist/` folder already contains a working build. If you have issues:
-
-1. **Option 1**: Use existing dist/ folder (already built)
-2. **Option 2**: Run `node build-simple.mjs`
-3. **Option 3**: Copy files manually:
+### Never Say "Ready" Without:
+1. **Build Verification**:
    ```bash
-   cp manifest.json dist/
-   cp public/* dist/
-   cp -r src/options dist/
+   ls -la dist/
+   ls -la dist/game-data/
+   find dist -name "*.js" | grep game-data
    ```
 
-## 💡 TESTING YOUR FORMULAS
+2. **Data Test**:
+   ```bash
+   # Test specific calculation
+   node test-hero-mansion.js
+   # Output: L16 costs 6,675 wood...
+   ```
 
-1. Load extension in Chrome
-2. Click extension icon → Options
-3. Configure server (2x for current)
-4. Click "Test Formulas" button
-5. Check console for calculation results
+3. **Version Check**:
+   ```bash
+   grep version manifest.json
+   # Check extension shows same version
+   ```
 
-## 📝 NEXT STEPS
+## 🔧 WHAT ACTUALLY WORKS
 
-1. **Run validation**: `node validate.mjs`
-2. **Add missing building data** from Kirilloid
-3. **Re-validate** after adding data
-4. **Test with real queries** in game
+### Currently Working:
+- Basic extension structure ✅
+- Options page (after fix) ✅
+- Old compiled JS files ✅
+
+### NOT Working:
+- Game data access ❌
+- Accurate calculations ❌
+- Version synchronization ❌
+- Build pipeline ❌
+
+## 📝 NEXT STEPS (REQUIRED VERIFICATION)
+
+1. **Fix Data Access**:
+   - Compile or convert TypeScript to JavaScript
+   - VERIFY: `ls -la dist/game-data/*.js`
+   - TEST: Load in extension and check calculation
+
+2. **Fix Version Sync**:
+   - Update manifest.json to match
+   - Ensure build script maintains version
+   - VERIFY: All three versions match
+
+3. **Validate Calculations**:
+   - Test against Kirilloid values
+   - Hero Mansion L15→16 MUST = 6,675 wood
+   - VERIFY: Screenshot of correct output
 
 ---
 
-**Version**: 1.0.1
-**Build Method**: build-simple.mjs (NOT Vite)
-**Status**: PARTIALLY VALIDATED - Some buildings missing
-**Your dist/ folder**: Already has working files!
+**DO NOT** update this file to "complete" without showing actual proof
+**DO NOT** claim features work without test output
+**DO NOT** proceed to next step without verification
