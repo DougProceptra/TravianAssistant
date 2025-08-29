@@ -1,5 +1,5 @@
 # TravianAssistant Session Context
-*Last Updated: August 29, 2025, 10:07 AM EST*
+*Last Updated: August 29, 2025, 10:27 AM EST*
 
 ## Current Project State - V4 Architecture
 
@@ -23,6 +23,11 @@ Implementing complete game data extraction from Kirilloid repository for 100% ca
 3. **Extraction Scripts**:
    - `scripts/extract-kirilloid-data.js` - Node script to pull from Kirilloid
    - `scripts/analyze-kirilloid-structure.sh` - Bash script to analyze repo
+   - `scripts/update-game-data.sh` - One-command update from Kirilloid
+
+4. **Documentation**:
+   - `DEVELOPMENT_GUIDE.md` - Complete development reference
+   - `docs/UPDATING_GAME_DATA.md` - How to update from Kirilloid
 
 #### 🔄 In Progress
 - Extracting actual data from Kirilloid repository
@@ -42,16 +47,19 @@ Implementing complete game data extraction from Kirilloid repository for 100% ca
 - **Decision**: Pull directly from Kirilloid GitHub repo
 - **Rationale**: More accurate than recreating, already TypeScript
 - **Implementation**: Clone repo, extract, transform to our structure
+- **Updates**: Single command `./scripts/update-game-data.sh` pulls latest
 
 #### Structure Pattern (Hybrid)
 - **Decision**: 4 logical files instead of many small or one huge
 - **Benefits**: Balance of organization and simplicity
 - **Files**: static-data, formulas, server-config, constants
+- **Rationale**: ~1000-3000 lines per file, logical groupings, manageable diffs
 
-#### Type System
-- **Complete interfaces** for all game elements
-- **Strong typing** for AI consumption
-- **Reusable types** across the extension
+#### Update Strategy
+- **Automatic**: Script pulls, extracts, transforms, validates
+- **Frequency**: Monthly recommended (Travian updates 2-3x/year major, monthly balance)
+- **Validation**: Tests ensure our calculations match Kirilloid
+- **Rollback**: Git history allows easy reversion if needed
 
 ## Technical Status
 
@@ -63,6 +71,7 @@ Implementing complete game data extraction from Kirilloid repository for 100% ca
 ✅ Vercel proxy for Anthropic API calls
 ✅ Type definitions for game data
 ✅ Main game data interface structure
+✅ Update mechanism from Kirilloid
 
 ### Files Created This Session
 - `/packages/extension/src/game-data/index.ts`
@@ -70,6 +79,9 @@ Implementing complete game data extraction from Kirilloid repository for 100% ca
 - `/scripts/extract-kirilloid-data.js`
 - `/scripts/analyze-kirilloid-structure.sh`
 - `/scripts/extract-kirilloid.ts`
+- `/scripts/update-game-data.sh`
+- `/DEVELOPMENT_GUIDE.md`
+- `/docs/UPDATING_GAME_DATA.md`
 
 ### Next Implementation Priorities
 1. **Complete Kirilloid extraction** - Run scripts and populate data
@@ -82,18 +94,17 @@ Implementing complete game data extraction from Kirilloid repository for 100% ca
 
 ### Data Philosophy
 - **100% Kirilloid parity** - Every calculation must match
+- **Zero maintenance** - We don't maintain game mechanics, Kirilloid does
 - **TypeScript native** - Strong typing for reliability
 - **In-memory** - No external dependencies
 - **AI-optimized** - Structure for easy Claude consumption
-- **Raw over processed**: Capture everything, let AI reason
-- **Complete visibility**: See all villages, not just current
-- **Context aware**: AI knows what page you're looking at
-- **Collaborative**: AI asks for missing data rather than guessing
+- **Easy updates** - One command to sync with Kirilloid
 
 ### Implementation Rules
 - **ALL CODE IN GITHUB** - Never dump code in session
 - **Commit frequently** - Small, logical commits
 - **Test extraction first** - Verify data before transforming
+- **Document decisions** - Capture WHY in guides
 
 ## Critical Information
 
@@ -102,6 +113,7 @@ Implementing complete game data extraction from Kirilloid repository for 100% ca
 - **Best Version**: t4.6 (Travian Legends compatible)
 - **Structure**: `/src/model/` contains game data
 - **Language**: TypeScript/JavaScript
+- **Update Process**: `./scripts/update-game-data.sh`
 
 ### Our Structure
 ```
@@ -120,9 +132,15 @@ Implementing complete game data extraction from Kirilloid repository for 100% ca
 - **Chrome Extension**: No API keys stored
 - **Vercel Endpoint**: Functional and ready for integration
 
+## Documentation Created
+- **DEVELOPMENT_GUIDE.md** - Complete reference for developers
+- **docs/UPDATING_GAME_DATA.md** - How to update from Kirilloid
+- **docs/SESSION_CONTEXT.md** - This file, current state
+
 ## Session Health
-- **Memory Usage**: ~30% (healthy)
+- **Memory Usage**: ~40% (healthy)
 - **Context Clarity**: High
+- **Documentation**: Complete
 - **Next Action**: Clear - run extraction script
 
 ## Next Session Focus
@@ -130,3 +148,4 @@ Implementing complete game data extraction from Kirilloid repository for 100% ca
 2. Transform extracted data to our TypeScript structure
 3. Implement remaining data files
 4. Create test to verify 100% Kirilloid parity
+5. Begin village polling implementation
