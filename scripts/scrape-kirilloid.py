@@ -8,17 +8,14 @@ import os
 import json
 import time
 from typing import Dict, List, Optional
-from dataclasses import dataclass, asdict
 
 # Check if we're in Replit environment
 try:
     from firecrawl import FirecrawlApp
-    from pydantic import BaseModel, Field
 except ImportError:
     print("Installing required packages...")
-    os.system("pip install firecrawl-py pydantic")
+    os.system("pip install firecrawl-py")
     from firecrawl import FirecrawlApp
-    from pydantic import BaseModel, Field
 
 # Get API key from Replit secret
 API_KEY = os.environ.get('TLA_FIRECRAWL_API')
@@ -82,27 +79,6 @@ SERVER_SPEED = "2.46"  # T4.6 2x server
 MAIN_BUILDING_LEVEL = "1"
 
 # =====================================================
-# PYDANTIC MODELS FOR STRUCTURED EXTRACTION
-# =====================================================
-class BuildingLevel(BaseModel):
-    """Single level of a building"""
-    level: int
-    wood: int
-    clay: int
-    iron: int
-    crop: int
-    population: int
-    culture_points: int = Field(alias="cp")
-    build_time: str
-
-class BuildingData(BaseModel):
-    """Complete building data"""
-    name: str
-    levels: List[BuildingLevel]
-    max_level: int = 20
-    prerequisites: Optional[Dict[str, int]] = None
-
-# =====================================================
 # SCRAPING FUNCTIONS
 # =====================================================
 def scrape_building_with_firecrawl(building_id: int, building_name: str) -> Optional[Dict]:
@@ -117,55 +93,47 @@ def scrape_building_with_firecrawl(building_id: int, building_name: str) -> Opti
     try:
         app = FirecrawlApp(api_key=API_KEY)
         
-        # Method 1: Try structured extraction with schema
-        result = app.scrape_url(
+        # Use the correct method name: scrape (not scrape_url)
+        result = app.scrape(
             url,
             params={
-                "formats": ["markdown", "extract", "html"],
-                "extract": {
-                    "schema": BuildingData.model_json_schema(),
-                    "prompt": f"""
-                    Extract building data for {building_name} from the cost table.
-                    The table shows costs for T4.6 2x server with Main Building level 1.
-                    
-                    For each level (1-20), extract:
-                    - Level number
-                    - Wood cost
-                    - Clay cost 
-                    - Iron cost
-                    - Crop cost
-                    - Population (upkeep)
-                    - Culture Points (CP)
-                    - Build time
-                    
-                    Return as structured data matching the schema.
-                    """
-                },
-                "waitFor": 3000,  # Wait 3 seconds for JavaScript
-                "timeout": 15000,
-                "actions": [
-                    {"type": "wait", "milliseconds": 2000}
-                ]
+                'formats': ['markdown', 'html'],
+                'waitFor': 3000,  # Wait 3 seconds for JavaScript
+                'timeout': 15000
             }
         )
         
-        # Check if we got structured data
-        if 'extract' in result and result['extract']:
-            print(f"   ✓ Got structured data for {building_name}")
-            return result['extract']
+        print(f"   ✓ Got response from Firecrawl")
         
-        # Method 2: Fallback to markdown parsing
-        if 'markdown' in result:
-            print(f"   ⚠ Falling back to markdown parsing for {building_name}")
-            return parse_markdown_table(result['markdown'], building_name)
-        
-        # Method 3: Last resort - HTML parsing
-        if 'html' in result:
-            print(f"   ⚠ Falling back to HTML parsing for {building_name}")
-            return parse_html_table(result['html'], building_name)
+        # Check what we got
+        if isinstance(result, dict):
+            # Try markdown first
+            if 'markdown' in result and result['markdown']:
+                print(f"   📝 Got markdown content ({len(result['markdown'])} chars)")
+                return parse_markdown_table(result['markdown'], building_name)
+            
+            # Fallback to HTML
+            if 'html' in result and result['html']:
+                print(f"   📄 Got HTML content ({len(result['html'])} chars)")
+                return parse_html_table(result['html'], building_name)
+            
+            # Show what keys we got
+            print(f"   ⚠ Response keys: {result.keys()}")
+            
+            # If result has 'data' key (newer API version)
+            if 'data' in result:
+                data = result['data']
+                if 'markdown' in data:
+                    return parse_markdown_table(data['markdown'], building_name)
+                if 'html' in data:
+                    return parse_html_table(data['html'], building_name)
+        else:
+            print(f"   ⚠ Unexpected response type: {type(result)}")
             
     except Exception as e:
         print(f"   ✗ Error scraping {building_name}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def parse_markdown_table(markdown: str, building_name: str) -> Optional[Dict]:
@@ -173,6 +141,11 @@ def parse_markdown_table(markdown: str, building_name: str) -> Optional[Dict]:
     Parse building data from markdown table
     """
     try:
+        print(f"   🔍 Parsing markdown table...")
+        
+        # Debug: Show first 500 chars
+        print(f"   Preview: {markdown[:500]}...")
+        
         lines = markdown.split('\n')
         data = {
             "name": building_name,
@@ -180,30 +153,50 @@ def parse_markdown_table(markdown: str, building_name: str) -> Optional[Dict]:
         }
         
         # Find table rows (look for lines with | separators)
+        in_table = False
         for line in lines:
-            if '|' in line and any(char.isdigit() for char in line):
+            # Check if this looks like a table row with numbers
+            if '|' in line:
                 parts = [p.strip() for p in line.split('|') if p.strip()]
                 
-                # Try to parse as level data
-                if len(parts) >= 8 and parts[0].isdigit():
+                # Debug first few rows
+                if len(parts) >= 5 and not in_table:
+                    print(f"   Found potential table row: {parts[:5]}")
+                    in_table = True
+                
+                # Try to parse as level data (expecting at least 8 columns)
+                if len(parts) >= 8:
                     try:
+                        # Check if first part is a number (level)
+                        level = int(parts[0])
+                        
+                        # Parse the rest
                         level_data = {
-                            "level": int(parts[0]),
-                            "wood": int(parts[1].replace(',', '').replace(' ', '')),
-                            "clay": int(parts[2].replace(',', '').replace(' ', '')),
-                            "iron": int(parts[3].replace(',', '').replace(' ', '')),
-                            "crop": int(parts[4].replace(',', '').replace(' ', '')),
-                            "population": int(parts[5]),
-                            "culture_points": int(parts[6]),
-                            "build_time": parts[7]
+                            "level": level,
+                            "wood": int(parts[1].replace(',', '').replace(' ', '').replace('.', '')),
+                            "clay": int(parts[2].replace(',', '').replace(' ', '').replace('.', '')),
+                            "iron": int(parts[3].replace(',', '').replace(' ', '').replace('.', '')),
+                            "crop": int(parts[4].replace(',', '').replace(' ', '').replace('.', '')),
+                            "population": int(parts[5].replace(',', '').replace(' ', '').replace('.', '')),
+                            "culture_points": int(parts[6].replace(',', '').replace(' ', '').replace('.', '')),
+                            "build_time": parts[7].strip()
                         }
                         data["levels"].append(level_data)
-                    except (ValueError, IndexError):
+                        
+                        # Show first level found
+                        if level == 1:
+                            print(f"   ✓ Found Level 1: Wood={level_data['wood']}, Clay={level_data['clay']}")
+                            
+                    except (ValueError, IndexError) as e:
+                        # Not a data row, skip
                         continue
         
         if data["levels"]:
             data["max_level"] = len(data["levels"])
+            print(f"   ✓ Parsed {len(data['levels'])} levels")
             return data
+        else:
+            print(f"   ⚠ No level data found in markdown")
             
     except Exception as e:
         print(f"   Error parsing markdown: {e}")
@@ -217,17 +210,22 @@ def parse_html_table(html: str, building_name: str) -> Optional[Dict]:
     try:
         from bs4 import BeautifulSoup
     except ImportError:
+        print("   Installing BeautifulSoup4...")
         os.system("pip install beautifulsoup4")
         from bs4 import BeautifulSoup
     
     try:
+        print(f"   🔍 Parsing HTML table...")
         soup = BeautifulSoup(html, 'html.parser')
         
-        # Look for the main data table
+        # Look for tables
         tables = soup.find_all('table')
+        print(f"   Found {len(tables)} tables")
         
-        for table in tables:
+        for i, table in enumerate(tables):
             rows = table.find_all('tr')
+            print(f"   Table {i+1}: {len(rows)} rows")
+            
             if len(rows) < 2:
                 continue
                 
@@ -236,103 +234,49 @@ def parse_html_table(html: str, building_name: str) -> Optional[Dict]:
                 "levels": []
             }
             
-            for row in rows[1:]:  # Skip header
+            # Try to find the data rows
+            for row in rows:
                 cells = row.find_all(['td', 'th'])
+                
+                # Debug first row with enough cells
+                if len(cells) >= 8 and len(data["levels"]) == 0:
+                    cell_texts = [c.text.strip()[:10] for c in cells[:5]]
+                    print(f"   First row sample: {cell_texts}")
+                
                 if len(cells) >= 8:
                     try:
-                        level_data = {
-                            "level": int(cells[0].text.strip()),
-                            "wood": int(cells[1].text.strip().replace(',', '')),
-                            "clay": int(cells[2].text.strip().replace(',', '')),
-                            "iron": int(cells[3].text.strip().replace(',', '')),
-                            "crop": int(cells[4].text.strip().replace(',', '')),
-                            "population": int(cells[5].text.strip()),
-                            "culture_points": int(cells[6].text.strip()),
-                            "build_time": cells[7].text.strip()
-                        }
-                        data["levels"].append(level_data)
-                    except (ValueError, IndexError):
+                        # Try to parse first cell as level number
+                        first_cell = cells[0].text.strip()
+                        if first_cell.isdigit():
+                            level_data = {
+                                "level": int(first_cell),
+                                "wood": int(cells[1].text.strip().replace(',', '').replace('.', '')),
+                                "clay": int(cells[2].text.strip().replace(',', '').replace('.', '')),
+                                "iron": int(cells[3].text.strip().replace(',', '').replace('.', '')),
+                                "crop": int(cells[4].text.strip().replace(',', '').replace('.', '')),
+                                "population": int(cells[5].text.strip().replace(',', '').replace('.', '')),
+                                "culture_points": int(cells[6].text.strip().replace(',', '').replace('.', '')),
+                                "build_time": cells[7].text.strip()
+                            }
+                            data["levels"].append(level_data)
+                            
+                            if level_data["level"] == 1:
+                                print(f"   ✓ Found Level 1: Wood={level_data['wood']}, Clay={level_data['clay']}")
+                                
+                    except (ValueError, IndexError) as e:
                         continue
             
             if data["levels"]:
                 data["max_level"] = len(data["levels"])
+                print(f"   ✓ Parsed {len(data['levels'])} levels from table {i+1}")
                 return data
                 
     except Exception as e:
         print(f"   Error parsing HTML: {e}")
+        import traceback
+        traceback.print_exc()
     
     return None
-
-# =====================================================
-# MAIN SCRAPING LOGIC
-# =====================================================
-def scrape_all_buildings():
-    """
-    Scrape all buildings from Kirilloid
-    """
-    print("=" * 60)
-    print("KIRILLOID BUILDING DATA SCRAPER")
-    print(f"Server: T4.6 2x (speed {SERVER_SPEED})")
-    print(f"Main Building: Level {MAIN_BUILDING_LEVEL}")
-    print("=" * 60)
-    
-    all_data = {}
-    success_count = 0
-    
-    # Test with just Academy first
-    test_buildings = {21: "Academy"}  # Start with one building
-    
-    for building_id, building_name in test_buildings.items():
-        result = scrape_building_with_firecrawl(building_id, building_name)
-        
-        if result:
-            all_data[building_name.lower().replace(' ', '_')] = result
-            success_count += 1
-            
-            # Show sample of data
-            if result.get('levels'):
-                print(f"   Sample: Level 1 = {result['levels'][0]}")
-                if len(result['levels']) > 4:
-                    print(f"   Sample: Level 5 = {result['levels'][4]}")
-        
-        # Rate limiting - be nice to the API
-        time.sleep(2)
-    
-    print("\n" + "=" * 60)
-    print(f"SCRAPING COMPLETE: {success_count}/{len(test_buildings)} buildings")
-    print("=" * 60)
-    
-    # Save to JSON
-    output_file = "kirilloid_building_data.json"
-    with open(output_file, 'w') as f:
-        json.dump(all_data, f, indent=2)
-    
-    print(f"\n✓ Data saved to {output_file}")
-    
-    # Also create a JavaScript module for the extension
-    create_js_module(all_data)
-    
-    return all_data
-
-def create_js_module(data: Dict):
-    """
-    Create a JavaScript module for the Chrome extension
-    """
-    js_content = """// Auto-generated from Kirilloid scraper
-// T4.6 2x server, Main Building Level 1
-
-export const KIRILLOID_BUILDING_DATA = """
-    
-    js_content += json.dumps(data, indent=2)
-    js_content += ";\n"
-    
-    output_file = "packages/extension/src/game-data/kirilloid-data.js"
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    
-    with open(output_file, 'w') as f:
-        f.write(js_content)
-    
-    print(f"✓ JavaScript module saved to {output_file}")
 
 # =====================================================
 # TEST SINGLE BUILDING FIRST
@@ -348,7 +292,7 @@ def test_single_building():
     
     if result:
         print("\n✅ SUCCESS! Got data:")
-        print(json.dumps(result, indent=2)[:500] + "...")  # Show first 500 chars
+        print(json.dumps(result, indent=2)[:1000] + "...")  # Show first 1000 chars
         
         # Validate against known values
         if result.get('levels') and len(result['levels']) > 0:
@@ -378,13 +322,14 @@ if __name__ == "__main__":
     if test_single_building():
         print("\n" + "=" * 60)
         print("Test successful! Ready to scrape all buildings.")
-        print("Uncomment the next line to scrape everything:")
+        print("To scrape all buildings, run:")
+        print("python scripts/scrape-kirilloid.py --all")
         print("=" * 60)
         
-        # Uncomment this to scrape all buildings after test succeeds
-        # scrape_all_buildings()
+        # Check for --all flag
+        import sys
+        if '--all' in sys.argv:
+            print("\n🚀 Scraping ALL buildings...")
+            # TODO: Implement scrape_all_buildings()
     else:
-        print("\nTest failed. Please check:")
-        print("1. Is the Firecrawl API key correct?")
-        print("2. Can Firecrawl access travian.kirilloid.ru?")
-        print("3. Is the table structure as expected?")
+        print("\nTest failed. Debugging info above.")
