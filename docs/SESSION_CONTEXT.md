@@ -1,89 +1,96 @@
 # TravianAssistant Session Context
-*Last Updated: August 29, 2025, 3:55 PM EST*
+*Last Updated: August 29, 2025, 4:30 PM EST*
 
-## 🔬 KIRILLOID DATA ANALYSIS COMPLETE
+## 🔬 KIRILLOID FORMULA UNDERSTANDING - CORRECTED
 
-### Can We Use Formulas? YES - With Caveats
+### The `extend()` Function Clarification
 
-**Formula Accuracy Test Results**:
+The confusion from the last session was about how `extend()` works:
+- It's a **deep merge** function that recursively merges properties
+- For T4 Hero Mansion: it ONLY replaces the `c` (cost) array
+- The `k` multiplier (1.33) is **inherited from T3** and NOT changed
+
+### Correct Building Data Structure
+
+**Hero Mansion in T4**:
 ```javascript
-// Kirilloid's exact formula:
-cost(level) = baseCost * k^(level - 1)
-// Rounded to nearest 5
+// T3 defines:
+heroMansion: {
+  c: [700, 670, 700, 240],  // Base costs
+  k: 1.33,                  // Multiplier
+}
 
-// Test: Hero Mansion Level 16 (T4)
-baseCost = [80, 120, 70, 90]
-k = 1.28
-Level 16 wood = round5(80 * 1.28^15) = 3245 ✅
+// T4 extends with:
+[ID.HERO_MANSION]: {
+  c: [80, 120, 70, 90]     // ONLY replaces cost array
+}
+
+// Result in T4:
+heroMansion: {
+  c: [80, 120, 70, 90],    // New from T4
+  k: 1.33,                 // Inherited from T3!
+}
 ```
 
-### Critical Findings from Kirilloid GitHub:
+**Academy** - NOT modified in T4:
+```javascript
+academy: {
+  c: [220, 160, 90, 40],
+  k: 1.28,
+  // Same in T3, T3.5, and T4
+}
+```
 
-1. **NO UNIVERSAL MULTIPLIER** - Each building has its own `k` value:
-   - Resource fields (Woodcutter, Clay, Iron, Crop): `k = 1.67`
-   - Most infrastructure: `k = 1.28`
-   - Resource boosters (Sawmill, etc.): `k = 1.80`
-   - Some T5 buildings: `k = 1.33`
-   - Treasury (T3.5+): `k = 1.26`
-   - Command Center (T4.fs): `k = 1.22`
+### Building Multipliers by Type
 
-2. **Building-Specific Data Required**:
-   - Base costs array `[wood, clay, iron, crop]`
-   - Specific multiplier (`k` value)
-   - Max level (varies! Most are 20, some are 5 or 10)
-   - Special formulas (production arrays, capacity functions)
+Each building category has its own `k` value:
+- **Resource fields** (Woodcutter, Clay, Iron, Crop): `k = 1.67`
+- **Most infrastructure/military**: `k = 1.28`
+- **Resource boosters** (Sawmill, etc.): `k = 1.80`
+- **Hero Mansion**: `k = 1.33`
+- **Treasury** (T3.5+): `k = 1.26`
+- **World Wonder**: `k = 1.0275`
 
-3. **T4 vs T4.fs Differences**:
-   - T4.fs has additional buildings (Stone Wall, Makeshift Wall, Command Center, Waterworks)
-   - Some buildings have different costs between versions
-   - Hero Mansion in T4: `[80, 120, 70, 90]` base cost
+### Formula Implementation
 
-### Recommendation: **USE FORMULAS**
+```javascript
+// Correct formula from Kirilloid
+const round5 = (n) => 5 * Math.round(n / 5);
+const calculateCost = (baseCost, k, level) => {
+  return baseCost.map(res => round5(res * Math.pow(k, level - 1)));
+};
+```
 
-**Why Formulas Work**:
-- ✅ 100% accurate when using correct `k` values per building
-- ✅ Storage efficient (one multiplier vs 20 levels of data)
-- ✅ Matches exactly what Kirilloid does
-- ✅ Easy to support different server versions
-
-**Implementation Requirements**:
-1. Extract exact base costs and `k` values from Kirilloid for T4 and T4.fs
-2. Store special cases (production arrays, capacity formulas)
-3. Use `roundP(5)` function for cost rounding
-4. Implement version switching (T4 vs T4.fs)
-
-## ✅ VERSION SYSTEM FIXED (Still Working)
-
-### Version Management Solution
+## ✅ VERSION SYSTEM (Still Working)
 - Version 1.0.0 current
 - System working perfectly
 - Single source of truth (manifest.json)
 
-## 📋 NEXT IMMEDIATE STEPS
+## 📋 NEXT STEPS
 
-1. **Extract T4 Building Data**:
-   - Get all base costs from `/src/model/t4/buildings.ts`
-   - Get T4.fs overrides from `/src/model/t4.fs/buildings.ts`
-   - Document all `k` values per building
+1. **Validate Calculations Against Game**:
+   - Test Academy at various levels (k=1.28)
+   - Test Hero Mansion L16 with correct values (base [80,120,70,90], k=1.33)
+   - Test a resource field (k=1.67)
+   - Test a military building (k=1.28)
 
-2. **Create Data Structure**:
-   ```typescript
-   const BUILDINGS_T4 = {
-     woodcutter: {
-       id: 0,
-       baseCost: [40, 100, 50, 60],
-       multiplier: 1.67,
-       maxLevel: 20
-     },
-     // ... all buildings
-   };
-   ```
+2. **Create Comprehensive Building Data**:
+   - Extract all buildings from Kirilloid
+   - Document which ones are modified in T4
+   - Store both T4 and T4.fs variations
 
-3. **Implement Formula Calculator**:
-   - Round to 5 function
-   - Cost calculation per level
-   - Server version switching
+3. **Implement in Extension**:
+   - Replace incorrect constants with validated data
+   - Add server version detection (T4 vs T4.fs)
+   - Test with actual game data
+
+## ❌ PREVIOUS MISTAKES TO AVOID
+
+1. **Don't assume universal k=1.28** - Each building type has its own multiplier
+2. **Don't ignore inheritance** - T4 extends T3, keeping unmodified properties
+3. **Don't make up numbers** - Always validate against Kirilloid source or game data
+4. **Don't compile broken TypeScript** - Fix errors before proceeding
 
 ---
 
-**Session Status**: Formula approach validated. Ready to extract exact Kirilloid data for T4/T4.fs implementation.
+**Session Status**: Formula approach understood correctly. Need to validate calculations against actual game data before implementation.
