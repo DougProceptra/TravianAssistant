@@ -1,10 +1,10 @@
 # TravianAssistant Session Context
-*Last Updated: August 28, 2025, 10:37 PM*
+*Last Updated: August 29, 2025, 12:50 PM*
 
-## Current Project State
+## Current Project State - V4 Architecture
 
 ### Active Work: Resource Management & Collaborative AI Architecture
-Successfully updated V4 specification with comprehensive resource management design and collaborative AI intelligence system. The architecture now emphasizes:
+Successfully designed V4 specification with comprehensive resource management and collaborative AI intelligence system. The architecture emphasizes:
 - Complete game state visibility across all villages
 - Real-time page context capture for contextual AI responses  
 - Collaborative AI that asks clarifying questions when data is missing
@@ -36,19 +36,14 @@ Successfully updated V4 specification with comprehensive resource management des
 ✅ Content script for page scraping
 ✅ HUD overlay system
 ✅ Background service worker
-
-### Blocked/In Progress
-🔧 Vercel proxy deployment (API calls to Anthropic)
-- Issue: Direct API calls blocked by CORS in Manifest V3
-- Solution: Vercel Edge Function proxy exists but deployment issues
-- Branch: fix/vercel-proxy-solution needs proper deployment
+✅ Vercel proxy for Anthropic API calls (working properly)
 
 ### Next Implementation Priorities
 1. Import Kirilloid data as TypeScript constants
 2. Implement village polling system (5-minute cycles)
 3. Build page context capture for current view
 4. Integrate collaborative AI questioning system
-5. Deploy working Vercel proxy
+5. Connect Chrome extension to Vercel proxy endpoint
 
 ## Key Design Principles
 
@@ -81,34 +76,43 @@ Successfully updated V4 specification with comprehensive resource management des
 ## Critical Information
 
 ### API Configuration
-- **Anthropic API**: Via Vercel proxy (not direct)
+- **Anthropic API**: Via Vercel proxy (working)
 - **API Key**: Stored in Vercel environment only
 - **Chrome Extension**: No API keys stored
+- **Vercel Endpoint**: Functional and ready for integration
 
 ### Repository Structure
 ```
 /packages/extension/    - Chrome extension code
-/api/anthropic.js      - Vercel Edge Function (proxy)
+/api/anthropic.js      - Vercel Edge Function (proxy) - WORKING
 /docs/                 - Documentation
-  - TravianAssistantv4.md (updated with new architecture)
+  - TravianAssistantv4.md (current architecture specification)
   - KIRILLOID_INTEGRATION_PLAN.md (game formulas source)
   - SESSION_CONTEXT.md (this file)
 ```
 
+## Project Version Clarification
+- **Current Version**: V4 (not V3)
+- **V3 Document**: Historical planning document, not current state
+- **V4 Focus**: Collaborative AI with complete game visibility
+
 ## Removed/Outdated Information
+- ❌ Removed V3 references (project is on V4)
+- ❌ Removed Vercel blocker status (it's working)
+- ❌ Removed "deployment issues" language for Vercel
 - ❌ Removed cost optimization focus from V4 doc (not primary concern)
 - ❌ Removed complex ML predictions (using Claude's reasoning instead)
 - ❌ Removed Supabase/database discussion (using Chrome storage)
 - ❌ Updated from generic advice to specific actionable intelligence
 
 ## Next Session Focus
-Continue with implementation of:
+Continue with implementation of V4 features:
 1. Kirilloid data import
 2. Village polling mechanism
 3. Page context capture system
-4. Vercel proxy deployment fix
+4. Chrome extension to Vercel proxy integration
 
-## Questions for Next Session
-- Verify Vercel deployment approach
+## Open Questions
 - Test village switching programmatically
 - Confirm Chrome storage limits for multi-village data
+- Determine optimal polling frequency vs performance
