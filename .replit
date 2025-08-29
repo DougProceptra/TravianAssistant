@@ -40,7 +40,7 @@ externalPort = 5000
 # Nix packages
 [nix]
 channel = "stable-25_05"
-packages = ["nodejs-20", "nodePackages.npm", "nodePackages.pnpm", "lsof"]
+packages = ["nodejs-20", "nodePackages.npm", "nodePackages.pnpm", "lsof", "sqlite"]
 
 # Workflows for different tasks
 [workflows]
