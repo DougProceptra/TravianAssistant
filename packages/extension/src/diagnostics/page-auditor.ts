@@ -1,5 +1,6 @@
 // packages/extension/src/diagnostics/page-auditor.ts
 // This tool helps us understand what data is available on each Travian page
+// Updated to store 500 audits instead of 50
 
 interface PageAudit {
   url: string;
@@ -35,6 +36,7 @@ interface PageAudit {
 export class TravianPageAuditor {
   private audits: PageAudit[] = [];
   private currentAudit: PageAudit | null = null;
+  private readonly MAX_AUDITS = 500; // Increased from 50 to 500
 
   constructor() {
     this.interceptNetworkCalls();
@@ -382,14 +384,15 @@ export class TravianPageAuditor {
     const existingAudits = JSON.parse(localStorage.getItem('travian_page_audits') || '[]');
     existingAudits.push(this.currentAudit);
     
-    // Keep only last 50 audits
-    if (existingAudits.length > 50) {
-      existingAudits.shift();
+    // Keep only last 500 audits (increased from 50)
+    if (existingAudits.length > this.MAX_AUDITS) {
+      // Remove oldest audits to maintain limit
+      existingAudits.splice(0, existingAudits.length - this.MAX_AUDITS);
     }
     
     localStorage.setItem('travian_page_audits', JSON.stringify(existingAudits));
     
-    console.log('[Page Auditor] Audit saved:', this.currentAudit);
+    console.log(`[Page Auditor] Audit saved (${existingAudits.length}/${this.MAX_AUDITS}):`, this.currentAudit);
     
     // Show summary in console
     this.printAuditSummary();
@@ -412,6 +415,8 @@ export class TravianPageAuditor {
   private printAuditSummary(): void {
     if (!this.currentAudit) return;
     
+    const existingAudits = JSON.parse(localStorage.getItem('travian_page_audits') || '[]');
+    
     console.group(`📊 Page Audit: ${this.currentAudit.pageType}`);
     console.log('URL:', this.currentAudit.url);
     console.log('Data Available:', this.currentAudit.dataAvailable);
@@ -420,6 +425,7 @@ export class TravianPageAuditor {
       .map(([key, data]) => `${key}: ${data.selector}`)
     );
     console.log('API Calls Detected:', this.currentAudit.apiCalls.length);
+    console.log(`Storage: ${existingAudits.length}/${this.MAX_AUDITS} audits`);
     console.groupEnd();
   }
 
@@ -440,6 +446,8 @@ export class TravianPageAuditor {
     const audits = this.getAudits();
     const summary: any = {
       totalPages: audits.length,
+      maxCapacity: this.MAX_AUDITS,
+      percentFull: Math.round((audits.length / this.MAX_AUDITS) * 100),
       pageTypes: {},
       dataAvailability: {},
       commonSelectors: {}
@@ -477,6 +485,6 @@ export class TravianPageAuditor {
 // Auto-start auditor when script loads
 if (typeof window !== 'undefined') {
   (window as any).travianAuditor = new TravianPageAuditor();
-  console.log('[Page Auditor] Started. Access via window.travianAuditor');
+  console.log('[Page Auditor] Started with 500 audit capacity. Access via window.travianAuditor');
   console.log('Commands: travianAuditor.runAudit(), travianAuditor.getSummary(), travianAuditor.getAudits()');
 }
