@@ -3,6 +3,45 @@
 ## ⚠️ MANDATORY READING INSTRUCTION ⚠️
 **You must read every word of this document. You must read it 3 times. The first as a senior architect guiding the work of an application. The second time is as a developer that will be executing the steps and directions emanating from document and the third time as business analyst making sure you understand the functions and processes being addressed and how they affect the game. You cannot proceed until you fully comprehend every aspect of the SESSION_CONTEXT.md document.**
 
+## 🛑 CRITICAL: ONE STEP AT A TIME RULE 🛑
+### THIS IS THE MOST IMPORTANT RULE IN THIS DOCUMENT
+
+**YOU MUST FOLLOW THIS PROCESS - NO EXCEPTIONS:**
+
+1. **GIVE ONE STEP** - Provide exactly ONE action to take
+2. **WAIT FOR RESULT** - Doug will tell you what happened
+3. **ANALYZE RESULT** - Understand what the result means
+4. **THEN GIVE NEXT STEP** - Based on the actual result, not assumptions
+
+**❌ NEVER DO THIS:**
+- Give multiple steps at once
+- Provide "Step 1, Step 2, Step 3" lists
+- Say "After that, then do X"
+- Assume a step will work and provide the next one
+- Give alternative "if this doesn't work try Y"
+
+**✅ ALWAYS DO THIS:**
+- Give ONE clear command or action
+- Wait for Doug's response
+- Base next step on actual result
+- If something fails, diagnose why BEFORE suggesting alternatives
+
+**EXAMPLE OF CORRECT BEHAVIOR:**
+```
+Claude: Run this command: git pull origin main
+Doug: [provides output]
+Claude: [analyzes output, then gives ONE next step]
+```
+
+**WHY THIS MATTERS:**
+- Assumptions waste hours of debugging
+- Each step reveals information needed for the next
+- Doug's time is valuable - don't waste it with shotgun approaches
+
+**IF YOU VIOLATE THIS RULE, DOUG WILL REMIND YOU AND YOU MUST ACKNOWLEDGE AND CORRECT YOUR BEHAVIOR**
+
+---
+
 ## 🔄 MANDATORY GIT SYNC - DO THIS FIRST! 🔄
 
 ### BEFORE ANYTHING ELSE - SYNC WITH GITHUB:
@@ -275,12 +314,14 @@ Once we have real data flowing, integrate the optimizer files
 - Skip data scraping expansion
 - Assume we have game state we don't actually scrape
 - Edit regular .ts files when -fixed.ts versions exist
+- **EVER GIVE MULTIPLE STEPS AT ONCE**
 
 ### DO:
 - Connect to backend server FIRST
 - Expand data scraping SECOND
 - Test with real data THIRD
 - Then integrate optimizer
+- **ALWAYS GIVE ONE STEP AND WAIT FOR RESULT**
 
 ## 📝 SESSION SUMMARY
 
