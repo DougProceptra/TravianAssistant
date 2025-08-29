@@ -1,0 +1,348 @@
+/**
+ * Travian Assistant Options Page Styles
+ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+h1 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 30px;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.settings-section {
+  padding: 30px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+h2 {
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+}
+
+h2::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin-right: 10px;
+  border-radius: 2px;
+}
+
+.setting-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.3s;
+  background: white;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+small {
+  display: block;
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+small a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+small a:hover {
+  text-decoration: underline;
+}
+
+/* Preset buttons */
+.preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.preset-btn {
+  padding: 12px 20px;
+  background: #f3f4f6;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+  transition: all 0.3s;
+}
+
+.preset-btn:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.preset-btn:active {
+  transform: translateY(0);
+}
+
+/* Data management buttons */
+.data-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.data-buttons button {
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #4b5563;
+  transition: all 0.3s;
+}
+
+.data-buttons button:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+/* Save section */
+.save-section {
+  padding: 30px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.save-btn {
+  padding: 12px 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.save-btn:active {
+  transform: translateY(0);
+}
+
+/* Status messages */
+.status {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.status.success {
+  color: #059669;
+  background: #d1fae5;
+  opacity: 1;
+}
+
+.status.error {
+  color: #dc2626;
+  background: #fee2e2;
+  opacity: 1;
+}
+
+/* Test output */
+.test-output {
+  padding: 30px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.test-output h3 {
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.test-output pre {
+  background: #1f2937;
+  color: #10b981;
+  padding: 20px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Scrollbar styling */
+.test-output pre::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.test-output pre::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.test-output pre::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.test-output pre::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Responsive design */
+@media (max-width: 640px) {
+  body {
+    padding: 10px;
+  }
+  
+  h1 {
+    font-size: 24px;
+    padding: 20px;
+  }
+  
+  .settings-section {
+    padding: 20px;
+  }
+  
+  .preset-buttons,
+  .data-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .save-section {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .save-btn {
+    width: 100%;
+  }
+}
+
+/* Animation for status messages */
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.status.success,
+.status.error {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Loading state */
+.loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #667eea;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
