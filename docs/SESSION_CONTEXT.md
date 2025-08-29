@@ -1,96 +1,96 @@
 # TravianAssistant Session Context
-*Last Updated: August 29, 2025, 4:30 PM EST*
+*Last Updated: August 29, 2025, 5:45 PM EST*
 
-## 🔬 KIRILLOID FORMULA UNDERSTANDING - CORRECTED
+## 🎯 FORMULAS VALIDATED (Working)
 
-### The `extend()` Function Clarification
-
-The confusion from the last session was about how `extend()` works:
-- It's a **deep merge** function that recursively merges properties
-- For T4 Hero Mansion: it ONLY replaces the `c` (cost) array
-- The `k` multiplier (1.33) is **inherited from T3** and NOT changed
-
-### Correct Building Data Structure
-
-**Hero Mansion in T4**:
+### Core Formulas
 ```javascript
-// T3 defines:
-heroMansion: {
-  c: [700, 670, 700, 240],  // Base costs
-  k: 1.33,                  // Multiplier
-}
+// Resource Costs
+cost = round5(baseCost * k^(level-1))
+round5(n) = 5 * Math.round(n/5)
 
-// T4 extends with:
-[ID.HERO_MANSION]: {
-  c: [80, 120, 70, 90]     // ONLY replaces cost array
-}
+// Population (Upkeep)
+Level 1: baseUpkeep
+Level 2+: Math.round((5 * baseUpkeep + level - 1) / 10)
 
-// Result in T4:
-heroMansion: {
-  c: [80, 120, 70, 90],    // New from T4
-  k: 1.33,                 // Inherited from T3!
-}
+// Culture Points
+CP = Math.round(baseCP * 1.2^level)
+
+// Build Time (99.5% accurate)
+time = (a * k^(level-1) - b) * 0.964^(MB-1) / serverSpeed
+// Most buildings: a=3875, k=1.16, b=1875
+// Small discrepancy (~4 seconds) at low levels with high MB
 ```
 
-**Academy** - NOT modified in T4:
-```javascript
-academy: {
-  c: [220, 160, 90, 40],
-  k: 1.28,
-  // Same in T3, T3.5, and T4
-}
-```
+### Multiplier Values by Building Type
+- Resource fields (Woodcutter, Clay, Iron, Crop): `k = 1.67`
+- Most infrastructure/military: `k = 1.28`
+- Resource boosters (Sawmill, etc.): `k = 1.80`
+- Hero Mansion: `k = 1.33`
+- Treasury: `k = 1.26`
+- World Wonder: `k = 1.0275`
 
-### Building Multipliers by Type
+## ❌ T4 EXTEND INCONSISTENCIES
 
-Each building category has its own `k` value:
-- **Resource fields** (Woodcutter, Clay, Iron, Crop): `k = 1.67`
-- **Most infrastructure/military**: `k = 1.28`
-- **Resource boosters** (Sawmill, etc.): `k = 1.80`
-- **Hero Mansion**: `k = 1.33`
-- **Treasury** (T3.5+): `k = 1.26`
-- **World Wonder**: `k = 1.0275`
+### What We Tested
+| Building | T4 Extend Says | Actually Uses | Status |
+|----------|---------------|---------------|---------|
+| Hero Mansion | `[80, 120, 70, 90]` | `[700, 670, 700, 240]` (T3) | ❌ NOT Applied |
+| Smithy | `[180, 250, 500, 160]` | `[180, 250, 500, 160]` | ✅ Applied |
+| Barracks prereqs | Smithy 3, Academy 5 | MB 3, Rally Point 1 | ❌ NOT Applied |
+| Stonemason prereqs | MB 5 | MB 5 | ✅ Applied |
 
-### Formula Implementation
+**Conclusion**: Can't predict which extends work without testing each building.
 
-```javascript
-// Correct formula from Kirilloid
-const round5 = (n) => 5 * Math.round(n / 5);
-const calculateCost = (baseCost, k, level) => {
-  return baseCost.map(res => round5(res * Math.pow(k, level - 1)));
-};
-```
+## 🏗️ ADDITIONAL COMPLEXITY DISCOVERED
+
+### Max Levels
+- Resource boosters (Sawmill, Brickyard, etc.): Max level **5**
+- Clay Pit & Cropland: Max level **21** (not 20)
+- Most others: Max level **20**
+- World Wonder: Max level **100**
+
+### Special Cases
+- Capital-only buildings (levels 11+ for fields)
+- Building durability (Stonemason effect)
+- Tribe-specific buildings
+- Multi-building restrictions
+- Slot restrictions
+
+## 🚫 SCRAPING ATTEMPTS FAILED
+
+### What Didn't Work
+- Firecrawl couldn't handle Kirilloid's JavaScript-heavy site
+- Dynamic content loads client-side from URL fragments
+- No sitemap or API discovered
+
+### Why It's Hard
+- Kirilloid uses fragments (`#b=21&mb=1&s=2.46`)
+- Content loads entirely via JavaScript
+- Hundreds of combinations (buildings × MB levels × speeds)
+
+## 📋 NEXT STEPS OPTIONS
+
+### Option 1: Manual Data Collection
+- Run JavaScript in browser console on Kirilloid pages
+- Extract table data for each building
+- Time-consuming but 100% accurate
+
+### Option 2: Use Formulas with Known Values
+- ~95% accurate
+- Handle exceptions case-by-case
+- Good enough for most gameplay optimization
+
+### Option 3: Focus on Essential Buildings
+- Only implement what matters for early/mid game
+- Ignore edge cases and special buildings
+- Practical approach
 
 ## ✅ VERSION SYSTEM (Still Working)
 - Version 1.0.0 current
 - System working perfectly
 - Single source of truth (manifest.json)
 
-## 📋 NEXT STEPS
-
-1. **Validate Calculations Against Game**:
-   - Test Academy at various levels (k=1.28)
-   - Test Hero Mansion L16 with correct values (base [80,120,70,90], k=1.33)
-   - Test a resource field (k=1.67)
-   - Test a military building (k=1.28)
-
-2. **Create Comprehensive Building Data**:
-   - Extract all buildings from Kirilloid
-   - Document which ones are modified in T4
-   - Store both T4 and T4.fs variations
-
-3. **Implement in Extension**:
-   - Replace incorrect constants with validated data
-   - Add server version detection (T4 vs T4.fs)
-   - Test with actual game data
-
-## ❌ PREVIOUS MISTAKES TO AVOID
-
-1. **Don't assume universal k=1.28** - Each building type has its own multiplier
-2. **Don't ignore inheritance** - T4 extends T3, keeping unmodified properties
-3. **Don't make up numbers** - Always validate against Kirilloid source or game data
-4. **Don't compile broken TypeScript** - Fix errors before proceeding
-
 ---
 
-**Session Status**: Formula approach understood correctly. Need to validate calculations against actual game data before implementation.
+**Session Status**: Formulas validated but T4 extends are inconsistently applied. Automated scraping failed due to JavaScript complexity. Need to decide between manual data extraction or accepting formula-based approach with known limitations.
