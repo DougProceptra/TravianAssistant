@@ -6,60 +6,38 @@
  */
 
 // Re-export all game data modules
-export * from './static-data';
+export * from './travian-constants';
 export * from './formulas';
 export * from './server-config';
 export * from './constants';
 export * from './types';
 
 // Import for convenient access
-import { Buildings, Troops, Heroes, Items } from './static-data';
-import { Formulas } from './formulas';
-import { ServerConfig } from './server-config';
+import { BUILDINGS, UNITS } from './travian-constants';
+import { Formulas, formatTime, calculateResourceBalance, hasEnoughResources } from './formulas';
+import { ServerConfig, loadServerConfig, saveServerConfig, updateServerConfig } from './server-config';
 import { GameConstants } from './constants';
+import type { Resources, Coordinates, BuildingCost, TroopStats } from './types';
 
 /**
  * Main game data interface for AI consumption
  * This provides all data needed for any Travian calculation
  */
 export interface TravianGameData {
-    buildings: typeof Buildings;
-    troops: typeof Troops;
-    heroes: typeof Heroes;
-    items: typeof Items;
+    buildings: typeof BUILDINGS;
+    troops: typeof UNITS;
     formulas: typeof Formulas;
     serverConfig: typeof ServerConfig;
     constants: typeof GameConstants;
     
     // Convenience methods
-    getBuildingCost(buildingId: number, level: number, tribe?: number): Resources;
-    getTroopStats(troopId: number, tribe: number): TroopStats;
-    calculateBuildTime(buildingId: number, level: number, mainBuildingLevel: number): number;
-    calculateProduction(fieldType: number, level: number, oasisBonus?: number): number;
-}
-
-/**
- * Resource costs interface
- */
-export interface Resources {
-    wood: number;
-    clay: number;
-    iron: number;
-    crop: number;
-}
-
-/**
- * Troop statistics interface
- */
-export interface TroopStats {
-    attack: number;
-    defenseInfantry: number;
-    defenseCavalry: number;
-    speed: number;
-    capacity: number;
-    upkeep: number;
-    trainingTime: number;
-    trainingCost: Resources;
+    getBuildingCost(buildingKey: string, level: number): Resources;
+    getTroopCost(unitKey: string): Resources;
+    calculateBuildTime(buildingCost: Resources, level: number, mainBuildingLevel: number): number;
+    calculateProduction(fieldLevel: number, baseProduction: number, oasisBonus?: number): number;
+    formatTime: typeof formatTime;
+    calculateResourceBalance: typeof calculateResourceBalance;
+    hasEnoughResources: typeof hasEnoughResources;
 }
 
 /**
@@ -67,31 +45,52 @@ export interface TroopStats {
  * This is what the AI will use for all calculations
  */
 export const GameData: TravianGameData = {
-    buildings: Buildings,
-    troops: Troops,
-    heroes: Heroes,
-    items: Items,
+    buildings: BUILDINGS,
+    troops: UNITS,
     formulas: Formulas,
     serverConfig: ServerConfig,
     constants: GameConstants,
     
     // Implement convenience methods
-    getBuildingCost(buildingId: number, level: number, tribe?: number): Resources {
-        return Formulas.calculateBuildingCost(buildingId, level, tribe);
+    getBuildingCost(buildingKey: string, level: number): Resources {
+        const building = BUILDINGS[buildingKey];
+        if (!building || !building.costs) {
+            return { wood: 0, clay: 0, iron: 0, crop: 0 };
+        }
+        
+        const baseCost = building.costs[0] || { wood: 0, clay: 0, iron: 0, crop: 0 };
+        const multiplier = GameConstants.BUILDING_COST_MULTIPLIER[buildingKey] || 
+                          GameConstants.BUILDING_COST_MULTIPLIER.DEFAULT;
+        
+        return Formulas.calculateBuildingCost(baseCost, level, multiplier);
     },
     
-    getTroopStats(troopId: number, tribe: number): TroopStats {
-        return Troops.getStats(troopId, tribe);
+    getTroopCost(unitKey: string): Resources {
+        const unit = UNITS[unitKey];
+        if (!unit || !unit.cost) {
+            return { wood: 0, clay: 0, iron: 0, crop: 0 };
+        }
+        return unit.cost;
     },
     
-    calculateBuildTime(buildingId: number, level: number, mainBuildingLevel: number): number {
-        return Formulas.calculateBuildTime(buildingId, level, mainBuildingLevel);
+    calculateBuildTime(buildingCost: Resources, level: number, mainBuildingLevel: number): number {
+        return Formulas.calculateBuildingTime(buildingCost, level, mainBuildingLevel);
     },
     
-    calculateProduction(fieldType: number, level: number, oasisBonus: number = 0): number {
-        return Formulas.calculateResourceProduction(fieldType, level, oasisBonus);
-    }
+    calculateProduction(fieldLevel: number, baseProduction: number, oasisBonus: number = 0): number {
+        return Formulas.calculateResourceProduction(fieldLevel, baseProduction, oasisBonus);
+    },
+    
+    formatTime,
+    calculateResourceBalance,
+    hasEnoughResources
 };
+
+// Initialization function
+export async function initializeGameData(): Promise<void> {
+    // Load server configuration from Chrome storage
+    await loadServerConfig();
+}
 
 // Default export for easy importing
 export default GameData;
