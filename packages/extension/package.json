@@ -1,18 +1,20 @@
 {
   "name": "@tla/extension",
   "private": true,
-  "version": "0.7.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "build": "node ./scripts/bump-version.cjs && vite build --config vite.config.ts",
     "build-nobump": "vite build --config vite.config.ts",
     "watch": "vite build --watch --config vite.config.ts",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "test": "node -e \"import('./src/tests/formula-tests.js').then(m => m.TestScenarios.runAll())\""
   },
   "devDependencies": {
     "rimraf": "^5.0.5",
     "typescript": "^5.9.2",
     "vite": "^5.4.19",
-    "vite-plugin-static-copy": "^1.0.6"
+    "vite-plugin-static-copy": "^1.0.6",
+    "@types/chrome": "^0.0.254"
   }
 }
