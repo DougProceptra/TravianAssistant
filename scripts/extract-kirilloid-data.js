@@ -2,7 +2,8 @@
 
 /**
  * Complete Kirilloid Data Extractor
- * Extracts all game data from Kirilloid repository and transforms to TypeScript
+ * Extracts multiple game versions from Kirilloid repository
+ * Supports both regular T4 and special versions
  */
 
 const fs = require('fs');
@@ -12,6 +13,13 @@ const { execSync } = require('child_process');
 const KIRILLOID_REPO = 'https://github.com/kirilloid/travian.git';
 const KIRILLOID_PATH = './kirilloid-travian';
 const OUTPUT_PATH = './packages/extension/src/game-data';
+
+// Versions we want to extract
+const TARGET_VERSIONS = [
+    't4',      // Regular Travian Legends (current testing)
+    't4.fs',   // Fire & Sand (might be Annual Special)
+    // Add more as needed: 't4.pp', 't5', etc.
+];
 
 // Ensure Kirilloid repo is cloned
 if (!fs.existsSync(KIRILLOID_PATH)) {
@@ -27,7 +35,7 @@ if (!fs.existsSync(OUTPUT_PATH)) {
     fs.mkdirSync(OUTPUT_PATH, { recursive: true });
 }
 
-console.log('\n=== Extracting Kirilloid Data ===\n');
+console.log('\n=== Extracting Kirilloid Data (Multi-Version) ===\n');
 
 // Find all relevant files
 function findFiles(dir, pattern) {
@@ -56,47 +64,6 @@ function findFiles(dir, pattern) {
     return results;
 }
 
-// Extract and analyze data structure
-function analyzeDataStructure() {
-    const srcPath = path.join(KIRILLOID_PATH, 'src');
-    
-    // Find model files
-    const modelFiles = findFiles(path.join(srcPath, 'model'), /\.(ts|js)$/);
-    console.log(`Found ${modelFiles.length} model files`);
-    
-    // Group by category
-    const categories = {
-        buildings: [],
-        units: [],
-        combat: [],
-        heroes: [],
-        items: [],
-        other: []
-    };
-    
-    modelFiles.forEach(file => {
-        const relativePath = path.relative(KIRILLOID_PATH, file);
-        
-        if (file.includes('building')) categories.buildings.push(relativePath);
-        else if (file.includes('unit') || file.includes('troop')) categories.units.push(relativePath);
-        else if (file.includes('combat') || file.includes('battle')) categories.combat.push(relativePath);
-        else if (file.includes('hero')) categories.heroes.push(relativePath);
-        else if (file.includes('item') || file.includes('equipment')) categories.items.push(relativePath);
-        else categories.other.push(relativePath);
-    });
-    
-    // Display categorized files
-    Object.entries(categories).forEach(([category, files]) => {
-        if (files.length > 0) {
-            console.log(`\n${category.toUpperCase()} (${files.length} files):`);
-            files.slice(0, 5).forEach(file => console.log(`  - ${file}`));
-            if (files.length > 5) console.log(`  ... and ${files.length - 5} more`);
-        }
-    });
-    
-    return categories;
-}
-
 // Read and parse a TypeScript/JavaScript file
 function readAndParse(filePath) {
     try {
@@ -108,44 +75,25 @@ function readAndParse(filePath) {
     }
 }
 
-// Find the best version to use (prefer t4.fs for Travian Legends)
-function findBestVersion() {
+// Get available versions
+function getAvailableVersions() {
     const modelPath = path.join(KIRILLOID_PATH, 'src', 'model');
-    const versions = fs.readdirSync(modelPath)
+    const allVersions = fs.readdirSync(modelPath)
         .filter(dir => dir.startsWith('t') && fs.statSync(path.join(modelPath, dir)).isDirectory());
     
-    console.log('\nAvailable versions:', versions.join(', '));
+    console.log('All available versions:', allVersions.join(', '));
     
-    // IMPORTANT: Use t4.fs for Travian Legends (Fire & Sand)
-    // This is the most accurate for current Travian Legends servers
-    if (versions.includes('t4.fs')) {
-        console.log('→ Using t4.fs (Travian Legends - Fire & Sand)');
-        return 't4.fs';
-    }
+    // Filter to only versions we want
+    const targetVersions = allVersions.filter(v => TARGET_VERSIONS.includes(v));
+    console.log('Target versions to extract:', targetVersions.join(', '));
     
-    // Fallback to t4 if t4.fs not available
-    if (versions.includes('t4')) {
-        console.log('→ Using t4 (Travian 4 base)');
-        return 't4';
-    }
-    
-    // Last resort - use whatever is newest t4 variant
-    const t4Versions = versions.filter(v => v.startsWith('t4'));
-    if (t4Versions.length > 0) {
-        const version = t4Versions.sort().pop();
-        console.log(`→ Using ${version} (latest T4 variant)`);
-        return version;
-    }
-    
-    // Should not reach here for Travian Legends
-    console.warn('⚠️  WARNING: No T4 version found, using fallback');
-    const latest = versions.sort().pop();
-    console.log(`→ Using ${latest} (latest available)`);
-    return latest;
+    return targetVersions;
 }
 
-// Extract specific data types
-function extractData(version) {
+// Extract data for a specific version
+function extractDataForVersion(version) {
+    console.log(`\n=== Extracting ${version} ===`);
+    
     const versionPath = path.join(KIRILLOID_PATH, 'src', 'model', version);
     const basePath = path.join(KIRILLOID_PATH, 'src', 'model', 'base');
     const extracted = {};
@@ -156,7 +104,7 @@ function extractData(version) {
         buildingsFile = path.join(basePath, 'buildings.ts');
     }
     if (fs.existsSync(buildingsFile)) {
-        console.log('\nExtracting buildings from:', path.relative(KIRILLOID_PATH, buildingsFile));
+        console.log('  → Buildings from:', path.relative(KIRILLOID_PATH, buildingsFile));
         extracted.buildings = readAndParse(buildingsFile);
     }
     
@@ -166,7 +114,7 @@ function extractData(version) {
         unitsFile = path.join(basePath, 'units.ts');
     }
     if (fs.existsSync(unitsFile)) {
-        console.log('Extracting units from:', path.relative(KIRILLOID_PATH, unitsFile));
+        console.log('  → Units from:', path.relative(KIRILLOID_PATH, unitsFile));
         extracted.units = readAndParse(unitsFile);
     }
     
@@ -178,7 +126,7 @@ function extractData(version) {
     if (fs.existsSync(combatDir)) {
         const combatFile = path.join(combatDir, 'combat.ts');
         if (fs.existsSync(combatFile)) {
-            console.log('Extracting combat from:', path.relative(KIRILLOID_PATH, combatFile));
+            console.log('  → Combat from:', path.relative(KIRILLOID_PATH, combatFile));
             extracted.combat = readAndParse(combatFile);
         }
     }
@@ -189,58 +137,87 @@ function extractData(version) {
         heroFile = path.join(basePath, 'hero.ts');
     }
     if (fs.existsSync(heroFile)) {
-        console.log('Extracting heroes from:', path.relative(KIRILLOID_PATH, heroFile));
+        console.log('  → Heroes from:', path.relative(KIRILLOID_PATH, heroFile));
         extracted.heroes = readAndParse(heroFile);
     }
     
     // Items
     let itemsFile = path.join(versionPath, 'items.ts');
     if (fs.existsSync(itemsFile)) {
-        console.log('Extracting items from:', path.relative(KIRILLOID_PATH, itemsFile));
+        console.log('  → Items from:', path.relative(KIRILLOID_PATH, itemsFile));
         extracted.items = readAndParse(itemsFile);
     }
     
-    // Look for index file that might aggregate data
+    // Index
     const indexFile = path.join(versionPath, 'index.ts');
     if (fs.existsSync(indexFile)) {
-        console.log('Extracting index from:', path.relative(KIRILLOID_PATH, indexFile));
+        console.log('  → Index from:', path.relative(KIRILLOID_PATH, indexFile));
         extracted.index = readAndParse(indexFile);
     }
     
     return extracted;
 }
 
+// Save extracted data
+function saveExtractedData(version, data) {
+    // Create version-specific directory
+    const versionPath = path.join(OUTPUT_PATH, 'extracted-raw', version);
+    if (!fs.existsSync(versionPath)) {
+        fs.mkdirSync(versionPath, { recursive: true });
+    }
+    
+    let filesCount = 0;
+    Object.entries(data).forEach(([key, content]) => {
+        if (content) {
+            const outputFile = path.join(versionPath, `${key}.ts`);
+            fs.writeFileSync(outputFile, content);
+            filesCount++;
+        }
+    });
+    
+    console.log(`  ✓ Saved ${filesCount} files to:`, versionPath);
+    
+    return filesCount;
+}
+
 // Main execution
 async function main() {
     try {
-        // Analyze structure
-        const categories = analyzeDataStructure();
+        // Get versions to extract
+        const versions = getAvailableVersions();
         
-        // Find best version - SHOULD USE t4.fs for Travian Legends
-        const version = findBestVersion();
-        
-        // Extract data
-        const data = extractData(version);
-        
-        // Save raw extracted data for analysis
-        const extractedPath = path.join(OUTPUT_PATH, 'extracted-raw');
-        if (!fs.existsSync(extractedPath)) {
-            fs.mkdirSync(extractedPath, { recursive: true });
+        if (versions.length === 0) {
+            console.error('ERROR: No target versions found!');
+            console.log('Looking for:', TARGET_VERSIONS.join(', '));
+            process.exit(1);
         }
         
-        Object.entries(data).forEach(([key, content]) => {
-            if (content) {
-                const outputFile = path.join(extractedPath, `${key}.ts`);
-                fs.writeFileSync(outputFile, content);
-                console.log(`\nSaved raw ${key} to:`, outputFile);
-            }
+        // Extract each version
+        const results = {};
+        for (const version of versions) {
+            const data = extractDataForVersion(version);
+            const fileCount = saveExtractedData(version, data);
+            results[version] = fileCount;
+        }
+        
+        // Summary
+        console.log('\n=== Extraction Complete ===');
+        console.log('\nExtracted versions:');
+        Object.entries(results).forEach(([version, count]) => {
+            console.log(`  ${version}: ${count} files`);
         });
         
-        console.log('\n=== Extraction Complete ===');
-        console.log('Raw data saved to:', extractedPath);
-        console.log('\nExtracted from version:', version);
-        console.log('This should be t4.fs or t4 for Travian Legends compatibility');
-        console.log('\nNext step: Transform raw data to our TypeScript structure');
+        console.log('\n📁 Data location:', path.join(OUTPUT_PATH, 'extracted-raw'));
+        
+        console.log('\n🎯 Next steps:');
+        console.log('1. Check extracted data in extracted-raw/t4/ (for current server)');
+        console.log('2. Transform t4 data to our TypeScript structure');
+        console.log('3. Test with your current game');
+        console.log('4. Later: Add t4.fs support for Annual Special');
+        
+        console.log('\n💡 Version Info:');
+        console.log('  t4 = Regular Travian Legends (use this for testing)');
+        console.log('  t4.fs = Fire & Sand (might be Annual Special base)');
         
     } catch (err) {
         console.error('Error:', err);
