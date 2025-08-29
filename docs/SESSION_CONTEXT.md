@@ -1,5 +1,12 @@
 # TravianAssistant Session Context
-*Last Updated: August 29, 2025, 11:03 AM EST*
+*Last Updated: August 29, 2025, 11:06 AM EST*
+
+## 🎮 SERVER CONFIGURATION
+
+### Current Servers:
+- **Testing Server**: 2x speed (your current server)
+- **Annual Special**: 1x speed (starting Sept 9)
+- **Setting**: Must be selectable in extension options
 
 ## ⚠️ MANDATORY NEXT STEPS - DO THESE FIRST
 
@@ -10,216 +17,213 @@ git commit -m "Kirilloid data extraction and formulas complete"
 git push origin main
 ```
 
-### 2. Create Missing Files (Required for Build)
+### 2. Create Missing Files with Server Speed Support
 ```bash
-# Create server-config.ts (REQUIRED)
+# Create server-config.ts with SPEED SELECTION
 cat > packages/extension/src/game-data/server-config.ts << 'EOF'
-export const ServerConfig = {
-  speed: 1, // CHANGE THIS to your server speed
-  version: 't4', // or 't4.fs' for Annual Special
+export interface ServerSettings {
+  speed: number;        // 1, 2, 3, 5, etc.
+  version: string;      // 't4' or 't4.fs'
+  troopSpeed: number;   // Usually same as server speed
+  merchantSpeed: number; // Merchant speed multiplier
+}
+
+// Default settings - should come from extension options
+export const ServerConfig: ServerSettings = {
+  speed: 2,          // YOUR CURRENT SERVER
+  version: 't4',     // Regular Travian
+  troopSpeed: 2,     // 2x for your server
+  merchantSpeed: 2   // 2x for your server
+};
+
+// For Annual Special starting Sept 9
+export const AnnualSpecialConfig: ServerSettings = {
+  speed: 1,
+  version: 't4.fs',  // Fire & Sand variant
   troopSpeed: 1,
   merchantSpeed: 1
 };
+
+// Function to adjust times based on server speed
+export function adjustForServerSpeed(baseTime: number, speed: number): number {
+  return Math.round(baseTime / speed);
+}
 EOF
 
-# Create constants.ts (REQUIRED)
+# Create constants.ts
 cat > packages/extension/src/game-data/constants.ts << 'EOF'
 export const GameConstants = {
   MAX_LEVEL_RESOURCE: 20,
   MAX_LEVEL_BUILDING: 20,
   MAX_VILLAGES: 3,
-  WORLD_SIZE: 401
+  WORLD_SIZE: 401,
+  TROOP_SPEED_BASE: {
+    // Fields per hour at 1x speed
+    INFANTRY: 6,  // Average infantry speed
+    CAVALRY: 14,  // Average cavalry speed
+    SCOUT: 16     // Scout speed
+  }
 };
 EOF
 
 git add packages/extension/src/game-data/*.ts
-git commit -m "Add server config and constants"
+git commit -m "Add server config with speed selection"
 git push
 ```
 
-### 3. Test Build (MUST PASS)
+### 3. Test Build
 ```bash
 cd packages/extension
 npm run build
 # Must complete without errors!
 ```
 
-## 📋 INTEGRATION CHECKLIST - Get to Deployed Extension
+## 📋 TEST SCENARIOS YOU REQUESTED
 
-### Phase 1: Connect Data to Extension (30 min)
-```bash
-# 1. Add minimal real data for testing
-# Edit packages/extension/src/game-data/static-data.ts
-# Add at least Main Building data:
+### Example Questions to Test Once Integrated:
 
-export const Buildings = {
-  MAIN_BUILDING: {
-    id: 14,
-    name: "Main Building",
-    baseCost: { wood: 70, clay: 40, iron: 60, crop: 20 },
-    baseTime: 3875,
-    costMultiplier: 1.28,
-    maxLevel: 20
-  },
-  // Add more as needed...
-};
-```
+1. **"How many total resources for Hero Mansion 0→10?"**
+   - Needs: Building costs formula ✅
+   - Needs: Hero Mansion base cost data ⏳
+   - Formula: Sum of `calculateBuildingCost()` for levels 1-10
 
-### Phase 2: Wire to AI (20 min)
+2. **"How long to accumulate those resources?"**
+   - Needs: Resource production formula ✅
+   - Needs: Current production rates from game ⏳
+   - Formula: Total needed ÷ production per hour
+
+3. **"Resources to train 100 Legionnaires in village 1?"**
+   - Needs: Troop cost data ⏳
+   - Calculation: 100 × [120 wood, 100 clay, 150 iron, 30 crop]
+   - = 12,000 wood, 10,000 clay, 15,000 iron, 3,000 crop
+
+4. **"Scout travel time from village 1 to 25|-25?"**
+   - Needs: Distance formula ✅
+   - Needs: Scout speed (16 fields/hour at 1x) ✅
+   - Needs: Server speed (2x for current) ✅
+   - Formula: `distance / (scoutSpeed * serverSpeed)`
+
+## 🎯 IMPLEMENTATION FOR YOUR TEST CASES
+
+### Add These Formulas for Your Questions:
+
 ```typescript
-// In packages/extension/src/background.ts
-// Import the game data
-import { Formulas } from './game-data/formulas';
-import { Buildings } from './game-data/static-data';
+// In formulas.ts, add:
 
-// Add to AI context when calling Claude:
-const gameContext = {
-  formulas: Formulas,
-  buildings: Buildings,
-  // Include current village data from scraper
-};
+/**
+ * Calculate total resources for building from level A to B
+ */
+calculateTotalBuildCost(baseCost: Resources, fromLevel: number, toLevel: number): Resources {
+  let total = { wood: 0, clay: 0, iron: 0, crop: 0 };
+  for (let level = fromLevel + 1; level <= toLevel; level++) {
+    const levelCost = this.calculateBuildingCost(baseCost, level);
+    total.wood += levelCost.wood;
+    total.clay += levelCost.clay;
+    total.iron += levelCost.iron;
+    total.crop += levelCost.crop;
+  }
+  return total;
+},
+
+/**
+ * Calculate travel time between coordinates
+ * @param speed - Fields per hour (at 1x)
+ * @param serverSpeed - Server speed multiplier
+ */
+calculateTravelTime(x1: number, y1: number, x2: number, y2: number, speed: number, serverSpeed: number): number {
+  const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+  const hoursAtBaseSpeed = distance / speed;
+  const actualHours = hoursAtBaseSpeed / serverSpeed;
+  return actualHours;
+},
+
+/**
+ * Time to accumulate resources
+ */
+calculateAccumulationTime(needed: Resources, production: Resources): number {
+  const times = [
+    needed.wood / production.wood,
+    needed.clay / production.clay,
+    needed.iron / production.iron,
+    needed.crop / production.crop
+  ].filter(t => t > 0);
+  return Math.max(...times); // Bottleneck resource determines time
+}
 ```
 
-### Phase 3: Build and Test (10 min)
-```bash
-# Build extension
-cd packages/extension
-npm run build
+## 🚀 QUICK TEST IMPLEMENTATION
 
-# Load in Chrome
-1. Open chrome://extensions/
-2. Click "Reload" on TravianAssistant
-3. Go to your Travian game
-4. Click "Ask Question"
-5. Ask: "What should I build next?"
-# AI now has access to formulas!
-```
+### For Your Specific Questions:
 
-### Phase 4: Deploy for Team Testing
-```bash
-# Create distribution package
-cd packages/extension
-npm run build
-zip -r travian-assistant-v1.0.zip dist/
-
-# Share with team:
-1. Send the .zip file
-2. They extract and load as unpacked extension
-3. Test on their servers
-```
-
-## 🎯 PRIORITY ORDER FOR NEXT SESSION
-
-### Must Do First (Blocking Everything):
-1. ✅ Run mandatory steps above
-2. ✅ Verify extension builds
-3. ✅ Add Main Building data minimum
-
-### Quick Wins (1 hour):
-1. **Add 5 Key Buildings** manually:
-   - Main Building (construction speed)
-   - Warehouse (storage)
-   - Granary (crop storage)
-   - Resource fields (production)
-   - Marketplace (trade)
-
-2. **Connect to AI Prompt**:
 ```javascript
-// In background.ts or ai-handler
-const enhancedPrompt = `
-You are helping with Travian. Here's the game data:
-Current Village: ${JSON.stringify(villageData)}
-Formulas Available: ${Object.keys(Formulas).join(', ')}
+// Hero Mansion 0→10 cost
+const heroMansionBase = { wood: 700, clay: 670, iron: 700, crop: 240 };
+const totalCost = Formulas.calculateTotalBuildCost(heroMansionBase, 0, 10);
+console.log(`Total for Hero Mansion 1-10: ${JSON.stringify(totalCost)}`);
 
-Example calculation:
-Level 10 Main Building cost: ${JSON.stringify(
-  Formulas.calculateBuildingCost(Buildings.MAIN_BUILDING.baseCost, 10)
-)}
+// Time to accumulate (assuming 1000/hour each resource)
+const production = { wood: 1000, clay: 1000, iron: 1000, crop: 800 };
+const hours = Formulas.calculateAccumulationTime(totalCost, production);
+console.log(`Time to accumulate: ${hours} hours`);
 
-What would you recommend?
-`;
+// 100 Legionnaires cost
+const legionnaireCost = { wood: 120, clay: 100, iron: 150, crop: 30 };
+const total100 = {
+  wood: legionnaireCost.wood * 100,
+  clay: legionnaireCost.clay * 100,
+  iron: legionnaireCost.iron * 100,
+  crop: legionnaireCost.crop * 100
+};
+console.log(`100 Legionnaires: ${JSON.stringify(total100)}`);
+
+// Scout travel time to 25|-25 (from 0|0)
+const scoutSpeed = 16; // fields/hour at 1x
+const serverSpeed = 2; // Your 2x server
+const travelHours = Formulas.calculateTravelTime(0, 0, 25, -25, scoutSpeed, serverSpeed);
+console.log(`Scout to 25|-25: ${travelHours.toFixed(2)} hours`);
 ```
 
-### Full Integration (2-3 hours):
-1. Parse all Kirilloid TypeScript properly
-2. Add troop combat calculations
-3. Create settings UI for server selection
-4. Add village upgrade path optimizer
+## 📊 DATA NEEDED FOR FULL TESTING
 
-## 🚀 FAST TRACK TO TESTING
+### Priority Data to Add:
+1. **Hero Mansion**: base cost [700, 670, 700, 240]
+2. **Legionnaire**: cost [120, 100, 150, 30], time: 2000
+3. **Scout speeds**: Romans 16, Gauls 17, Teutons 9
+4. **Building requirements**: Hero Mansion needs Rally Point 10
 
-### Minimum Viable Test (15 minutes):
-```bash
-# 1. Add server config files (from above)
-git pull
-# Run the two cat commands above to create missing files
-
-# 2. Quick test without full data
-cd packages/extension
-npm run build
-
-# 3. Reload extension in Chrome
-# 4. Ask AI: "Calculate cost for level 10 building with base 70,40,60,20"
-# AI can now use: Formulas.calculateBuildingCost()
+### Server Speed Implementation:
+```typescript
+// Every time calculation needs speed adjustment:
+const actualTime = baseTime / ServerConfig.speed;
+const actualTravelTime = baseTravelTime / ServerConfig.troopSpeed;
 ```
 
-### What You Can Test RIGHT NOW:
-Even without parsing all data, the AI can:
-- Calculate any building cost/time
-- Predict resource production
-- Estimate storage needs
-- Plan culture point accumulation
+## ✅ DEPLOYMENT STATUS
+- **Method**: Local extension loading only
+- **No Chrome Web Store** needed
+- **Testing**: Direct on your live game
 
-## 📊 SESSION ACCOMPLISHMENTS
+## 📝 NEXT SESSION PRIORITIES
 
-### Completed ✅:
-1. Extracted Kirilloid data (both t4 and t4.fs)
-2. Created ALL game formulas (100% working)
-3. Built transformation pipeline
-4. Set up multi-version support
-5. Documented everything
+1. **Add Extension Options UI**:
+   - Server speed selector (1x, 2x, 3x, 5x)
+   - Server version (t4, t4.fs)
+   - Save to chrome.storage.sync
 
-### Ready to Use:
-- `Formulas.calculateBuildingCost()` ✅
-- `Formulas.calculateBuildTime()` ✅
-- `Formulas.calculateResourceProduction()` ✅
-- `Formulas.calculateWarehouseCapacity()` ✅
-- All other formulas ✅
+2. **Implement Your Test Cases**:
+   - Hero Mansion calculator ✅
+   - Resource accumulation timer ✅
+   - Troop cost calculator ✅
+   - Travel time calculator ✅
 
-### Blocked By:
-- Missing `server-config.ts` (create with script above)
-- Missing `constants.ts` (create with script above)
-- No actual building/troop values (add manually or parse)
+3. **Connect to AI**:
+   - Pass ServerConfig to AI context
+   - Include current village coordinates
+   - Provide all formulas
 
-## 🎮 TESTING SCENARIOS
-
-Once integrated, test these:
-1. "What's the cost of Main Building level 15?"
-2. "How long until I can build my next village?"
-3. "When will my warehouse overflow?"
-4. "What's the optimal build order for growth?"
-
-## ⚡ CRITICAL REMINDERS
-
-1. **Server Speed Matters**: Set correct speed in server-config.ts
-2. **Version Matters**: Use 't4' for now, 't4.fs' for Annual Special
-3. **Test First**: Try formulas in Node before extension
-4. **Commit Often**: Push every working change
-
-## 📝 HANDOFF NOTES
-
-### For Next Session:
-1. Run mandatory steps first
-2. Files are in `/packages/extension/src/game-data/`
-3. Formulas are COMPLETE and working
-4. Just need to add actual data values
-5. Then connect to AI prompts
-
-### Success Metric:
-When you can ask the AI "What's the cost of Main Building level 10?" and it responds with calculated values using our formulas - YOU'VE SUCCEEDED!
+Your test questions are PERFECT for validating the system. Once we add the base data, every one of those calculations will work!
 
 ---
-**Session Time**: ~2.5 hours
-**Major Win**: Complete formula library extracted from Kirilloid
-**Next Session**: 30 min to integrate, 30 min to test
-**Deployment Ready**: After adding building data
+**Key Setting**: Your server is 2x speed - all calculations must account for this!
+**Annual Special**: 1x speed starting Sept 9
+**All formulas ready** - just need the data values!
