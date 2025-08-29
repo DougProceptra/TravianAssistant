@@ -108,7 +108,7 @@ function readAndParse(filePath) {
     }
 }
 
-// Find the best version to use (prefer t4.6 for Travian Legends)
+// Find the best version to use (prefer t4.fs for Travian Legends)
 function findBestVersion() {
     const modelPath = path.join(KIRILLOID_PATH, 'src', 'model');
     const versions = fs.readdirSync(modelPath)
@@ -116,13 +116,29 @@ function findBestVersion() {
     
     console.log('\nAvailable versions:', versions.join(', '));
     
-    // Prefer t4.6 (latest Travian Legends)
-    if (versions.includes('t4.6')) {
-        console.log('→ Using t4.6 (Travian Legends)');
-        return 't4.6';
+    // IMPORTANT: Use t4.fs for Travian Legends (Fire & Sand)
+    // This is the most accurate for current Travian Legends servers
+    if (versions.includes('t4.fs')) {
+        console.log('→ Using t4.fs (Travian Legends - Fire & Sand)');
+        return 't4.fs';
     }
     
-    // Fallback to latest version
+    // Fallback to t4 if t4.fs not available
+    if (versions.includes('t4')) {
+        console.log('→ Using t4 (Travian 4 base)');
+        return 't4';
+    }
+    
+    // Last resort - use whatever is newest t4 variant
+    const t4Versions = versions.filter(v => v.startsWith('t4'));
+    if (t4Versions.length > 0) {
+        const version = t4Versions.sort().pop();
+        console.log(`→ Using ${version} (latest T4 variant)`);
+        return version;
+    }
+    
+    // Should not reach here for Travian Legends
+    console.warn('⚠️  WARNING: No T4 version found, using fallback');
     const latest = versions.sort().pop();
     console.log(`→ Using ${latest} (latest available)`);
     return latest;
@@ -154,6 +170,36 @@ function extractData(version) {
         extracted.units = readAndParse(unitsFile);
     }
     
+    // Combat
+    let combatDir = path.join(versionPath, 'combat');
+    if (!fs.existsSync(combatDir)) {
+        combatDir = path.join(basePath, 'combat');
+    }
+    if (fs.existsSync(combatDir)) {
+        const combatFile = path.join(combatDir, 'combat.ts');
+        if (fs.existsSync(combatFile)) {
+            console.log('Extracting combat from:', path.relative(KIRILLOID_PATH, combatFile));
+            extracted.combat = readAndParse(combatFile);
+        }
+    }
+    
+    // Heroes
+    let heroFile = path.join(versionPath, 'hero.ts');
+    if (!fs.existsSync(heroFile)) {
+        heroFile = path.join(basePath, 'hero.ts');
+    }
+    if (fs.existsSync(heroFile)) {
+        console.log('Extracting heroes from:', path.relative(KIRILLOID_PATH, heroFile));
+        extracted.heroes = readAndParse(heroFile);
+    }
+    
+    // Items
+    let itemsFile = path.join(versionPath, 'items.ts');
+    if (fs.existsSync(itemsFile)) {
+        console.log('Extracting items from:', path.relative(KIRILLOID_PATH, itemsFile));
+        extracted.items = readAndParse(itemsFile);
+    }
+    
     // Look for index file that might aggregate data
     const indexFile = path.join(versionPath, 'index.ts');
     if (fs.existsSync(indexFile)) {
@@ -170,7 +216,7 @@ async function main() {
         // Analyze structure
         const categories = analyzeDataStructure();
         
-        // Find best version
+        // Find best version - SHOULD USE t4.fs for Travian Legends
         const version = findBestVersion();
         
         // Extract data
@@ -192,6 +238,8 @@ async function main() {
         
         console.log('\n=== Extraction Complete ===');
         console.log('Raw data saved to:', extractedPath);
+        console.log('\nExtracted from version:', version);
+        console.log('This should be t4.fs or t4 for Travian Legends compatibility');
         console.log('\nNext step: Transform raw data to our TypeScript structure');
         
     } catch (err) {
