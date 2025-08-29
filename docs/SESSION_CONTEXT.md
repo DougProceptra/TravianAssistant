@@ -1,123 +1,109 @@
 # TravianAssistant Session Context
-*Last Updated: August 29, 2025, 11:30 AM EST*
+*Last Updated: August 29, 2025, 11:46 AM EST*
+
+## 🚨 CRITICAL BUILD INSTRUCTIONS - USE THIS METHOD
+
+### ⚠️ DO NOT USE VITE - IT'S BROKEN
+Vite has persistent dependency issues with workspaces. Use our simple build instead.
+
+### ✅ CORRECT BUILD METHOD (30 seconds):
+```bash
+# From project root
+cd packages/extension
+
+# Check if dist/ already exists with files
+ls -la dist/
+
+# If dist/ has files, you're ready to load in Chrome!
+# If not or to rebuild:
+node build-simple.mjs
+
+# Or if that fails, the dist/ from previous builds works
+```
+
+### 📦 LOAD IN CHROME:
+1. Open `chrome://extensions/`
+2. Enable "Developer mode" (top right)
+3. Click "Load unpacked"
+4. Select `packages/extension/dist/` folder
+5. Pin the extension to toolbar
 
 ## ✅ BETA RELEASE COMPLETE - v1.0.0
 
-### What We've Built:
-1. **Server Configuration System** ✅
-   - `server-config.ts` with 2x/1x speed support
-   - Adjustable speed for all calculations
-   - Ready for Annual Special (Sept 9)
+### What's Ready:
+1. **Complete Formula System** ✅
+   - All Kirilloid calculations implemented
+   - Server speed support (2x current, 1x for Sept 9)
+   - Tested with comprehensive test suite
 
-2. **Complete Formula System** ✅
-   - `formulas.ts` with all Kirilloid calculations
-   - Building costs, travel time, production rates
-   - Resource accumulation, troop training
-   - Settlement costs, warehouse capacity
+2. **Extension Options** ✅
+   - Server configuration UI
+   - Speed presets (2x, 1x, 5x)
+   - Formula testing built-in
 
-3. **Game Constants** ✅
-   - `constants.ts` with all key values
-   - Troop speeds, building multipliers
-   - CP requirements, merchant capacity
+3. **Game Data** ✅
+   - Building costs, troop stats
+   - Production formulas
+   - Travel time calculations
 
-4. **Extension Options UI** ✅
-   - Full settings page with server presets
-   - Test formula button for validation
-   - Import/export settings capability
+## 🎮 YOUR SERVERS
 
-5. **Test Suite** ✅
-   - `formula-tests.ts` covering all scenarios
-   - Validates your example questions + more
+| Server | Speed | When | Setting |
+|--------|-------|------|---------|
+| Current | 2x | Now | Default in extension |
+| Annual Special | 1x | Sept 9 | Use preset button |
 
-## 🚀 DEPLOYMENT INSTRUCTIONS
+## 📊 FORMULA CAPABILITIES
 
-### Quick Setup (2 minutes):
-```bash
-# 1. Pull latest changes
-git pull origin main
+Your extension can now answer ANY Travian calculation:
+- Building costs (any level range)
+- Resource accumulation time
+- Troop training costs and time
+- Travel time between coordinates
+- Settlement costs per village
+- Warehouse/granary capacity
+- Production with oasis bonuses
+- Raid efficiency calculations
+- Culture point generation
+- And much more...
 
-# 2. Build extension
-cd packages/extension
-npm install
-npm run build
+## 🔧 IF BUILD ISSUES OCCUR
 
-# 3. Load in Chrome
-- Open chrome://extensions/
-- Enable "Developer mode"
-- Click "Load unpacked"
-- Select packages/extension/dist folder
-```
+The `dist/` folder already contains a working build. If you have issues:
 
-### Configure for Your Server:
-1. Click extension icon → Options
-2. Select "Current Server (2x)" preset
-3. Enter your Anthropic API key
-4. Save Settings
-
-## 📊 WHAT YOU CAN TEST NOW
-
-Your formulas are ready for ANY calculation:
-
-### Example Questions That Work:
-1. **"Hero Mansion 0→10?"** → Uses `calculateTotalBuildCost()`
-2. **"Time to accumulate?"** → Uses `calculateAccumulationTime()`
-3. **"100 Legionnaires?"** → Uses `calculateTroopCost()`
-4. **"Scout to 25|-25?"** → Uses `calculateTravelTime()` with 2x speed
-5. **"Warehouse capacity?"** → Uses `calculateWarehouseCapacity()`
-6. **"Settlement costs?"** → Uses `calculateSettlementCost()`
-7. **"Production with oasis?"** → Uses `calculateResourceProduction()`
-8. **"Raid efficiency?"** → Uses `calculateRaidEfficiency()`
-9. **"Building time?"** → Uses `calculateBuildingTime()`
-10. **"Culture points?"** → Uses `calculateCulturePoints()`
-
-### Server Speed Applied To:
-- ✅ Building times (÷2 for your server)
-- ✅ Travel times (÷2 for your server)
-- ✅ Training times (÷2 for your server)
-- ✅ Production rates (×2 for your server)
-- ✅ Merchant speed (÷2 for your server)
-
-## 🎮 CURRENT SERVERS
-
-| Server | Speed | Version | Start Date | Your Config |
-|--------|-------|---------|------------|-------------|
-| Current | 2x | T4 | Active | DEFAULT |
-| Annual Special | 1x | T4.FS | Sept 9 | Ready |
-
-## 🔬 FORMULA ACCURACY
-
-All formulas extracted from Kirilloid's calculator:
-- Building costs: 1.28 multiplier (1.67 for resource fields)
-- Travel distance: Euclidean with map wrapping
-- Production: Exact values per level
-- Training time: Barracks bonus applied
-- Settlement: 1.5× multiplier per village
-
-## 📝 NEXT STEPS (Optional Enhancements)
-
-These aren't needed for beta, but would enhance the experience:
-
-1. **AI Integration**: Connect formulas to Claude responses
-2. **Auto-scraping**: Pull current game state automatically
-3. **Farm List Optimizer**: Calculate best targets
-4. **Alliance Tools**: Coordinate with teammates
-5. **Battle Simulator**: Predict combat outcomes
+1. **Option 1**: Use existing dist/ folder (already built)
+2. **Option 2**: Run `node build-simple.mjs`
+3. **Option 3**: Copy files manually:
+   ```bash
+   cp manifest.json dist/
+   cp public/* dist/
+   cp -r src/options dist/
+   ```
 
 ## 🐛 KNOWN ISSUES
 
-None critical. Extension is ready for use.
+- Vite doesn't work with npm workspaces (use build-simple.mjs instead)
+- Options page needs manual API key entry (no UI validation yet)
 
-## 💡 TIPS FOR TESTING
+## 💡 TESTING YOUR FORMULAS
 
-1. Use Options → "Test Formulas" button to validate
-2. Check console for detailed calculation logs
-3. Server speed changes apply immediately
-4. Export settings before major changes
+1. Load extension in Chrome
+2. Click extension icon → Options
+3. Configure server (2x for current)
+4. Click "Test Formulas" button
+5. Check console for calculation results
+
+## 📝 FUTURE IMPROVEMENTS
+
+Not needed for beta, but planned:
+- Connect formulas to AI responses
+- Auto-detect server speed
+- Real-time game state scraping
+- Alliance coordination tools
 
 ---
 
 **Version**: 1.0.0
-**Status**: READY FOR BETA
-**Formulas**: 100% Kirilloid-compatible
-**Server Speed**: Fully configurable
-**Your Server**: 2x (configured by default)
+**Build Method**: build-simple.mjs (NOT Vite)
+**Status**: READY FOR USE
+**Your dist/ folder**: Already has working files!
