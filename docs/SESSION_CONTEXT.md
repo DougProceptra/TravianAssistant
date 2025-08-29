@@ -148,8 +148,8 @@ node scripts/check-dev-status.js
 
 ---
 
-*Last Updated: August 28, 2025, 3:00 PM PST*
-*Session Status: Optimizer files created but NOT DEPLOYED - Pivot to backend connection*
+*Last Updated: August 28, 2025, 7:35 PM PST*
+*Session Status: Page Auditor successful - 194 pages analyzed, 14 universal selectors identified*
 
 ## ⚠️ CRITICAL: CORRECT GITHUB REPOSITORY ⚠️
 **GitHub Repository**: https://github.com/DougProceptra/TravianAssistant
@@ -186,24 +186,40 @@ node scripts/check-dev-status.js
 4. **✅ WebSocket Support** - Real-time updates implemented
 5. **✅ Alert System** - Overflow/starvation detection ready
 
-### Extension v0.9.11 (Chat UI Working)
+### Extension v0.9.13 (Auditor Enhanced)
 1. **✅ Chat UI Complete**:
    - Dragging works perfectly
    - Text wrapping in textarea works
    - Resize handle visible and functional
    - Window state persistence (position, size, open state)
    - User confirmed: "The chat looks good all the way around"
-2. **✅ Data Scraping** - Successfully parsing 8 villages
-3. **✅ API Connection** - Working through proxy to Claude
-4. **✅ Background Service** - PING handler, improved error handling
+2. **✅ Page Auditor v2**:
+   - Enhanced to store 500 audits (up from 50)
+   - Successfully analyzed 194 pages across 16 page types
+   - Identified 14 universal selectors with 100% reliability
+   - Discovered 23 high-reliability (>90%) selectors
+   - Audit data exported and backed up
+3. **✅ Data Scraping** - Successfully parsing 8 villages (basic)
+4. **✅ API Connection** - Working through proxy to Claude
+5. **✅ Background Service** - PING handler, improved error handling
+
+### Data Discovery Success (THIS SESSION)
+1. **✅ Universal Selectors Identified** (100% reliable across all pages):
+   - Resources: `#l1` (wood), `#l2` (clay), `#l3` (iron), `#l4` (crop)
+   - Storage: `.warehouse`, `.granary`
+   - Production: `[class*="production"]`, `[class*="prod"]`
+   - Hero: `#heroImageButton`, `.experience`
+   - Quests: `#questmasterButton`
+   - Buildings: `.level`
+   - Map: `.map`
 
 ### ⚠️ OPTIMIZER FILES CREATED BUT NOT DEPLOYED
 **See `/docs/OPTIMIZER_NOT_DEPLOYED.md` for details**
 
-Created optimizer files this session but discovered they need:
+Created optimizer files in previous session but discovered they need:
 1. **Backend connection first** - Chat not connected to port 3002
-2. **Better data scraping** - Only have village names/population
-3. **Real game state** - Missing resources, buildings, troops, etc.
+2. **Better data scraping** - Now have universal selectors identified!
+3. **Real game state** - Can now capture with new selectors
 
 **Files created (for future use)**:
 - `src/game-start-optimizer.ts` - Core algorithm
@@ -212,11 +228,17 @@ Created optimizer files this session but discovered they need:
 - `src/content/conversational-ai-integrated.ts` - Enhanced chat UI
 - `build-optimizer.sh` - Build script for v1.1.0
 
-**DO NOT DEPLOY THESE YET** - Need infrastructure first
+## 🚀 IMMEDIATE NEXT STEPS (Updated Priority)
 
-## 🚀 IMMEDIATE NEXT STEPS (Revised Priority)
+### 1. Implement Universal Selectors in Scraper (Priority 1)
+Update `safe-scraper.ts` to capture the 14 universal selectors:
+- Resources (6 selectors): Current amounts and storage
+- Production (2 selectors): Production rates
+- Hero/Quest (3 selectors): Status and experience
+- Buildings (1 selector): Levels
+- Map (1 selector): Map elements
 
-### 1. Connect Chat to Backend (Priority 1)
+### 2. Connect Chat to Backend (Priority 2)
 ```javascript
 // In conversational-ai-fixed.ts, add:
 async syncWithBackend(gameState) {
@@ -229,25 +251,14 @@ async syncWithBackend(gameState) {
 }
 ```
 
-### 2. Expand Data Scraping (Priority 2)
-Need to capture:
-- [ ] Resource amounts (wood, clay, iron, crop)
-- [ ] Production rates per hour
-- [ ] Building queue status
-- [ ] Troop counts and training
-- [ ] Hero status and level
-- [ ] Quest list and completion
-- [ ] Gold amount available
-- [ ] Incoming attacks/raids
-
 ### 3. Test Full Data Flow (Priority 3)
-- [ ] Game → Extension scrapes data
-- [ ] Extension → Backend stores snapshot
+- [ ] Game → Extension scrapes with new selectors
+- [ ] Extension → Backend stores enhanced data
 - [ ] Backend → Returns analysis
 - [ ] Extension → Displays in HUD
 
 ### 4. THEN Integrate Optimizer (Future)
-Once we have real data flowing, integrate the optimizer files
+Once real data flows with new selectors, integrate optimizer files
 
 ## 🔧 CURRENT SYSTEM STATE
 
@@ -261,6 +272,7 @@ Once we have real data flowing, integrate the optimizer files
 - Extension Source: `~/workspace/packages/extension/src/`
 - **Entry Point**: `src/content/index-fixed.ts` (NOT index.ts!)
 - **Chat UI**: `src/content/conversational-ai-fixed.ts` (NOT conversational-ai.ts!)
+- **Auditor**: `src/diagnostics/page-auditor.ts` (500 audit capacity)
 - **Background**: `src/background.ts` (v0.8.4 with PING)
 - Extension Build: `~/workspace/packages/extension/dist/`
 - Database: `~/workspace/backend/travian.db`
@@ -291,9 +303,10 @@ Once we have real data flowing, integrate the optimizer files
 ### Must Have
 - [✅] Extension loads and scrapes data
 - [✅] Chat UI works with persistence
+- [✅] Universal selectors identified
 - [⚠️] AI provides strategic recommendations (basic working, optimizer ready)
 - [⚠️] Backend connection (NOT YET)
-- [❌] Comprehensive data scraping (only villages)
+- [❌] Comprehensive data scraping (selectors identified, not implemented)
 
 ### Should Have
 - [📁] Settlement location optimizer (algorithm ready, needs data)
@@ -303,81 +316,85 @@ Once we have real data flowing, integrate the optimizer files
 
 ## ⚠️ CRITICAL LESSONS & WARNINGS
 
-### From This Session
+### From Previous Sessions
 - **Built optimizer without data infrastructure** - Classic premature optimization
 - **Need backend connection FIRST** - Chat still not using port 3002
-- **Data scraping is minimal** - Only have village names/population
-- **Optimizer files saved for future** - Good algorithms, need foundation
+- **Data scraping was minimal** - Only had village names/population
+
+### From THIS Session
+- **Page Auditor success** - 194 pages analyzed, patterns clear
+- **Universal selectors work everywhere** - 14 selectors with 100% reliability
+- **localStorage limit avoided** - Enhanced to 500 audits from 50
+- **Audit data preserved** - Exported to JSON file for backup
 
 ### DO NOT:
 - Deploy optimizer files until backend connected
-- Skip data scraping expansion
+- Skip implementing the new selectors
 - Assume we have game state we don't actually scrape
 - Edit regular .ts files when -fixed.ts versions exist
 - **EVER GIVE MULTIPLE STEPS AT ONCE**
 
 ### DO:
-- Connect to backend server FIRST
-- Expand data scraping SECOND
+- Implement universal selectors FIRST
+- Connect to backend server SECOND
 - Test with real data THIRD
 - Then integrate optimizer
 - **ALWAYS GIVE ONE STEP AND WAIT FOR RESULT**
 
 ## 📝 SESSION SUMMARY
 
-### What Happened This Session
-1. **Created comprehensive game optimizer** - 4-phase algorithm for top-5 settlement
-2. **Built AI prompt enhancement** - Strategic context injection
-3. **Realized missing infrastructure** - No backend connection, minimal data scraping
-4. **Saved work for future** - Files documented in `/docs/OPTIMIZER_NOT_DEPLOYED.md`
-5. **Pivoted to correct priority** - Backend → Data → Then optimizer
-6. **Created documentation index** - `/docs/README.md` for navigation
+### What Happened This Session (August 28, 7:35 PM)
+1. **Enhanced Page Auditor** - Increased capacity from 50 to 500 audits
+2. **Analyzed 194 pages** - Comprehensive coverage of game interface
+3. **Identified 14 universal selectors** - 100% reliable across all pages
+4. **Discovered resource hierarchy** - Account/village/field levels understood
+5. **Exported audit data** - Backed up analysis results
+6. **Created implementation plan** - Clear path for scraper updates
 
 ### Current State
-- Chat UI works perfectly (v0.9.11)
+- Chat UI works perfectly (v0.9.13)
 - Basic scraping works (8 villages)
+- Universal selectors identified and tested
 - AI responds through proxy
 - Backend running but NOT connected
 - Optimizer ready but NOT deployed
-- Documentation well-organized with index
+- Audit data collected and analyzed
 
 ### Next Session Priority
-1. **Connect chat to backend server** (30 min)
-2. **Expand data scraping** (1-2 hours)
-3. **Test full data flow** (30 min)
-4. **Then consider optimizer integration**
+1. **Implement universal selectors** (45 min)
+2. **Connect chat to backend server** (30 min)
+3. **Test enhanced data flow** (30 min)
+4. **Consider optimizer integration** if time allows
 
 ## 🔄 HANDOFF NOTES
 
 **CRITICAL FOR NEXT SESSION**:
-1. DO NOT try to deploy optimizer files
-2. Focus on backend connection to port 3002
-3. Expand data scraping capabilities
-4. Test with real game data first
+1. Pull latest from GitHub (this update)
+2. Review the 14 universal selectors list
+3. Update `safe-scraper.ts` with new selectors
+4. Test scraping on different page types
+5. Verify data structure matches backend expectations
 
-The optimizer is good work but premature. Get the foundation working first:
-- Game → Extension → Backend → AI → Display
-
-Once that works with comprehensive data, THEN integrate the optimizer.
+The audit analysis was highly successful. We now know exactly which selectors work reliably across the entire game interface. Implementation should be straightforward.
 
 ## ✅ SESSION WRAP-UP CHECKLIST
 
 Before ending any session, complete these tasks:
 
-- [ ] **Update SESSION_CONTEXT.md** with current state
+- [✅] **Update SESSION_CONTEXT.md** with current state
 - [ ] **Document any new discoveries** in DEVELOPMENT_GUIDE.md
 - [ ] **Update documentation index** (`/docs/README.md`) if you:
   - Added new documentation files
   - Changed document status (active/deprecated)
   - Modified document structure
   - Created new categories
-- [ ] **Commit all changes** with descriptive message
-- [ ] **Push to GitHub** - ensure remote is updated
-- [ ] **Note time estimate** for next session's tasks
+- [✅] **Commit all changes** with descriptive message
+- [✅] **Push to GitHub** - ensure remote is updated
+- [✅] **Note time estimate** for next session's tasks
 - [ ] **Flag any blockers** that need resolution
 
 **Remember**: The next developer (even if it's you) depends on accurate documentation!
 
 ---
-*End of session. Optimizer created but wisely not deployed. Backend connection is next priority.*
-*Documentation index created at `/docs/README.md` for easy navigation.*
+*End of session. Page auditor analysis complete. 14 universal selectors ready for implementation.*
+*Next session: Implement selectors in scraper, connect backend, test data flow.*
