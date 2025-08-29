@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travian Assistant Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Travian Assistant Settings</h1>
+    
+    <section class="settings-section">
+      <h2>Server Configuration</h2>
+      
+      <div class="setting-group">
+        <label for="server-speed">Server Speed:</label>
+        <select id="server-speed">
+          <option value="1">1x (Normal)</option>
+          <option value="2" selected>2x (Current Server)</option>
+          <option value="3">3x</option>
+          <option value="5">5x</option>
+          <option value="10">10x</option>
+        </select>
+        <small>Your current server is 2x speed. Annual Special (Sept 9) will be 1x.</small>
+      </div>
+
+      <div class="setting-group">
+        <label for="server-version">Server Version:</label>
+        <select id="server-version">
+          <option value="t4" selected>Travian Legends (T4)</option>
+          <option value="t4.fs">Fire & Sand (T4.5)</option>
+          <option value="t5">Travian Kingdoms (T5)</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label for="world-size">World Size:</label>
+        <select id="world-size">
+          <option value="401" selected>401x401 (Standard)</option>
+          <option value="601">601x601 (Medium)</option>
+          <option value="801">801x801 (Large)</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label for="tribe">Your Tribe:</label>
+        <select id="tribe">
+          <option value="romans">Romans</option>
+          <option value="teutons">Teutons</option>
+          <option value="gauls">Gauls</option>
+          <option value="egyptians">Egyptians</option>
+          <option value="huns">Huns</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h2>AI Assistant Configuration</h2>
+      
+      <div class="setting-group">
+        <label for="api-key">Anthropic API Key:</label>
+        <input type="password" id="api-key" placeholder="sk-ant-api03-...">
+        <small>Get your API key from <a href="https://console.anthropic.com" target="_blank">Anthropic Console</a></small>
+      </div>
+
+      <div class="setting-group">
+        <label for="ai-model">AI Model:</label>
+        <select id="ai-model">
+          <option value="claude-3-sonnet-20240229" selected>Claude 3 Sonnet (Fast)</option>
+          <option value="claude-3-opus-20240229">Claude 3 Opus (Powerful)</option>
+          <option value="claude-3-haiku-20240307">Claude 3 Haiku (Economical)</option>
+        </select>
+      </div>
+
+      <div class="setting-group">
+        <label>
+          <input type="checkbox" id="auto-refresh" checked>
+          Auto-refresh game data (every 60 seconds)
+        </label>
+      </div>
+
+      <div class="setting-group">
+        <label>
+          <input type="checkbox" id="show-hud" checked>
+          Show HUD overlay on game pages
+        </label>
+      </div>
+
+      <div class="setting-group">
+        <label>
+          <input type="checkbox" id="enable-notifications">
+          Enable desktop notifications for important events
+        </label>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h2>Quick Server Presets</h2>
+      <div class="preset-buttons">
+        <button class="preset-btn" data-preset="current-2x">
+          Current Server (2x)
+        </button>
+        <button class="preset-btn" data-preset="annual-special">
+          Annual Special (1x, Sept 9)
+        </button>
+        <button class="preset-btn" data-preset="speed-server">
+          Speed Server (5x)
+        </button>
+      </div>
+    </section>
+
+    <section class="settings-section">
+      <h2>Data Management</h2>
+      <div class="data-buttons">
+        <button id="test-formulas">Test Formulas</button>
+        <button id="clear-cache">Clear Cache</button>
+        <button id="export-settings">Export Settings</button>
+        <button id="import-settings">Import Settings</button>
+        <input type="file" id="import-file" accept=".json" style="display: none;">
+      </div>
+    </section>
+
+    <div class="save-section">
+      <button id="save-settings" class="save-btn">Save Settings</button>
+      <span id="save-status" class="status"></span>
+    </div>
+
+    <div id="test-output" class="test-output" style="display: none;">
+      <h3>Formula Test Results</h3>
+      <pre id="test-results"></pre>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
