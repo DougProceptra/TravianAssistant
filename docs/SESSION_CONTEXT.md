@@ -1,5 +1,21 @@
 # TravianAssistant Session Context
-*Last Updated: August 29, 2025, 11:46 AM EST*
+*Last Updated: August 29, 2025, 12:07 PM EST*
+
+## 🚨 DATA VALIDATION - RUN THIS BEFORE TRUSTING CALCULATIONS
+
+### Validate All Building Data:
+```bash
+cd packages/extension
+node validate.mjs
+```
+
+This will check:
+- All building costs against Kirilloid values
+- Missing buildings (we found Hero Mansion was missing!)
+- Build time accuracy
+- Formula calculations
+
+**If validation fails**: Update `travian-constants.ts` with correct values
 
 ## 🚨 CRITICAL BUILD INSTRUCTIONS - USE THIS METHOD
 
@@ -28,23 +44,41 @@ node build-simple.mjs
 4. Select `packages/extension/dist/` folder
 5. Pin the extension to toolbar
 
-## ✅ BETA RELEASE COMPLETE - v1.0.0
+## ✅ FIXES APPLIED
 
-### What's Ready:
-1. **Complete Formula System** ✅
-   - All Kirilloid calculations implemented
-   - Server speed support (2x current, 1x for Sept 9)
-   - Tested with comprehensive test suite
+### Hero Mansion Issue Fixed:
+- **Problem**: Hero Mansion base costs were missing
+- **Solution**: Added correct base costs (700, 670, 700, 240)
+- **Build times**: Added exact times from Kirilloid
 
-2. **Extension Options** ✅
-   - Server configuration UI
-   - Speed presets (2x, 1x, 5x)
-   - Formula testing built-in
+### Data Validation System Created:
+- `validate-data.ts` - Comprehensive validation
+- `validate.mjs` - Runner script
+- Checks ALL buildings against known accurate values
 
-3. **Game Data** ✅
-   - Building costs, troop stats
-   - Production formulas
-   - Travel time calculations
+## ⚠️ KNOWN MISSING BUILDINGS
+
+From validation, these buildings still need data:
+- Rally Point
+- Stables
+- Workshop
+- Blacksmith
+- Armory
+- Treasury
+- Trade Office
+- Cranny
+- Great Warehouse
+- Great Granary
+- Stonemason
+- Brewery
+- Trapper
+- Sawmill
+- Brickyard
+- Iron Foundry
+- Grain Mill
+- Bakery
+
+**Impact**: Calculations for these buildings will fail until data is added
 
 ## 🎮 YOUR SERVERS
 
@@ -53,19 +87,15 @@ node build-simple.mjs
 | Current | 2x | Now | Default in extension |
 | Annual Special | 1x | Sept 9 | Use preset button |
 
-## 📊 FORMULA CAPABILITIES
+## 📊 VALIDATED FORMULAS
 
-Your extension can now answer ANY Travian calculation:
-- Building costs (any level range)
-- Resource accumulation time
-- Troop training costs and time
-- Travel time between coordinates
-- Settlement costs per village
-- Warehouse/granary capacity
-- Production with oasis bonuses
-- Raid efficiency calculations
-- Culture point generation
-- And much more...
+These are confirmed accurate:
+- ✅ Hero Mansion costs (all levels)
+- ✅ Main Building costs
+- ✅ Barracks costs
+- ✅ Marketplace costs
+- ✅ Resource field costs (Woodcutter, etc.)
+- ✅ Build times with server speed
 
 ## 🔧 IF BUILD ISSUES OCCUR
 
@@ -80,11 +110,6 @@ The `dist/` folder already contains a working build. If you have issues:
    cp -r src/options dist/
    ```
 
-## 🐛 KNOWN ISSUES
-
-- Vite doesn't work with npm workspaces (use build-simple.mjs instead)
-- Options page needs manual API key entry (no UI validation yet)
-
 ## 💡 TESTING YOUR FORMULAS
 
 1. Load extension in Chrome
@@ -93,17 +118,16 @@ The `dist/` folder already contains a working build. If you have issues:
 4. Click "Test Formulas" button
 5. Check console for calculation results
 
-## 📝 FUTURE IMPROVEMENTS
+## 📝 NEXT STEPS
 
-Not needed for beta, but planned:
-- Connect formulas to AI responses
-- Auto-detect server speed
-- Real-time game state scraping
-- Alliance coordination tools
+1. **Run validation**: `node validate.mjs`
+2. **Add missing building data** from Kirilloid
+3. **Re-validate** after adding data
+4. **Test with real queries** in game
 
 ---
 
-**Version**: 1.0.0
+**Version**: 1.0.1
 **Build Method**: build-simple.mjs (NOT Vite)
-**Status**: READY FOR USE
+**Status**: PARTIALLY VALIDATED - Some buildings missing
 **Your dist/ folder**: Already has working files!
