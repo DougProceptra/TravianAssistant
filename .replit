@@ -1,7 +1,4 @@
-# Replit Configuration for TravianAssistant
-# Updated for backend server integration
-
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "python-3.11"]
 
 # Main run command - starts the backend server
 run = "cd backend && npm install && npm start"
