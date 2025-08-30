@@ -1,145 +1,158 @@
 # TravianAssistant Session Context
-*Last Updated: August 30, 2025, 1:15 PM EST*
+*Last Updated: August 30, 2025, 6:30 PM EST*
 
 ## CURRENT_FOCUS
-Testing optimized developer-session prompt with Doug to verify improvements in:
-- Anti-hallucination protocols
-- Thorough file review practices  
-- SESSION_CONTEXT.md update discipline
-- GitHub-first code management
-- Elite developer persistence
+Preparing for Sept 1 beta test on new 1x Travian server. Focus on completing data extraction from Kirilloid and implementing game start optimization features.
 
-## ✅ BREAKTHROUGH: Successfully Extracted Kirilloid Data!
+## ✅ COMPLETED WORK
 
-### Solution That Worked
-**Python requests + JavaScript parsing** - Bypassed Firecrawl completely
-- Python requests CAN access Kirilloid (gets 64,425 chars of HTML)
-- Firecrawl is blocked by Kirilloid (gets 404)
-- Found buildings array at line 732 of HTML
-- Successfully extracted and parsed all building data
+### Kirilloid Data Extraction - PARTIAL SUCCESS
+**Python Solution That Worked:**
+- Python requests successfully fetches Kirilloid HTML (64,425 chars)
+- Found and extracted buildings array from line 732
+- Successfully parsed 47+ buildings with costs and multipliers
+- Calculated all level costs using formula: `round5(baseCost * k^(level-1))`
 
-### What We Got
+**Data Successfully Extracted:**
 ```javascript
-// Found the complete buildings array in Kirilloid's HTML
-var buildings = [
-    {name:"Woodcutter", cost: [40, 100, 50, 60], k:1.67, cu:2, cp:1, ...},
-    {name:"Main Building", cost: [70, 40, 60, 20], k:1.28, cu:2, cp:2, ...},
-    // ... 47+ buildings total
-]
+// Complete building data including:
+- Building names and IDs (gid)
+- Base costs (Level 1) for wood, clay, iron, crop
+- Multiplier values (k) for cost calculations
+- Maximum levels for each building
+- Basic upkeep and culture values
 ```
-
-### Data Successfully Extracted
-- ✅ Building names and IDs (gid)
-- ✅ Base costs (Level 1) for wood, clay, iron, crop
-- ✅ Multiplier values (k) for cost calculations
-- ✅ Maximum levels for each building
-- ✅ Calculated costs for all levels using formula: `round5(baseCost * k^(level-1))`
-- ✅ Basic upkeep and culture values
 
 ### Files Created
 - `buildings_array.js` - Raw JavaScript from Kirilloid
 - `kirilloid_buildings.json` - Clean JSON with base values
 - `kirilloid_complete.json` - Full data with all levels calculated
 
-## 🔧 TECHNICAL APPROACH THAT WORKED
+## 🔧 CURRENT ARCHITECTURE
 
-### Step 1: Fetch with Python
-```python
-response = requests.get("http://travian.kirilloid.ru/build.php")
-# Returns 200 OK with full HTML
+### Backend Structure
+- **Database**: SQLite3 with schema in `backend/travian-schema-v2.sql`
+- **Server**: Node.js backend in `backend/server-sqlite.js`
+- **Proxy**: Vercel edge functions for Anthropic API (working)
+- **Data Import**: Various scripts in `/scripts/` for Kirilloid extraction
+
+### Chrome Extension
+- **Manifest V3**: Working content script and service worker
+- **HUD Overlay**: Basic implementation ready
+- **API Integration**: Via Vercel proxy (CORS resolved)
+- **Storage**: Chrome Storage API + IndexedDB for 7 days history
+
+### Project Structure
+```
+TravianAssistant/
+├── backend/           # SQLite database and Node.js server
+├── packages/
+│   └── extension/    # Chrome extension (Manifest V3)
+├── scripts/          # Data extraction and utility scripts
+├── docs/            # Documentation including V4 spec
+└── api/             # Vercel proxy functions
 ```
 
-### Step 2: Extract JavaScript Array
-```bash
-sed -n '732,/^];/p' kirilloid_raw.html > buildings_array.js
-```
+## ⚠️ STILL NEEDED FOR SEPT 1 BETA
 
-### Step 3: Parse and Convert
-- Used regex to extract building data from JavaScript
-- Converted to clean JSON structure
-- Applied formulas to generate all levels
+### Critical Data Missing
+1. **Build Time Calculations**
+   - Have formula reference `TimeT3` but need to decode
+   - Main Building acceleration effect calculation
+   
+2. **Game Mechanics**
+   - Culture point accumulation rates
+   - Resource field production formulas
+   - Hero level progression and bonuses
+   - Daily quest/task reward system
 
-## 📊 DATA STRUCTURE OBTAINED
+3. **Troop Data**
+   - Training costs and times
+   - Attack/defense statistics
+   - Movement speeds and carry capacity
 
-```json
-{
-  "id": 1,
-  "name": "Woodcutter",
-  "maxLevel": 22,
-  "k": 1.67,
-  "levels": [
-    {
-      "level": 1,
-      "wood": 40,
-      "clay": 100,
-      "iron": 50,
-      "crop": 60,
-      "upkeep": 2,
-      "culture": 1
-    },
-    // ... levels 2-22
-  ]
-}
-```
-
-## ⚠️ STILL MISSING (Not Critical)
-
-### Additional Data Points
-- Build time calculations (have formula `TimeT3` but need to decode)
-- Exact population/upkeep progression
-- Exact culture points progression  
-- Building prerequisites (`breq` field exists but needs parsing)
-- Special requirements (capital only, race specific, etc.)
-
-### Why Not Critical
-- We have 100% accurate resource costs (most important)
-- Other values can be approximated or added later
-- Core functionality for V4 is ready
+### Implementation Tasks
+1. **Complete Kirilloid extraction** (1 day remaining)
+2. **Import data to SQLite database**
+3. **Connect extension to backend**
+4. **Implement AI recommendations engine**
+5. **Test with live game data**
 
 ## 🚫 WHAT DIDN'T WORK
 
-### Firecrawl - Completely Blocked
-- Regular scrape: 404 Not Found
-- Extract API: Returns empty data
-- Even with different user agents: Still 404
-- **Root Cause**: Kirilloid blocks Firecrawl's IP range
+### Firecrawl Issues
+- **Completely blocked by Kirilloid** (404 errors)
+- All configurations failed (mobile, actions, etc.)
+- Root cause: Kirilloid blocks Firecrawl's IP range
+- **Solution**: Python requests from Replit works perfectly
 
-### Why Python Requests Worked
-- Standard user agent accepted
-- Replit IP not blocked by Kirilloid
-- Simple HTTP GET returns full page
-- JavaScript is embedded in HTML (not loaded separately)
+## 📝 KEY DECISIONS
 
-## ✅ VERSION SYSTEM (Working)
-- Version 1.0.0 current
-- Chrome Extension Manifest V3
-- Single source of truth (manifest.json)
+### Data Strategy (Aug 30, 2025)
+- **Use existing extracted building data** for V4
+- **Priority**: Resource costs are 100% accurate (sufficient for beta)
+- **Defer**: Additional fields can be added post-beta
+- **Rationale**: Ship faster with core functionality
 
-## 🎯 NEXT STEPS
+### Architecture Decisions
+- **V4 Spec is authoritative** (not V3)
+- **SQLite for data storage** (not Supabase initially)
+- **Vercel for API proxy** (resolved CORS issues)
+- **Research mode for Firecrawl recon** (if it works)
 
-### Option 1: Use Current Data
-- We have enough for V4 functionality
-- Resource costs are 100% accurate
-- Can add missing fields later if needed
+## 🎯 IMMEDIATE NEXT STEPS
 
-### Option 2: Complete Extraction
-- Decode TimeT3 formula for build times
-- Parse prerequisites and requirements
-- Extract troop data (if needed)
+### For Sept 1 Beta (Priority Order)
+1. **Run Firecrawl reconnaissance** (30 min test)
+   - Use prepared prompt to discover all available data
+   - If blocked, expand Python scraper
+   
+2. **Extract remaining critical data**
+   - Build times with Main Building effect
+   - Culture points and settler requirements
+   - Resource production formulas
+   
+3. **Database population**
+   - Import all game constants to SQLite
+   - Create API endpoints for data access
+   
+4. **Extension integration**
+   - Connect to backend API
+   - Implement basic recommendations
+   - Test with live game
 
-### Option 3: Move to V4 Implementation
-- Start building HUD with current data
-- Implement AI recommendations
-- Test with real gameplay
+## 💡 INSIGHTS & PATTERNS
 
-## DECISIONS
-[2025-08-30 13:15] - Using existing extracted data for V4 rather than pursuing missing fields
-- Why: 100% accurate resource costs are sufficient for core functionality
-- Impact: Can ship V4 faster, add refinements later
-- Next: Implement HUD overlay with recommendation engine
+### Technical Learnings
+- **Simple beats complex**: Python requests > Firecrawl for Kirilloid
+- **JavaScript embedded in HTML**: Data is in page source, not separate files
+- **Replit IPs not blocked**: Unlike Firecrawl's infrastructure
+
+### Project Patterns
+- Heavy experimentation phase with 40+ scripts
+- Multiple approaches attempted (Firecrawl, Puppeteer, Python)
+- Good documentation practices maintained throughout
+
+## ❓ OPEN QUESTIONS
+
+1. **Server Speed Handling**: Need equations to convert between 1x/2x/3x speeds or separate data sets?
+2. **Version Support**: Focus on T4 only or also support T4.6?
+3. **Data Completeness**: Is 80% data extraction acceptable for beta?
+
+## 🔄 VERSION CONTROL
+
+### Current State
+- **Main branch**: Contains working extension + backend
+- **Last commit**: Various extraction scripts and attempts
+- **Vercel deployment**: Proxy working at travian-assistant-proxy.vercel.app
+
+### Repository Health
+- Multiple experimental scripts (can be cleaned up post-beta)
+- Good separation of concerns (backend, extension, scripts)
+- Documentation up to date (except this file until now)
 
 ---
 
-**Session Status**: Testing developer prompt improvements. Successfully demonstrated anti-hallucination protocol by fetching and quoting actual SESSION_CONTEXT.md content. Next: Continue testing persistence and code management behaviors.
+**Session Status**: Preparing Firecrawl reconnaissance mission for comprehensive Kirilloid data discovery. Beta deadline Sept 1 (tomorrow).
 
-**Key Learning**: When scraping tools fail, sometimes going back to basics (requests + regex) is the answer. Firecrawl's sophistication was actually a liability here.
+**Critical Path**: Data extraction → Database population → Extension integration → Beta test
