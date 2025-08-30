@@ -77,49 +77,55 @@ try:
         The data is in a table format with columns for each resource.
         Make sure to parse numbers correctly (remove commas/spaces).
         Build time might be in format like "0:33:20" (hours:minutes:seconds).
-        """,
-        wait_for=5000,  # Wait for JavaScript to render
-        timeout=30000
+        """
     )
     
     print("✅ Extraction completed!")
     
     # Parse and display results
-    if result and hasattr(result, 'data'):
-        data = result.data
-        if isinstance(data, str):
-            data = json.loads(data)
-        
-        print(f"\nBuilding: {data.get('building_name', 'Unknown')}")
-        levels = data.get('levels', [])
-        print(f"Levels found: {len(levels)}")
-        
-        if levels:
-            # Show first and last level
-            l1 = levels[0]
-            print(f"\nLevel 1 costs:")
-            print(f"  Wood: {l1.get('wood', 'N/A')}")
-            print(f"  Clay: {l1.get('clay', 'N/A')}")
-            print(f"  Iron: {l1.get('iron', 'N/A')}")
-            print(f"  Crop: {l1.get('crop', 'N/A')}")
+    if result:
+        # Check different possible result structures
+        data = None
+        if hasattr(result, 'data'):
+            data = result.data
+        elif isinstance(result, dict):
+            data = result.get('data', result)
+        elif isinstance(result, list):
+            data = result
             
-            if len(levels) >= 20:
-                l20 = levels[19]
-                print(f"\nLevel 20 costs:")
-                print(f"  Wood: {l20.get('wood', 'N/A')}")
-                print(f"  Clay: {l20.get('clay', 'N/A')}")
-                print(f"  Iron: {l20.get('iron', 'N/A')}")
-                print(f"  Crop: {l20.get('crop', 'N/A')}")
-        
-        # Save to file
-        with open('main_building_extract.json', 'w') as f:
-            json.dump(data, f, indent=2)
-        print("\n💾 Saved to main_building_extract.json")
-        
+        if data:
+            if isinstance(data, str):
+                try:
+                    data = json.loads(data)
+                except:
+                    pass
+            
+            print(f"\nResult type: {type(data)}")
+            print(f"Result keys: {data.keys() if isinstance(data, dict) else 'Not a dict'}")
+            
+            if isinstance(data, dict):
+                print(f"\nBuilding: {data.get('building_name', 'Unknown')}")
+                levels = data.get('levels', [])
+                print(f"Levels found: {len(levels)}")
+                
+                if levels and len(levels) > 0:
+                    # Show first level
+                    l1 = levels[0]
+                    print(f"\nLevel 1 costs:")
+                    print(f"  Wood: {l1.get('wood', 'N/A')}")
+                    print(f"  Clay: {l1.get('clay', 'N/A')}")
+                    print(f"  Iron: {l1.get('iron', 'N/A')}")
+                    print(f"  Crop: {l1.get('crop', 'N/A')}")
+            
+            # Save to file
+            with open('main_building_extract.json', 'w') as f:
+                json.dump(data, f, indent=2)
+            print("\n💾 Saved to main_building_extract.json")
+        else:
+            print("❌ No data in result")
+            print(f"Full result: {result}")
     else:
-        print("❌ No data returned")
-        if hasattr(result, '__dict__'):
-            print(f"Result object: {result.__dict__}")
+        print("❌ No result returned")
             
 except Exception as e:
     print(f"❌ Error: {e}")
@@ -157,54 +163,58 @@ try:
         
         Return an array with one object per building.
         Parse all numeric values as integers (remove formatting).
-        """,
-        wait_for=5000,
-        timeout=60000  # Longer timeout for multiple pages
+        """
     )
     
     print("✅ Multi-extraction completed!")
     
-    if result and hasattr(result, 'data'):
-        data = result.data
-        if isinstance(data, str):
-            data = json.loads(data)
-        
-        if isinstance(data, list):
-            print(f"\nExtracted {len(data)} buildings:")
-            for building in data:
-                name = building.get('building_name', 'Unknown')
-                levels = building.get('levels', [])
-                print(f"  - {name}: {len(levels)} levels")
-        
-        # Save all data
-        with open('multiple_buildings_extract.json', 'w') as f:
-            json.dump(data, f, indent=2)
-        print("\n💾 Saved to multiple_buildings_extract.json")
+    if result:
+        data = None
+        if hasattr(result, 'data'):
+            data = result.data
+        elif isinstance(result, dict):
+            data = result.get('data', result)
+        elif isinstance(result, list):
+            data = result
+            
+        if data:
+            if isinstance(data, str):
+                try:
+                    data = json.loads(data)
+                except:
+                    pass
+            
+            if isinstance(data, list):
+                print(f"\nExtracted {len(data)} buildings:")
+                for building in data:
+                    if isinstance(building, dict):
+                        name = building.get('building_name', 'Unknown')
+                        levels = building.get('levels', [])
+                        print(f"  - {name}: {len(levels)} levels")
+            
+            # Save all data
+            with open('multiple_buildings_extract.json', 'w') as f:
+                json.dump(data, f, indent=2)
+            print("\n💾 Saved to multiple_buildings_extract.json")
         
 except Exception as e:
     print(f"❌ Error: {e}")
     import traceback
     traceback.print_exc()
 
-# Test 3: Smart Extraction with Navigation Instructions
-print("\n\n📊 TEST 3: Smart Extraction with Navigation")
+# Test 3: Simple extraction without extra parameters
+print("\n\n📊 TEST 3: Simple Extraction")
 print("-" * 40)
-print("Testing LLM's ability to navigate the page...")
+print("Testing basic extraction without wait parameters...")
 
 try:
     result = app.extract(
         urls=["http://travian.kirilloid.ru/build.php"],
         prompt="""This is a Travian building calculator page.
         
-        The page has a dropdown menu to select different buildings.
-        I need you to:
-        1. Identify the current building shown
-        2. Extract the complete data table with all levels
-        3. Note that some buildings have max level 5, others 20 or 25
-        
-        Focus on extracting:
+        Extract the building data table that shows:
         - Building name (from dropdown or page)
-        - For each level row in the table:
+        - For each level (1-20 or max):
           - Level number
           - Wood cost
           - Clay cost
@@ -216,68 +226,67 @@ try:
         
         Return structured data with all levels found.
         """,
-        schema=building_schema,
-        wait_for=5000,
-        timeout=30000
+        schema=building_schema
     )
     
-    print("✅ Smart extraction completed!")
+    print("✅ Simple extraction completed!")
     
-    if result and hasattr(result, 'data'):
-        data = result.data
-        if isinstance(data, str):
-            data = json.loads(data)
-        
-        print(f"\nExtracted: {data.get('building_name', 'Unknown')}")
-        print(f"Levels: {len(data.get('levels', []))}")
-        
-        with open('smart_extract.json', 'w') as f:
-            json.dump(data, f, indent=2)
-        print("\n💾 Saved to smart_extract.json")
+    if result:
+        data = None
+        if hasattr(result, 'data'):
+            data = result.data
+        elif isinstance(result, dict):
+            data = result.get('data', result)
+            
+        if data:
+            if isinstance(data, str):
+                try:
+                    data = json.loads(data)
+                except:
+                    pass
+            
+            print(f"\nExtracted: {data.get('building_name', 'Unknown') if isinstance(data, dict) else 'Check JSON'}")
+            
+            with open('simple_extract.json', 'w') as f:
+                json.dump(data, f, indent=2)
+            print("\n💾 Saved to simple_extract.json")
         
 except Exception as e:
     print(f"❌ Error: {e}")
     import traceback
     traceback.print_exc()
 
-# Test 4: Extract with allowExternalLinks for discovering all buildings
-print("\n\n📊 TEST 4: Wildcard Domain Extraction")
+# Test 4: Minimal test - just get something
+print("\n\n📊 TEST 4: Minimal Extraction Test")
 print("-" * 40)
-print("Testing extraction across domain...")
+print("Testing minimal extraction to see what we get...")
 
 try:
-    # This might discover multiple building pages if they exist
     result = app.extract(
-        urls=["http://travian.kirilloid.ru/build.php"],
-        prompt="""Extract ALL building data available on this calculator.
-        
-        If there are links or ways to access other buildings, follow them.
-        For each building found, extract the complete level progression table.
-        
-        Return an array of all buildings with their full data.
-        """,
-        schema=multi_building_schema,
-        allowExternalLinks=False,  # Stay within domain
-        includeSubdomains=False,
-        wait_for=5000,
-        timeout=60000
+        urls=["http://travian.kirilloid.ru/build.php#b=1"],
+        prompt="Extract all the building cost data from the table on this page"
     )
     
-    print("✅ Domain extraction completed!")
+    print("✅ Minimal extraction completed!")
     
-    if result and hasattr(result, 'data'):
+    # Print the raw result to understand structure
+    print(f"\nRaw result type: {type(result)}")
+    if hasattr(result, '__dict__'):
+        print(f"Result attributes: {result.__dict__.keys()}")
+    
+    # Try to get data however it's structured
+    data = result
+    if hasattr(result, 'data'):
         data = result.data
+    elif isinstance(result, dict) and 'data' in result:
+        data = result['data']
+    
+    with open('minimal_extract.json', 'w') as f:
         if isinstance(data, str):
-            data = json.loads(data)
-        
-        if isinstance(data, list):
-            print(f"\nFound {len(data)} buildings across domain")
+            f.write(data)
         else:
-            print("\nSingle building returned")
-        
-        with open('domain_extract.json', 'w') as f:
             json.dump(data, f, indent=2)
-        print("\n💾 Saved to domain_extract.json")
+    print("\n💾 Saved to minimal_extract.json")
         
 except Exception as e:
     print(f"❌ Error: {e}")
@@ -290,8 +299,8 @@ print("="*60)
 print("\nCheck the generated JSON files to see what was extracted:")
 print("  - main_building_extract.json")
 print("  - multiple_buildings_extract.json")
-print("  - smart_extract.json")
-print("  - domain_extract.json")
+print("  - simple_extract.json")
+print("  - minimal_extract.json")
 print("\nIf extraction worked, we can scale up to all buildings!")
-print("\nNOTE: Extract API is in Beta, so behavior may vary.")
-print("Consider using FIRE-1 model for better JavaScript handling.")
+print("\nNOTE: Extract API parameters may differ from documentation.")
+print("The extract() function appears to only accept: urls, schema, prompt")
