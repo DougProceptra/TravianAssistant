@@ -93,8 +93,7 @@ def scrape_building_with_firecrawl(building_id: int, building_name: str) -> Opti
     try:
         app = FirecrawlApp(api_key=API_KEY)
         
-        # Use the correct parameters for firecrawl-py
-        # Based on the SDK, parameters are passed directly, not in a params dict
+        # Scrape the page
         result = app.scrape(
             url,
             formats=['markdown', 'html'],
@@ -103,53 +102,56 @@ def scrape_building_with_firecrawl(building_id: int, building_name: str) -> Opti
         )
         
         print(f"   ✓ Got response from Firecrawl")
+        print(f"   Response type: {type(result)}")
         
-        # Check what we got
-        if isinstance(result, dict):
-            # Debug: show keys
-            print(f"   Response keys: {list(result.keys())}")
-            
-            # Try to access the data
-            # The response might be in result['data'] or directly in result
-            data = result.get('data', result)
-            
-            # Try markdown first
-            if 'markdown' in data and data['markdown']:
-                print(f"   📝 Got markdown content ({len(data['markdown'])} chars)")
-                return parse_markdown_table(data['markdown'], building_name)
-            
-            # Fallback to HTML
-            if 'html' in data and data['html']:
-                print(f"   📄 Got HTML content ({len(data['html'])} chars)")
-                return parse_html_table(data['html'], building_name)
-            
-            # Try different possible structures
-            if 'content' in data:
-                content = data['content']
-                if isinstance(content, str):
-                    print(f"   📄 Got content string ({len(content)} chars)")
-                    # Try to determine if it's HTML or markdown
-                    if '<table' in content:
-                        return parse_html_table(content, building_name)
-                    else:
-                        return parse_markdown_table(content, building_name)
-            
-            # Show actual structure for debugging
-            print(f"   ⚠ Unexpected structure. Sample: {str(result)[:500]}")
-            
+        # The result is a Document object, not a dict
+        # Try to access its attributes
+        if hasattr(result, '__dict__'):
+            print(f"   Document attributes: {list(result.__dict__.keys())}")
+        
+        # Try different ways to access the content
+        markdown_content = None
+        html_content = None
+        
+        # Try direct attributes
+        if hasattr(result, 'markdown'):
+            markdown_content = result.markdown
+            if markdown_content:
+                print(f"   📝 Got markdown content ({len(markdown_content)} chars)")
+        
+        if hasattr(result, 'html'):
+            html_content = result.html
+            if html_content:
+                print(f"   📄 Got HTML content ({len(html_content)} chars)")
+        
+        # Try as dict-like object
+        if hasattr(result, 'get'):
+            markdown_content = result.get('markdown')
+            html_content = result.get('html')
+        
+        # Try to convert to dict
+        if hasattr(result, 'to_dict'):
+            result_dict = result.to_dict()
+            print(f"   Converted to dict with keys: {list(result_dict.keys())}")
+            markdown_content = result_dict.get('markdown')
+            html_content = result_dict.get('html')
+        elif hasattr(result, '__dict__'):
+            result_dict = result.__dict__
+            markdown_content = result_dict.get('markdown')
+            html_content = result_dict.get('html')
+        
+        # Process the content we found
+        if markdown_content:
+            return parse_markdown_table(markdown_content, building_name)
+        elif html_content:
+            return parse_html_table(html_content, building_name)
         else:
-            print(f"   ⚠ Unexpected response type: {type(result)}")
+            print(f"   ⚠ No content found in response")
+            # Try to print the actual object for debugging
+            print(f"   Full object: {str(result)[:500]}")
             
     except Exception as e:
         print(f"   ✗ Error scraping {building_name}: {e}")
-        
-        # Try to show available methods/attributes for debugging
-        try:
-            app = FirecrawlApp(api_key=API_KEY)
-            print(f"   Available methods: {[m for m in dir(app) if not m.startswith('_')]}")
-        except:
-            pass
-            
         import traceback
         traceback.print_exc()
         return None
@@ -162,8 +164,7 @@ def parse_markdown_table(markdown: str, building_name: str) -> Optional[Dict]:
         print(f"   🔍 Parsing markdown table...")
         
         # Debug: Show sample of content
-        preview = markdown[:1000].replace('\n', '\\n')
-        print(f"   Preview: {preview[:200]}...")
+        print(f"   First 500 chars: {markdown[:500]}")
         
         lines = markdown.split('\n')
         data = {
@@ -171,53 +172,79 @@ def parse_markdown_table(markdown: str, building_name: str) -> Optional[Dict]:
             "levels": []
         }
         
-        # Find table rows - Kirilloid might use different separators
-        for line in lines:
+        # Look for table data in various formats
+        for i, line in enumerate(lines):
             # Skip empty lines
             if not line.strip():
                 continue
-                
-            # Check if this looks like a data row
-            # Could be separated by |, tabs, or spaces
-            if '|' in line:
-                parts = [p.strip() for p in line.split('|') if p.strip()]
-            elif '\t' in line:
-                parts = [p.strip() for p in line.split('\t') if p.strip()]
-            else:
-                # Try splitting by multiple spaces
-                parts = line.split()
             
-            # Try to parse as level data
+            # Debug first few lines with content
+            if i < 20 and line.strip():
+                print(f"   Line {i}: {line[:100]}")
+            
+            # Look for numeric data that could be building levels
+            # Kirilloid might format as: "1 220 160 90 40 4 5 0:16:40"
+            parts = line.split()
+            
             if len(parts) >= 8:
                 try:
-                    # Check if first part is a number (level)
-                    first = parts[0].strip()
-                    if first.isdigit():
+                    # Check if first part is a level number (1-20)
+                    first = parts[0].strip().replace('.', '').replace(',', '')
+                    if first.isdigit() and 1 <= int(first) <= 20:
                         level = int(first)
                         
-                        # Clean up number strings
-                        def clean_number(s):
-                            return s.replace(',', '').replace('.', '').replace(' ', '').strip()
+                        # Clean and parse the numbers
+                        def clean_num(s):
+                            return int(s.replace(',', '').replace('.', '').strip())
                         
                         level_data = {
                             "level": level,
-                            "wood": int(clean_number(parts[1])),
-                            "clay": int(clean_number(parts[2])),
-                            "iron": int(clean_number(parts[3])),
-                            "crop": int(clean_number(parts[4])),
-                            "population": int(clean_number(parts[5])),
-                            "culture_points": int(clean_number(parts[6])),
-                            "build_time": parts[7].strip()
+                            "wood": clean_num(parts[1]),
+                            "clay": clean_num(parts[2]),
+                            "iron": clean_num(parts[3]),
+                            "crop": clean_num(parts[4]),
+                            "population": clean_num(parts[5]),
+                            "culture_points": clean_num(parts[6]),
+                            "build_time": parts[7] if ':' in parts[7] else ' '.join(parts[7:])
                         }
-                        data["levels"].append(level_data)
                         
-                        # Show first level found
-                        if level == 1:
-                            print(f"   ✓ Found Level 1: Wood={level_data['wood']}, Clay={level_data['clay']}")
+                        # Validate the data makes sense
+                        if level_data["wood"] > 0 and level_data["wood"] < 100000:
+                            data["levels"].append(level_data)
                             
+                            if level == 1:
+                                print(f"   ✓ Found Level 1: {level_data}")
+                                
                 except (ValueError, IndexError) as e:
-                    # Not a data row, skip
                     continue
+            
+            # Also try pipe-separated format
+            if '|' in line and len(line.split('|')) >= 8:
+                parts = [p.strip() for p in line.split('|') if p.strip()]
+                if len(parts) >= 8:
+                    try:
+                        first = parts[0].strip()
+                        if first.isdigit() and 1 <= int(first) <= 20:
+                            level = int(first)
+                            
+                            level_data = {
+                                "level": level,
+                                "wood": int(parts[1].replace(',', '').replace('.', '')),
+                                "clay": int(parts[2].replace(',', '').replace('.', '')),
+                                "iron": int(parts[3].replace(',', '').replace('.', '')),
+                                "crop": int(parts[4].replace(',', '').replace('.', '')),
+                                "population": int(parts[5].replace(',', '').replace('.', '')),
+                                "culture_points": int(parts[6].replace(',', '').replace('.', '')),
+                                "build_time": parts[7].strip()
+                            }
+                            
+                            if level_data["wood"] > 0 and level_data["wood"] < 100000:
+                                data["levels"].append(level_data)
+                                
+                                if level == 1:
+                                    print(f"   ✓ Found Level 1 (pipe format): {level_data}")
+                    except (ValueError, IndexError):
+                        continue
         
         if data["levels"]:
             data["max_level"] = len(data["levels"])
@@ -225,130 +252,88 @@ def parse_markdown_table(markdown: str, building_name: str) -> Optional[Dict]:
             return data
         else:
             print(f"   ⚠ No level data found in markdown")
-            # Show more of the content for debugging
-            print(f"   First 10 lines:")
-            for i, line in enumerate(lines[:10]):
-                print(f"     {i}: {line[:100]}")
             
     except Exception as e:
         print(f"   Error parsing markdown: {e}")
+        import traceback
+        traceback.print_exc()
     
     return None
 
 def parse_html_table(html: str, building_name: str) -> Optional[Dict]:
     """
-    Parse building data from HTML table using regex as fallback
+    Parse building data from HTML table
     """
     try:
         print(f"   🔍 Parsing HTML table...")
         
-        # First, try to find if there's a table at all
+        # Check if there's a table
         if '<table' not in html.lower():
             print(f"   ⚠ No table found in HTML")
+            print(f"   HTML preview: {html[:500]}")
             return None
         
-        # Try BeautifulSoup first
-        try:
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html, 'html.parser')
+        # Use regex to extract table data
+        import re
+        
+        # Find all table rows
+        row_pattern = r'<tr[^>]*>(.*?)</tr>'
+        rows = re.findall(row_pattern, html, re.DOTALL | re.IGNORECASE)
+        
+        print(f"   Found {len(rows)} table rows")
+        
+        data = {
+            "name": building_name,
+            "levels": []
+        }
+        
+        for row_num, row in enumerate(rows):
+            # Extract cells from row
+            cell_pattern = r'<t[dh][^>]*>(.*?)</t[dh]>'
+            cells = re.findall(cell_pattern, row, re.DOTALL | re.IGNORECASE)
             
-            # Look for tables
-            tables = soup.find_all('table')
-            print(f"   Found {len(tables)} tables")
-            
-            for i, table in enumerate(tables):
-                rows = table.find_all('tr')
-                
-                if len(rows) < 2:
-                    continue
+            if len(cells) >= 8:
+                try:
+                    # Clean HTML tags from cell content
+                    clean_cells = []
+                    for cell in cells:
+                        # Remove all HTML tags
+                        clean = re.sub(r'<[^>]+>', '', cell).strip()
+                        clean = clean.replace('&nbsp;', ' ').replace('&amp;', '&')
+                        clean_cells.append(clean)
                     
-                data = {
-                    "name": building_name,
-                    "levels": []
-                }
-                
-                for row in rows:
-                    cells = row.find_all(['td', 'th'])
+                    # Debug first row with enough cells
+                    if row_num < 3:
+                        print(f"   Row {row_num} cells: {clean_cells[:5]}")
                     
-                    if len(cells) >= 8:
-                        try:
-                            first_cell = cells[0].text.strip()
-                            if first_cell.isdigit():
-                                level_data = {
-                                    "level": int(first_cell),
-                                    "wood": int(cells[1].text.strip().replace(',', '').replace('.', '')),
-                                    "clay": int(cells[2].text.strip().replace(',', '').replace('.', '')),
-                                    "iron": int(cells[3].text.strip().replace(',', '').replace('.', '')),
-                                    "crop": int(cells[4].text.strip().replace(',', '').replace('.', '')),
-                                    "population": int(cells[5].text.strip().replace(',', '').replace('.', '')),
-                                    "culture_points": int(cells[6].text.strip().replace(',', '').replace('.', '')),
-                                    "build_time": cells[7].text.strip()
-                                }
-                                data["levels"].append(level_data)
-                                
-                                if level_data["level"] == 1:
-                                    print(f"   ✓ Found Level 1: Wood={level_data['wood']}, Clay={level_data['clay']}")
-                                    
-                        except (ValueError, IndexError):
-                            continue
-                
-                if data["levels"]:
-                    data["max_level"] = len(data["levels"])
-                    print(f"   ✓ Parsed {len(data['levels'])} levels from table {i+1}")
-                    return data
-                    
-        except ImportError:
-            print("   BeautifulSoup not available, using regex fallback")
-            
-            # Regex fallback for table parsing
-            import re
-            
-            # Find all table rows
-            row_pattern = r'<tr[^>]*>(.*?)</tr>'
-            rows = re.findall(row_pattern, html, re.DOTALL | re.IGNORECASE)
-            
-            print(f"   Found {len(rows)} rows with regex")
-            
-            data = {
-                "name": building_name,
-                "levels": []
-            }
-            
-            for row in rows:
-                # Extract cells from row
-                cell_pattern = r'<t[dh][^>]*>(.*?)</t[dh]>'
-                cells = re.findall(cell_pattern, row, re.DOTALL | re.IGNORECASE)
-                
-                if len(cells) >= 8:
-                    try:
-                        # Clean HTML tags from cell content
-                        clean_cells = []
-                        for cell in cells:
-                            clean = re.sub(r'<[^>]+>', '', cell).strip()
-                            clean_cells.append(clean)
+                    # Check if first cell is a level number
+                    first = clean_cells[0].strip()
+                    if first.isdigit() and 1 <= int(first) <= 20:
+                        level_data = {
+                            "level": int(first),
+                            "wood": int(clean_cells[1].replace(',', '').replace('.', '')),
+                            "clay": int(clean_cells[2].replace(',', '').replace('.', '')),
+                            "iron": int(clean_cells[3].replace(',', '').replace('.', '')),
+                            "crop": int(clean_cells[4].replace(',', '').replace('.', '')),
+                            "population": int(clean_cells[5].replace(',', '').replace('.', '')),
+                            "culture_points": int(clean_cells[6].replace(',', '').replace('.', '')),
+                            "build_time": clean_cells[7].strip()
+                        }
                         
-                        if clean_cells[0].isdigit():
-                            level_data = {
-                                "level": int(clean_cells[0]),
-                                "wood": int(clean_cells[1].replace(',', '').replace('.', '')),
-                                "clay": int(clean_cells[2].replace(',', '').replace('.', '')),
-                                "iron": int(clean_cells[3].replace(',', '').replace('.', '')),
-                                "crop": int(clean_cells[4].replace(',', '').replace('.', '')),
-                                "population": int(clean_cells[5].replace(',', '').replace('.', '')),
-                                "culture_points": int(clean_cells[6].replace(',', '').replace('.', '')),
-                                "build_time": clean_cells[7]
-                            }
-                            data["levels"].append(level_data)
+                        data["levels"].append(level_data)
+                        
+                        if level_data["level"] == 1:
+                            print(f"   ✓ Found Level 1: {level_data}")
                             
-                            if level_data["level"] == 1:
-                                print(f"   ✓ Found Level 1: Wood={level_data['wood']}, Clay={level_data['clay']}")
-                    except (ValueError, IndexError):
-                        continue
-            
-            if data["levels"]:
-                data["max_level"] = len(data["levels"])
-                print(f"   ✓ Parsed {len(data['levels'])} levels with regex")
-                return data
+                except (ValueError, IndexError) as e:
+                    continue
+        
+        if data["levels"]:
+            data["max_level"] = len(data["levels"])
+            print(f"   ✓ Parsed {len(data['levels'])} levels from HTML")
+            return data
+        else:
+            print(f"   ⚠ No valid level data found in HTML table")
                 
     except Exception as e:
         print(f"   Error parsing HTML: {e}")
