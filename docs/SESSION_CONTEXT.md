@@ -1,187 +1,177 @@
-# TravianAssistant Session Context
-*Last Updated: August 30, 2025, 1:20 PM EST*
+# SESSION_CONTEXT.md
+*Last Updated: August 30, 2025*
 
-## 🚨 CRITICAL STATUS UPDATE
-**Beta deadline (Sept 1) approaching - 1 day remaining**
-**Current readiness: ~40% complete**
+## Project: TravianAssistant V3
+Browser-based AI assistant for Travian Legends gameplay optimization
 
-## TODAY'S WORK (August 30, 2025)
+## Mission Statement
+Transform Travian gameplay from tedious spreadsheet calculations to AI-powered strategic excellence, enabling top-20 competitive play in under 2 hours per day.
 
-### ✅ Completed This Session
-1. **Created V3 Database Schema** (`scripts/init-v3-database.js`)
-   - Complete SQLite schema for game data
-   - Egyptian troop data inserted
-   - Resource field calculations ready
-   
-2. **Game Start Optimizer Built** (`backend/game-start-optimizer.js`)
-   - Complete 168-hour optimization algorithm
-   - Phase-based strategy (Initial → Acceleration → CP Rush → Settlement)
-   - ROI calculations for building decisions
-   
-3. **Extension V3 Foundation** (`extension-v3/`)
-   - Manifest.json configured for all Travian domains
-   - Content script with HUD overlay
-   - Data extraction from game pages
-   - Real-time recommendations display
+## Critical Accomplishments - Session August 30, 2025
 
-### 🔴 Blockers Identified
-1. **Backend not on Replit** - Can't use Replit management tools
-2. **Multiple server versions** causing confusion:
-   - `backend/server.js` (has chat endpoint)
-   - `backend/server-sqlite.js` 
-   - Which is production?
-3. **Extension not connected to backend** - Missing API integration
+### Data Extraction Complete ✅
+Successfully extracted ALL game data from Kirilloid's Travian calculator (http://travian.kirilloid.ru):
 
-## 🎯 CRITICAL PATH TO BETA (24 hours)
+#### Buildings Data (50 buildings total)
+- **2x Server**: `travian_complete_buildings_data.json` - All 50 buildings including specials
+- **1x Server**: `travian_buildings_SS1X.json` - Complete 1x server building costs/times
 
-### Must Have for Beta Test
-1. **Get backend running on Replit** (2 hours)
-   - Deploy `backend/server.js` to Replit
-   - Configure environment variables
-   - Test all endpoints
-   
-2. **Connect extension to backend** (1 hour)
-   - Update API_URL in content.js
-   - Test data flow
-   - Verify recommendations display
-   
-3. **Initialize database with game data** (1 hour)
-   - Run `node scripts/init-v3-database.js`
-   - Import Kirilloid data if available
-   - Verify data integrity
+Each building includes for all levels (1-20, WW has 100):
+- Resource costs (wood, clay, iron, crop)
+- Population requirements  
+- Build time (base time before speed modifiers)
+- Culture points generated
 
-### Nice to Have (if time permits)
-- Complete troop data extraction
-- Build time formulas
-- Culture point calculations
-- Hero mechanics
+Buildings extracted include:
+- Resource fields (Woodcutter, Clay Pit, Iron Mine, Cropland)
+- Resource processors (Sawmill, Brickyard, Iron Foundry, Grain Mill, Bakery)
+- Infrastructure (Warehouse, Granary, Great Warehouse, Great Granary)
+- Military (Barracks, Stable, Workshop, Academy, Smithy, Tournament Square)
+- Defensive (City Wall, Earth Wall, Palisade, Stone Wall, Makeshift Wall)
+- Special (Palace, Residence, Treasury, Wonder of the World, etc.)
 
-## 🏗️ ARCHITECTURE DECISION
+#### Troops Data (8 tribes)
+- **2x Server**: `travian_all_tribes_complete.json` - 7 tribes
+- **2x Server Spartans**: `travian_spartans_troops.json` - Spartan troops separate
+- **1x Server**: `travian_troops_SS1X.json` - All 8 tribes including Spartans
 
-### Going with Simplified V3 Architecture:
+Tribes captured:
+1. Romans (10 troops)
+2. Teutons (10 troops)  
+3. Gauls (10 troops)
+4. Egyptians (10 troops)
+5. Huns (10 troops)
+6. Spartans (10 troops)
+7. Nature (10 troops - for oasis animals)
+8. Natarians (10 troops - for end-game)
+
+Each troop type includes:
+- Attack value
+- Defense vs infantry
+- Defense vs cavalry
+- Movement speed (fields/hour)
+- Training costs (wood, clay, iron, crop)
+- Training time (base before modifiers)
+- Carry capacity
+- Crop consumption per hour
+
+### Technical Achievements
+1. **Overcame Kirilloid's non-standard navigation** - Site uses JavaScript-based navigation, not standard links
+2. **Direct data extraction from JavaScript arrays** - Found and extracted from `window.buildings` array
+3. **Automated tribe rotation** - Script automatically cycled through all tribes
+4. **Dual server speed support** - Captured both 1x and 2x server data for comparison
+
+### Key Code Solutions
+- Building extraction: Direct access to `buildings.getStat()` function
+- Troop extraction: Automated dropdown cycling with event dispatching
+- Data structure: Consistent JSON format for easy integration
+
+## Next Session Focus: Game Mechanics & Multipliers
+
+### Priority 1: Combat Mechanics
+- [ ] **Hero System**
+  - Weapon bonuses (attack increase per point)
+  - Armor bonuses (defense increase per point)
+  - Horse bonuses (speed increase)
+  - Fighting strength calculation
+- [ ] **Smithy Upgrades**
+  - Attack improvements (1.5% per level, max level 20)
+  - Defense improvements (1.5% per level, max level 20)
+- [ ] **Wall Bonuses**
+  - Defensive multipliers by tribe and wall type
+  - Durability points and their effect
+- [ ] **Morale Bonus**
+  - Protection for smaller players
+
+### Priority 2: Production Modifiers
+- [ ] **Oasis Bonuses**
+  - 25% single resource oases
+  - 50% double resource oases (25% + 25%)
+  - Crop oases (25% or 50%)
+- [ ] **Gold/Silver Membership**
+  - 25% production bonus calculation
+  - 25% faster building/training
+- [ ] **Hero Resource Production**
+  - Points in resource production
+  - Items that boost production
+- [ ] **Artifacts**
+  - Small/Large/Unique effects
+  - Building time reduction
+  - Troop training speed
+
+### Priority 3: Advanced Calculations
+- [ ] **Culture Point System**
+  - Settlement timing optimization
+  - Daily CP production calculations
+  - Celebration costs and benefits
+- [ ] **Trade Routes**
+  - Merchant capacity by tribe
+  - Travel time calculations
+  - NPC trading ratios
+- [ ] **Farm Lists**
+  - Efficiency calculations
+  - Loss tolerance settings
+  - Optimal raid intervals
+
+### Priority 4: AI Integration Design
+- [ ] **Build Order Optimization**
+  - Resource balance algorithms
+  - CP rush vs military strategies
+  - Gold usage optimization
+- [ ] **Combat Simulators**
+  - Battle outcome predictions
+  - Optimal troop compositions
+  - Artifact effects on combat
+- [ ] **Timing Optimizations**
+  - Queue management
+  - Resource arrival coordination
+  - Building/training completion alerts
+
+## Technical Stack (Confirmed)
+- **Frontend**: Chrome Extension (Manifest V3)
+- **Backend**: Node.js on Replit
+- **Database**: SQLite (dev) → Supabase (production)
+- **AI**: Claude Sonnet 4 via Anthropic API
+- **Data Source**: Game scraping + Kirilloid calculator data
+
+## Success Metrics
+- ✅ Complete game data extraction
+- ⬜ Multiplier system implementation
+- ⬜ Chrome extension alpha
+- ⬜ AI recommendation engine
+- ⬜ Beta testing with team (Target: September 9)
+- ⬜ <2 hours/day gameplay achievement
+
+## Repository Structure
 ```
-Chrome Extension (extension-v3/)
-       ↓
-Replit Backend (backend/server.js)
-       ↓
-SQLite Database (data/travian-v3.db)
-       ↓
-Claude AI (via Vercel proxy)
+/TravianAssistant/
+├── /data/
+│   ├── buildings/
+│   │   ├── travian_complete_buildings_data.json (2x server)
+│   │   └── travian_buildings_SS1X.json (1x server)
+│   └── troops/
+│       ├── travian_all_tribes_complete.json (2x server)
+│       ├── travian_spartans_troops.json (2x server)
+│       └── travian_troops_SS1X.json (1x server)
+├── /extension-v3/
+│   ├── manifest.json
+│   ├── content.js
+│   └── background.js
+├── /backend/
+│   ├── server.js
+│   ├── game-start-optimizer.js
+│   └── ai-engine.js
+└── /docs/
+    ├── SESSION_CONTEXT.md (this file)
+    └── TRAVIAN_ASSISTANT_V3_COMPLETE.md
 ```
 
-### Why This Approach:
-- Simpler than V4 architecture
-- Can be deployed TODAY
-- Extension already built
-- Backend server exists
-- Database schema ready
-
-## 📋 NEXT STEPS (Priority Order)
-
-### Step 1: Deploy Backend to Replit (NOW)
-```bash
-# On Replit:
-1. Create new Node.js Repl
-2. Import from GitHub: DougProceptra/TravianAssistant
-3. Install dependencies:
-   npm install express cors better-sqlite3 node-fetch node-cron
-4. Set environment variables:
-   - ANTHROPIC_API_KEY (if needed)
-   - PORT=3000
-5. Run: node backend/server.js
-```
-
-### Step 2: Update Extension Configuration
-```javascript
-// In extension-v3/content.js, update:
-const CONFIG = {
-  API_URL: 'https://travianassistant-v3.YOUR_USERNAME.repl.co',
-  // ...
-};
-```
-
-### Step 3: Load Extension & Test
-1. Chrome → Manage Extensions
-2. Load unpacked → Select `extension-v3/`
-3. Navigate to Travian game
-4. Verify HUD appears
-5. Check console for errors
-
-## ⚠️ KNOWN ISSUES
-
-### Data Gaps
-- **Build times**: Formula not decoded from Kirilloid
-- **Troop data**: Only Egyptian basics added
-- **Game mechanics**: Culture points hardcoded
-
-### Technical Debt
-- 40+ experimental scripts need cleanup
-- Multiple server versions need consolidation
-- No automated tests
-
-## 💡 MVP STRATEGY FOR BETA
-
-### Core Features Only:
-1. **Resource field recommendations** ✅ (Game Start Optimizer)
-2. **Building queue management** ✅ (Empty queue alerts)
-3. **Basic chat with AI** ✅ (Chat endpoint exists)
-4. **Visual HUD overlay** ✅ (Extension complete)
-
-### Defer to Post-Beta:
-- Complete game mechanics
-- Multi-village support
-- Alliance features
-- Advanced analytics
-
-## 🔄 SESSION HANDOFF
-
-### For Next Session:
-1. **Check Replit deployment** - Is backend running?
-2. **Test extension** - Does HUD appear on Travian?
-3. **Verify data flow** - Are recommendations showing?
-4. **Monitor for errors** - Check browser console & Replit logs
-
-### Files to Review:
-- `backend/server.js` - Main backend server
-- `backend/game-start-optimizer.js` - Core strategy engine
-- `extension-v3/content.js` - Chrome extension
-- `scripts/init-v3-database.js` - Database setup
-
-### Questions Resolved:
-- ✅ Which architecture? → Simplified V3
-- ✅ Which server file? → `backend/server.js`
-- ✅ Beta timeline? → 24 hours (tight but possible)
-- ✅ MVP scope? → 4 core features only
-
-## 📊 COMPLETION STATUS
-
-| Component | Status | Ready for Beta |
-|-----------|--------|----------------|
-| Database Schema | ✅ Complete | Yes |
-| Game Optimizer | ✅ Complete | Yes |
-| Backend Server | ⚠️ Not deployed | No - needs Replit |
-| Chrome Extension | ✅ Built | Yes - needs API URL |
-| Game Data | ⚠️ Partial | Acceptable for MVP |
-| AI Integration | ✅ Via proxy | Yes |
-
-**Overall Readiness: 60%** (was 40% at session start)
-
-## 🚀 SUCCESS CRITERIA FOR BETA
-
-### Minimum Bar:
-1. Extension loads without errors
-2. HUD displays on Travian pages
-3. At least ONE recommendation shows
-4. Chat responds (even if generic)
-
-### Target:
-1. Accurate resource field recommendations
-2. Real-time building queue alerts
-3. Context-aware AI responses
-4. No critical errors in 1-hour test
+## Notes for Next Session
+1. Focus on implementing multiplier calculations first
+2. Build simple test harness to verify calculations match game
+3. Start with Smithy upgrades as they're most straightforward (1.5% per level)
+4. Hero system is complex - may need separate deep dive
+5. Consider building calculator UI for testing before Chrome extension
 
 ---
-
-**Session Time Used**: ~45 minutes
-**Value Delivered**: Clear path to beta, working code, reduced scope
-**Next Critical Action**: DEPLOY TO REPLIT NOW
+*Session completed successfully with all data extraction goals achieved. Ready for mechanics implementation.*
