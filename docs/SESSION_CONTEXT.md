@@ -1,96 +1,107 @@
 # TravianAssistant Session Context
-*Last Updated: August 29, 2025, 5:45 PM EST*
+*Last Updated: August 29, 2025, 10:00 PM EST*
 
-## 🎯 FORMULAS VALIDATED (Working)
+## 🎯 CURRENT APPROACH: Firecrawl Data Scraping
 
-### Core Formulas
+### What We're Doing
+**Scraping Kirilloid data with Firecrawl** - NOT using formulas (not reliable enough)
+- Goal: Extract exact building data from kirilloid.ru
+- Method: Use Firecrawl to programmatically scrape all building tables
+- Status: Working on getting Firecrawl to handle JavaScript-rendered content
+
+## ❌ FORMULAS REJECTED (Not Reliable Enough)
+
+### Why Formulas Don't Work
+- Only ~95% accurate - not good enough for competitive play
+- T4 Extend inconsistencies make predictions impossible
+- Too many edge cases and exceptions
+- Can't handle special buildings correctly
+
+### Validated But Not Using
 ```javascript
-// Resource Costs
+// These formulas work but aren't accurate enough:
 cost = round5(baseCost * k^(level-1))
-round5(n) = 5 * Math.round(n/5)
-
-// Population (Upkeep)
-Level 1: baseUpkeep
-Level 2+: Math.round((5 * baseUpkeep + level - 1) / 10)
-
-// Culture Points
-CP = Math.round(baseCP * 1.2^level)
-
-// Build Time (99.5% accurate)
-time = (a * k^(level-1) - b) * 0.964^(MB-1) / serverSpeed
-// Most buildings: a=3875, k=1.16, b=1875
-// Small discrepancy (~4 seconds) at low levels with high MB
+// We need 100% accuracy, not 95%
 ```
 
-### Multiplier Values by Building Type
-- Resource fields (Woodcutter, Clay, Iron, Crop): `k = 1.67`
-- Most infrastructure/military: `k = 1.28`
-- Resource boosters (Sawmill, etc.): `k = 1.80`
-- Hero Mansion: `k = 1.33`
-- Treasury: `k = 1.26`
-- World Wonder: `k = 1.0275`
+## 🔧 FIRECRAWL SCRAPING ATTEMPTS
 
-## ❌ T4 EXTEND INCONSISTENCIES
+### Current Challenge
+Firecrawl can't properly render Kirilloid's JavaScript-heavy pages:
+- Kirilloid uses URL fragments (`#b=21&s=2.46&mb=1`)
+- Content loads entirely client-side via JavaScript
+- Standard scraping returns empty tables
 
-### What We Tested
-| Building | T4 Extend Says | Actually Uses | Status |
-|----------|---------------|---------------|---------|
-| Hero Mansion | `[80, 120, 70, 90]` | `[700, 670, 700, 240]` (T3) | ❌ NOT Applied |
-| Smithy | `[180, 250, 500, 160]` | `[180, 250, 500, 160]` | ✅ Applied |
-| Barracks prereqs | Smithy 3, Academy 5 | MB 3, Rally Point 1 | ❌ NOT Applied |
-| Stonemason prereqs | MB 5 | MB 5 | ✅ Applied |
+### What We've Tried
+1. **Direct URL with fragments** - Returns default building (Workshop)
+2. **executeJavascript action** - Tried to change window.location.hash
+3. **Click and write actions** - Attempted dropdown manipulation
+4. **Long wait times** - Gave JS time to load (5+ seconds)
+5. **Browser console script** - Works manually but not via Firecrawl
 
-**Conclusion**: Can't predict which extends work without testing each building.
+### Browser Console Script Status
+```javascript
+// kirilloid-extractor.js - This WORKS in browser console
+// But when run via Firecrawl, it finds no tables
+// Problem: Firecrawl isn't rendering the page properly
+```
 
-## 🏗️ ADDITIONAL COMPLEXITY DISCOVERED
+Console output shows:
+```
+❌ No building data found on page
+   Make sure you're on: http://travian.kirilloid.ru/build.php
+```
 
-### Max Levels
-- Resource boosters (Sawmill, Brickyard, etc.): Max level **5**
-- Clay Pit & Cropland: Max level **21** (not 20)
-- Most others: Max level **20**
-- World Wonder: Max level **100**
+## 📋 NEXT STEPS
 
-### Special Cases
-- Capital-only buildings (levels 11+ for fields)
-- Building durability (Stonemason effect)
-- Tribe-specific buildings
-- Multi-building restrictions
-- Slot restrictions
+### Option 1: Fix Firecrawl Rendering
+- Need to get Firecrawl to properly render JavaScript
+- May need different scraping parameters
+- Consider using `screenshot` format to debug what Firecrawl sees
 
-## 🚫 SCRAPING ATTEMPTS FAILED
+### Option 2: Alternative Scraping Tools
+- Playwright/Puppeteer might handle JS better
+- Selenium as fallback option
+- Custom headless browser solution
 
-### What Didn't Work
-- Firecrawl couldn't handle Kirilloid's JavaScript-heavy site
-- Dynamic content loads client-side from URL fragments
-- No sitemap or API discovered
+### Option 3: Manual Collection (Last Resort)
+- Use browser console script manually
+- Takes ~30 minutes to collect all buildings
+- Creates complete JSON file
+- 100% accurate but not automated
 
-### Why It's Hard
-- Kirilloid uses fragments (`#b=21&mb=1&s=2.46`)
-- Content loads entirely via JavaScript
-- Hundreds of combinations (buildings × MB levels × speeds)
+## 🏗️ DATA REQUIREMENTS
 
-## 📋 NEXT STEPS OPTIONS
+### What We Need to Scrape
+- All 30+ buildings from Kirilloid
+- Levels 1-20 (or max level) for each
+- Resources (wood, clay, iron, crop)
+- Population, Culture Points, Build Time
+- Prerequisites and special properties
 
-### Option 1: Manual Data Collection
-- Run JavaScript in browser console on Kirilloid pages
-- Extract table data for each building
-- Time-consuming but 100% accurate
+### Building List to Scrape
+```
+Infrastructure: Main Building, Warehouse, Granary, Rally Point, Marketplace, Embassy
+Military: Barracks, Stables, Workshop, Academy, Smithy, Tournament Square
+Village: Cranny, Town Hall, Residence, Palace, Hero Mansion, Treasury, Trade Office
+Resources: Woodcutter, Clay Pit, Iron Mine, Cropland
+Boosters: Sawmill, Brickyard, Iron Foundry, Grain Mill, Bakery
+Defense: City Wall, Earth Wall, Palisade, Stonemason, Great Barracks, Great Stable
+Specials: Wonder of the World, Horse Drinking Trough, Great Warehouse, Great Granary
+```
 
-### Option 2: Use Formulas with Known Values
-- ~95% accurate
-- Handle exceptions case-by-case
-- Good enough for most gameplay optimization
-
-### Option 3: Focus on Essential Buildings
-- Only implement what matters for early/mid game
-- Ignore edge cases and special buildings
-- Practical approach
-
-## ✅ VERSION SYSTEM (Still Working)
+## ✅ VERSION SYSTEM (Working)
 - Version 1.0.0 current
-- System working perfectly
+- Chrome Extension Manifest V3
 - Single source of truth (manifest.json)
+
+## 🚫 NOT DOING
+- ❌ Using formulas (not accurate enough)
+- ❌ Manual data entry (too time-consuming for production)
+- ❌ Accepting 95% accuracy (need 100% for competitive edge)
 
 ---
 
-**Session Status**: Formulas validated but T4 extends are inconsistently applied. Automated scraping failed due to JavaScript complexity. Need to decide between manual data extraction or accepting formula-based approach with known limitations.
+**Session Status**: Attempting to scrape Kirilloid data with Firecrawl. Current blocker: Firecrawl not rendering JavaScript properly, returning empty tables. Need to either fix Firecrawl parameters or switch to alternative scraping solution.
+
+**Critical Decision**: We are NOT using formulas - they're not reliable enough. We need exact data from Kirilloid for V4 to work properly.
