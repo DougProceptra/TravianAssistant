@@ -1,5 +1,5 @@
 # TravianAssistant Session Context
-*Last Updated: August 30, 2025, 6:30 PM EST*
+*Last Updated: August 30, 2025, 6:35 PM EST*
 
 ## CURRENT_FOCUS
 Preparing for Sept 1 beta test on new 1x Travian server. Focus on completing data extraction from Kirilloid and implementing game start optimization features.
@@ -133,26 +133,79 @@ TravianAssistant/
 - Multiple approaches attempted (Firecrawl, Puppeteer, Python)
 - Good documentation practices maintained throughout
 
-## ❓ OPEN QUESTIONS
+## ❓ OPEN QUESTIONS & CONCERNS
 
-1. **Server Speed Handling**: Need equations to convert between 1x/2x/3x speeds or separate data sets?
-2. **Version Support**: Focus on T4 only or also support T4.6?
-3. **Data Completeness**: Is 80% data extraction acceptable for beta?
+### Critical Questions for Next Session
+
+1. **Beta Timeline Concern**
+   - Sept 1 is tomorrow - is this still realistic given remaining work?
+   - Should we focus on MVP features only?
+
+2. **Data Files Location**
+   - `kirilloid_buildings.json` and `kirilloid_complete.json` not in repo
+   - Are these stored locally only? Should they be committed?
+
+3. **Extension Status**
+   - The extension code exists but seems incomplete
+   - Is the HUD overlay actually working or just scaffolded?
+
+4. **Backend Server Confusion**
+   - Multiple server files: `server.js`, `server-sqlite.js`, `server-sqlite-fixed.js`
+   - Which one is the production version?
+
+5. **Missing Integration**
+   - Don't see where extension connects to backend API
+   - Is this not implemented yet?
+
+6. **Server Speed Handling**
+   - Need equations to convert between 1x/2x/3x speeds or separate data sets?
+
+7. **Version Support**
+   - Focus on T4 only or also support T4.6?
+
+8. **Data Completeness**
+   - Is 80% data extraction acceptable for beta?
+
+## 🚀 RECOMMENDATIONS FOR BETA SUCCESS
+
+### Minimum Viable Beta (if time is tight)
+- Use only the building data already extracted
+- Hardcode some game constants temporarily
+- Focus on ONE feature that works end-to-end
+- Test with existing server before Sept 1 if possible
+
+### Data Priority
+- If Firecrawl fails, immediately pivot to Python scraper expansion
+- Build times are critical - consider hardcoding formula if extraction fails
+- Culture points can be approximated initially
+
+### Code Organization Needs
+- **Scripts folder cleanup**: 40+ files need organization
+  - Consider subfolders: `/scripts/fixes/`, `/scripts/scrapers/`, `/scripts/tests/`
+- **Clarify which server file is production**
+- **Document or implement extension-backend connection**
+
+### Testing Strategy
+- Have backup plan if new server has unexpected changes
+- Consider testing with current server first
+- Prepare fallback constants if data extraction incomplete
 
 ## 🔄 VERSION CONTROL
 
 ### Current State
 - **Main branch**: Contains working extension + backend
-- **Last commit**: Various extraction scripts and attempts
+- **Last commit**: Updated SESSION_CONTEXT.md
 - **Vercel deployment**: Proxy working at travian-assistant-proxy.vercel.app
 
 ### Repository Health
 - Multiple experimental scripts (can be cleaned up post-beta)
 - Good separation of concerns (backend, extension, scripts)
-- Documentation up to date (except this file until now)
+- Documentation up to date with this SESSION_CONTEXT
 
 ---
 
-**Session Status**: Preparing Firecrawl reconnaissance mission for comprehensive Kirilloid data discovery. Beta deadline Sept 1 (tomorrow).
+**Session Status**: Prepared Firecrawl reconnaissance prompt. Multiple concerns about beta readiness raised. Need to address critical questions and potentially reduce scope for Sept 1 deadline.
 
 **Critical Path**: Data extraction → Database population → Extension integration → Beta test
+
+**Risk Assessment**: HIGH - Significant work remaining with <24 hours to beta. Consider MVP approach.
