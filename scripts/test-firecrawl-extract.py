@@ -9,11 +9,11 @@ import json
 import sys
 from firecrawl import FirecrawlApp
 
-# Get API key
+# Get API key from Replit secret
 API_KEY = os.environ.get('TLA_FIRECRAWL_API')
 if not API_KEY:
-    print("ERROR: TLA_FIRECRAWL_API environment variable not found")
-    print("Set it with: export TLA_FIRECRAWL_API='your-api-key'")
+    print("ERROR: TLA_FIRECRAWL_API secret not found")
+    print("Make sure the secret is set in Replit")
     sys.exit(1)
 
 print(f"✓ Found API key: {API_KEY[:10]}...")
