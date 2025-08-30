@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/ico" href="img/favicon.ico" sizes="16x16">
+<link rel="icon" type="image/png" href="favicon.png" sizes="32x32">
+<link rel="stylesheet" type="text/css" href="css/style.css?e">
+<link rel="stylesheet" type="text/css" media="screen and (pointer: coarse)" href="css/touch.css">
+<link rel="stylesheet" type="text/css" href="css/ltr.css">
+
+<link rel="icon" sizes="192x192" href="img/icon-192.png">
+<link rel="apple-touch-icon" sizes="152x152" href="img/icon-152.png">
+<script type="text/javascript">
+if (!window.$) {
+	$ = function (id) { return document.getElementById(id); };
+}
+var _overlay = null;
+function scriptLoadFail() {
+	if (_overlay) {
+		return;
+	}
+	var div = document.createElement('div');
+	div.className = "overlay";
+	div.innerHTML = "<button class='close' onclick='closeOverlay()'>&times;</button>"
+				  + "<p>There was an error loading JavaScript.</p>"
+				  + "<p>The page might work incorrectly.</p>"
+				  + "<p class='buttons'>"
+				  + "<button class='but' onclick='location.reload()'>🔁 Reload</button>"
+				  + "<button class='but' onclick='closeOverlay()'>❎ Ignore</button></p>";
+	$$(".page")[0].appendChild(div);
+	_overlay = div;
+	document.addEventListener('keyup', closeOverlayOnEsc);
+}
+function closeOverlay() {
+	_overlay.parentNode.removeChild(_overlay);
+	document.removeEventListener('keyup', closeOverlayOnEsc);
+	_overlay = null;
+}
+function closeOverlayOnEsc(e) {
+	if (e.keyCode === 27) {
+		closeOverlay();
+	}
+}
+document.addEventListener('keypress', function (e) {
+  if (e.key === '\n' && (e.ctrlKey || e.metaKey)) {
+	var original = document.getSelection().toString().trim();
+	if (!original) original = prompt("Nothing was selected, enter what to replace:");
+	if (!original) return alert("Still nothing. See you later.");
+	const result = prompt("How to better translate this?", original);
+	if (!result) return;
+	var img = new Image();
+	img.onload = function () { alert("Thanks!"); };
+	img.onerror = function () { alert("Failed! Did you suggest too long string?"); };
+	img.src = 'suggest_translation.php'
+	  + '?lang=' + document.documentElement.lang
+	  + '&path=' + encodeURIComponent(location.pathname)
+	  + '&original=' + encodeURIComponent(original)
+	  + '&suggest=' + encodeURIComponent(result)
+  }
+});
+Element.prototype.matches =
+	Element.prototype.matches ||
+	Element.prototype.msMatchesSelector || 
+	function(s) {
+		var matches = (this.document || this.ownerDocument).querySelectorAll(s),
+			i = matches.length;
+		while (--i >= 0 && matches.item(i) !== this) {}
+		return i > -1;
+	};
+function findParent(e, s) {
+	if (e.closest) return e.closest(s);
+	while (e && e !== document) {
+		if (e.matches(s)) return e;
+		e = e.parentNode;
+	}
+	return null;
+}
+(function () {
+	function css(name, value) {
+		if (arguments.length === 1) { 
+			return this[0].style[name];
+		}
+		this.forEach(function (el) { el.style[name] = value; });
+	}
+	function prop(name, value) {
+		if (arguments.length === 1) { 
+			return this[0][name];
+		}
+		this.forEach(function (el) { el[name] = value; });
+	}
+	function on(event, handler) {
+		this.forEach(function (el) {
+			el.addEventListener(event, handler, false);
+		});
+		return this;
+	}
+	function addClass(cls) {
+		this.forEach(function (el) {
+			el.classList.add(cls);
+		});
+	}
+	function removeClass(cls) {
+		this.forEach(function (el) {
+			el.classList.remove(cls);
+		});
+	}
+	function toggleClass(cls, set) {
+		this.forEach(function (el) {
+			if (set) {
+				el.classList.add(cls);
+			} else if (set == null) {
+				el.classList.toggle(cls);
+			} else {
+				el.classList.remove(cls);
+			}
+		});
+	}
+	function find(selector) {
+		return wrap(this.reduce(function (a, el) {
+			return a.concat([].slice.call(el.querySelectorAll(selector)));
+		}, []));
+	}
+	function wrap(a) {
+		a.on = on;
+		a.css = css;
+		a.prop = prop;
+		a.addClass = addClass;
+		a.removeClass = removeClass;
+		a.toggleClass = toggleClass;
+		a.find = find;
+		a.parent = parent;
+		return a;
+	}
+	function query(ctx, selector) {
+		return [].slice.call(ctx.querySelectorAll(selector));
+	}
+	$$ = function (selector, context) {
+		if (context === undefined) { context = document; }
+		var a;
+		if (selector instanceof HTMLElement) {
+			a = [selector];
+		} else if (typeof selector === 'string') {
+			a = query(context, selector);
+		} else if (selector instanceof Array) {
+			a = selector;
+		} else {
+			throw new TypeError("Selector of wrong type: " + Object.prototype.toString.call(a));
+		}
+		return wrap(a);
+	};
+	Cookie = {
+		write: function (name, value, options) {
+			if (!options) options = {};
+			document.cookie = name + "=" + value
+				+ (options.duration ? ';max-age=' + (options.duration * 86400) : '');
+		},
+		read: function (name) {
+			var m = document.cookie.match(new RegExp("(^|; )" + name + "=(.*?)(; |$)"));
+			return m && m[2];
+		},
+		dispose: function (name) {
+			document.cookie = name + "=0;expires=Thu, 01 Jan 1970 00:00:00 GMT";
+		}
+	};
+	if (!window.Event) {
+		window.Event = function (type, params) {
+			var event = document.createEvent('Event');
+			event.initEvent(type, true, true);
+			return event;
+		};
+	}
+}());
+</script>
+<title>Travian :: buildings</title>
+<style type="text/css">
+table.wire td { padding: 2px 4px; }
+#data_holder {
+	width: 750px;
+	padding: 5px;
+	position:absolute;
+	box-shadow: 0 0 10px silver;
+	margin: 5px 0 0 10px;
+	background: white;
+	border: solid 2px gray;
+	z-index: 1000;
+}
+#data_holder-title {
+	font-size: 150%;
+	margin: 0;
+    display: inline-block;
+    padding-inline-start: 6px;
+}
+#data_holder-icon { margin: -5px 0 3px; }
+#data_holder-req {
+	margin: 0 0 4px;
+	padding: 0 26px;
+}
+#data_holder-req img {
+	margin: -4px 0 0;
+}
+#data_holder-desc {
+	margin: 0 0 4px;
+	padding: 0 26px;
+}
+#data_holder-close {
+	cursor: pointer;
+	width: 16px;
+	height: 16px;
+	display: block;
+	background-image: url('img/navi.gif');
+	background-position: 0 -32px;
+}
+#data_holder-close:hover { background-position: 0 0; }
+#data_holder-close:active { background-position: 0 -16px; }
+#data_holder table { width: 100%; }
+#build_list { overflow: hidden; }
+.build_list__column {
+	margin-left: 3%;
+	width: 30%;
+	float: left;
+}
+@media all and (max-width: 480px) {
+	.build_list__column {
+		float: none;
+		width: 90%;
+	}
+}
+.build_list__item {
+	border-radius: 3px;
+	cursor: pointer;
+	padding: 1px;
+	margin: 3px 0 0;
+}
+.build_list__item img {
+	margin: 0 1px;
+}
+#build_list .level {
+	color: #ff8000;
+	visibility: hidden;
+	font-weight: bold;
+	margin: 2px;
+}
+#build_list .hover {
+	padding: 0;
+	border: solid 1px #71d000;
+}
+#build_list .active {
+	padding: 0;
+	border: solid 1px #ff8000;
+}
+#build_list .active-not {
+	text-decoration: line-through;
+	border-color: gray;
+}
+#build_list .active-not img {
+	text-decoration: none !important;
+}
+#build_list .active .level { visibility: visible; }
+#build_list .active-not .level { visibility: hidden; }
+#build_list .building { margin-right:2px; }
+span.none { color: #888; }
+table.wire thead tr td {
+	padding: 1px 4px;
+}
+td.req_type {
+	font-weight: bold;
+	margin-right: 5px;
+}
+div.box { border: 1px solid silver }
+.bt0 {background-color:#ffffff;}
+.bt1 {background-color:#e8ffe8;}
+.bt2 {background-color:#ffeaea;}
+.bt3 {background-color:#f5f0e5;}
+.bt4 {background-color:#eaeaea;}
+h3 { padding-left: 24px; text-transform: capitalize; }
+
+#data .active td { background: #ccc; }
+#data .hover td { background: #ddd; }
+input:checked + label { font-weight: bold; color: #555; }
+@media (prefers-color-scheme: dark) {
+	#data_holder {
+		background: #222;
+		box-shadow: 0 0 10px black;
+	}
+	#data .active td { background: #555; }
+	#data .hover td { background: #333; }
+	input:checked + label { color: #aaa; }
+}
+</style>
+</head>
+<body>
+<div class="ad"><style id="scaling">
+	.icon--scalable {
+		zoom: var(--scale-zoom);
+		transform: scale(var(--scale-transform));
+	}
+</style>
+<script type="text/javascript" async><!--
+(function () {
+	var urls = {};
+	window.onerror = function(msg, url, line, column, error) {
+		if ($ == window.jQuery) { msg = "jQuery sneaked here!"; }
+		var origin = location.protocol + '//' + location.host;
+		var params =
+			"?msg=" + encodeURIComponent(msg) +
+			"&url=" + encodeURIComponent(url) +
+			"&page=" + encodeURIComponent(location.href.replace(origin, '')) +
+			"&line=" + line +
+            "&lang=" + document.documentElement.lang +
+            "&column=" + (column === undefined ? 'n/a' : column) +
+            "&stack=" + encodeURIComponent(error && error.stack) +
+			"";
+		var url = "/error.php"+ params;
+		if (urls[url] > 3) return false;
+		var img = new Image();
+		img.width = 1;
+		img.height = 1;
+		img.src = url;
+		document.body.appendChild(img);
+		urls[url] = (urls[url] || 0) + 1;
+		return false;
+	};
+	if (!window.devicePixelRatio) return;
+	Cookie.write('dpi', Math.round(devicePixelRatio * 96), { duration: 365 });
+	var oldValue = devicePixelRatio;
+	var zoomKind = window.CSS && CSS.supports('zoom', '1') ? 'zoom' : 'transform';
+	function setZoomLevel(zoomLevel) {
+		document.body.style.setProperty("--scale-" + zoomKind, zoomLevel);
+	}
+	function resize(currentScale) {
+		function f(n) {
+			return Math.abs(Math.log(currentScale / n));
+		}
+		var zoomLevels = [0.125, 0.25, 0.5, 1, 1.25, 1.5, 2, 2.5, 3, 4];
+		zoomLevels.sort(function (a, b) { return f(a) - f(b); });
+		setZoomLevel(zoomLevels[0] / currentScale);
+	}
+	window.addEventListener('resize', function () {
+		var newValue = devicePixelRatio;
+		if (newValue === oldValue) { return; }
+		resize(oldValue = newValue);
+	});
+	resize(devicePixelRatio);
+}());
+--></script>
+<!--[if lte IE 10]>
+    <div id="warning">
+        <a href="https://www.microsoft.com/en-us/WindowsForBusiness/End-of-IE-support">
+            Support for older versions of Internet Explorer ended on January 12th, 2016
+        </a>
+    </div>
+<![endif]-->
+</div>
+<div id="menu">
+
+	<span class="menublock">
+		<div class="menuitem menuitem-large"><a href="/" class="icon--scalable menuitem-index"></a><div>Home Page</div></div>
+	</span>
+
+	<span class="menublock">
+		<div class="menuitem menuitem-large"><a href="warsim2.php" class="icon--scalable menuitem-warsim2"></a><div>Extended Combat Simulator</div></div>
+		<div class="menutitle">Calculators</div>
+		<div class="menuitem"><a href="distance.php" class="icon--scalable menuitem-distance"></a><div>distance calculator</div></div>
+		<div class="menuitem"><a href="conq.php" class="icon--scalable menuitem-conq"></a><div>Conquering calculator</div></div>
+		<div class="menuitem"><a href="off_calc.php" class="icon--scalable menuitem-off_calc"></a><div>offense calculator</div></div>
+		<div class="menuitem"><a href="def_calc.php" class="icon--scalable menuitem-def_calc"></a><div>defense calculator</div></div>
+		<div class="menuitem"><a href="war.php" class="icon--scalable menuitem-war"></a><div>units' attributes calculator</div></div>
+	</span>
+	
+	<span class="menublock">
+		<div class="menuitem menuitem-large"><a href="build.php" class="icon--scalable menuitem-build"></a><div>buildings</div></div>
+		<div class="menutitle">Tables</div>
+		<div class="menuitem"><a href="villages_res.php" class="icon--scalable menuitem-villages_res"></a><div>resource development calculator</div></div>
+		<div class="menuitem"><a href="troops.php" class="icon--scalable menuitem-troops"></a><div>Troops</div></div>
+		<div class="menuitem"><a href="oases.php" class="icon--scalable menuitem-oases"></a><div>Oases</div></div>
+	</span>
+	
+	<span class="menublock">
+		<div class="menuitem menuitem-large"><a href="hero4.php" class="icon--scalable menuitem-hero4"></a><div>hero (T4)</div></div>
+		<div class="menutitle">hero</div>
+		<div class="menuitem"><a href="hero.php" class="icon--scalable menuitem-hero"></a><div>hero (T3)</div></div>
+		<div class="menuitem"><a href="items.php" class="icon--scalable menuitem-items"></a><div>items</div></div>
+	</span>
+	
+	<span class="menublock">
+		<div class="menuitem menuitem-large"><a href="report.php" class="icon--scalable menuitem-report"></a><div>logger</div></div>
+		<div class="menutitle">Misc</div>
+		<div class="menuitem"><a href="about.php" class="icon--scalable menuitem-about"></a><div>about this site</div></div>
+		<div class="menuitem"><a href="thanks.php" class="icon--scalable menuitem-thanks"></a><div>Acknowledgements</div></div>
+			</span>
+	
+</div>
+<div id="langbar">
+	<img alt="ar" src="img/x.gif" class="icon--scalable click flag ae">
+	<img alt="bg" src="img/x.gif" class="icon--scalable click flag bg">
+	<img alt="cs" src="img/x.gif" class="icon--scalable click flag cz">
+	<img alt="da" src="img/x.gif" class="icon--scalable click flag dk">
+	<img alt="de" src="img/x.gif" class="icon--scalable click flag de">
+	<img alt="ee" src="img/x.gif" class="icon--scalable click flag ee">
+	<img alt="el" src="img/x.gif" class="icon--scalable click flag gr">
+	<img alt="en" src="img/x.gif" class="icon--scalable click flag us">
+	<img alt="es" src="img/x.gif" class="icon--scalable click flag es">
+	<img alt="fa" src="img/x.gif" class="icon--scalable click flag ir">
+	<img alt="fr" src="img/x.gif" class="icon--scalable click flag fr">
+	<img alt="he" src="img/x.gif" class="icon--scalable click flag il">
+	<img alt="hu" src="img/x.gif" class="icon--scalable click flag hu">
+	<img alt="it" src="img/x.gif" class="icon--scalable click flag it">
+	<img alt="ja" src="img/x.gif" class="icon--scalable click flag jp">
+	<img alt="lt" src="img/x.gif" class="icon--scalable click flag lt">
+	<img alt="lv" src="img/x.gif" class="icon--scalable click flag lv">
+	<img alt="nl" src="img/x.gif" class="icon--scalable click flag nl">
+	<img alt="pl" src="img/x.gif" class="icon--scalable click flag pl">
+	<img alt="pt" src="img/x.gif" class="icon--scalable click flag pt">
+	<img alt="rs" src="img/x.gif" class="icon--scalable click flag rs">
+	<img alt="ru" src="img/x.gif" class="icon--scalable click flag ru">
+	<img alt="sl" src="img/x.gif" class="icon--scalable click flag si">
+	<img alt="sv" src="img/x.gif" class="icon--scalable click flag se">
+	<img alt="tr" src="img/x.gif" class="icon--scalable click flag tr">
+	<img alt="uk" src="img/x.gif" class="icon--scalable click flag ua">
+	</div>
+
+<script type="text/javascript">
+(function(){
+	var page = location.pathname.match(/(\w+)\.php$/) || [,'index'];
+	$$(".menuitem-" + page[1]).addClass('current');
+})();
+function switch_lang(lang_name) {
+	const d = new Date();
+	d.setYear(d.getYear() + 1);
+	document.cookie = "lang=" + lang_name + ';expires=' + d.toISOString();
+	window.location.reload();
+}
+$$(".flag").on('click', function(){ switch_lang(this.alt) });
+(function(){
+	var search = $$("#search input")[0];
+	if (!search || !window.fetch) return;
+	var index = [];
+	fetch('asearch.php')
+		.then(function (s) {
+			return s.json();
+		})
+		.then(function (obj) {
+			for (var k in obj) {
+				var item = obj[k];
+				if (typeof item.str === 'string') {
+					item.str = item.str.toLowerCase();
+					index.push(item);
+				} else {
+					item.str.forEach(function (s) {
+						var obj = {
+							ico: item.ico,
+							str: s.toLowerCase(),
+							url: item.url
+						};
+						if (item.ver) {
+							obj.ver = item.ver;
+						}
+						index.push(obj);
+					});
+				}
+			}
+		});
+	var lastResults = [];
+	var lastIndex = -1;
+	function matcher(term) {
+		return function(item) {
+			if (item.str.indexOf(term) !== -1) return true;
+			const letters = term.split('');
+			const words = item.str.split(' ');
+			if (words.length >= letters.length
+			&& letters.every(function (c, i) { return words[i][0] === c; })) {
+				return true;
+			}
+			return false;
+		}
+	}
+	search.oninput = function () {
+		var term = this.value.toLowerCase();
+		if (term.length < 2) {
+			window['search-results'].innerHTML = '';
+			return;
+		}
+		let termMatcher = matcher(term);
+		lastResults = index.filter(termMatcher).slice(0, 10);
+		if (lastResults.length > 0 && lastIndex === -1) {
+			lastIndex = 0;
+		}
+		window['search-results'].innerHTML = lastResults.map(function (item) {
+			return '<a href="' + item.url + '">'
+				+ '<img src="img/x.gif" class="' + item.ico + '"> '
+				+ item.str.replace(term, '<mark>$&</mark>')
+				+ '</a>';
+		}).join('');
+	};
+	search.onkeyup = function (e) {
+		if (e.keyCode === 38) {
+			// up
+			e.preventDefault();
+		}
+		if (e.keyCode === 40) {
+			// down
+			e.preventDefault();
+		}
+	}
+}());
+</script>
+
+<div class="page">
+<div class="content">
+
+<div>
+<nobr>
+	    <label for="server">server</label>
+		<style>
+    #serverHint {
+        position: relative;
+        display: inline-block;
+        z-index: 100;
+    }
+    #serverHint > div {
+        position: absolute;
+        border: 1px solid gray;
+        background: white;
+        padding: 4px;
+        width: 200px;
+        z-index: 1;
+        top: -12px;
+        box-shadow: 0 0 2px gray;
+        white-space: normal;
+    }
+    #serverHint .but {
+        font-size: 14px;
+    }
+    #serverVersionNew {
+        font-weight: bold;
+    }
+    #serverHintButtons {
+        display: flex;
+        justify-content: space-evenly;
+        margin-top: 8px;
+    }
+</style>
+<select id="server">
+    <optgroup label="Kingdoms">
+        <option value="1.50">T5</option>
+        <option value="3.50">T5 3x</option>
+        <option value="5.50">T5 5x</option>
+    </optgroup>
+    <optgroup label="Legends">
+        <option value="1.45">T4.5 1x</option>
+        <option value="1.46">T4.6 1x</option>
+        <option value="2.46">T4.6 2x</option>
+        <option value="3.46">T4.6 3x</option>
+        <option value="5.46">T4.6 5x</option>
+        <option value="10.46">T4.6 10x</option>
+    </optgroup>
+    <optgroup label="Specials">
+        <option value="1.431" disabled>New Year Special</option>
+        <option value="1.432">Annual Special</option>
+        <option value="2.432">Annual Special 2x</option>
+        <option value="3.432">Annual Special 3x</option>
+    </optgroup>
+    <optgroup label="Classis">
+        <option value="1.36">T3.6</option>
+        <option value="3.36">T3.6 3x</option>
+        <option value="1.25">T2.5</option>
+    </optgroup>
+</select>
+<div id="serverHint" style="display: none;">
+    <div>
+        <div>You have changed version to <span id="serverVersionNew"></span> on another tab</div>
+        <div id="serverHintButtons">
+            <input type="button" class="but" value="use it" id="serverHintButtonUse">
+            <input type="button" class="but" value="discard" id="serverHintButtonDiscard">
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+(function (server) {
+    if (!server) { return; }
+    var lastValue = null;
+    var lastNewValue = null;
+    function f() {
+        lastNewValue = lastValue = this.value;
+        var s = parseVersion(this.value);
+        document.body.className = 't' + s.major + ' t' + s.major + s.minor;
+        if (typeof units !== "undefined" && units.t4) {
+            if (s.major == 4 && s.minor == 32) {
+                units.t4[0][0].time = 1700;
+                units.t4[0][0].def_c = 70;
+            } else {
+                units.t4[0][0].time = 1600;
+                units.t4[0][0].def_c = 50;
+            }
+        }
+    };
+    server.addEventListener('change', f);
+    window.addEventListener('load', function () {
+        setTimeout(f.bind(server), 0);
+    });
+    window.addEventListener('storage', function (event) {
+        if (event.key === 'v') {
+            lastNewValue = event.newValue;
+        }
+    });
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState !== 'visible') { return; }
+        if (lastNewValue === lastValue) { return; }
+        var option = [].filter.call(server.options, function (o) {
+            return o.value === lastNewValue;
+        })[0];
+        if (!option) return;
+        var fullVersion = option.parentNode.label + ' / ' + option.innerHTML;
+        $('serverVersionNew').innerHTML = fullVersion;
+        $('serverHint').style.display = '';
+    });
+    $('serverHintButtonUse').onclick = function () {
+        server.value = lastNewValue;
+        f.call(server);
+        $('serverHint').style.display = 'none';
+    };
+    $('serverHintButtonDiscard').onclick = function () {
+        $('serverHint').style.display = 'none';
+    };
+}(document.getElementById('server')));
+</script>
+	</nobr>
+
+	<nobr>
+	<label for="mb_level">Main Building</label>
+	<select id="mb_level">
+<option value='0' >0</option><option value='1' selected>1</option><option value='2' >2</option><option value='3' >3</option><option value='4' >4</option><option value='5' >5</option><option value='6' >6</option><option value='7' >7</option><option value='8' >8</option><option value='9' >9</option><option value='10' >10</option><option value='11' >11</option><option value='12' >12</option><option value='13' >13</option><option value='14' >14</option><option value='15' >15</option><option value='16' >16</option><option value='17' >17</option><option value='18' >18</option><option value='19' >19</option><option value='20' >20</option>	</select>
+	</nobr>
+
+	<nobr>
+		<input type="checkbox" id="natar" />
+		<label for="natar">Natar village</label>
+	</nobr>
+
+	<nobr>
+		<input type="checkbox" id="stores" />
+		<label for="stores">Great Warehouse/Great Granary</label>
+	</nobr>
+
+	<nobr id="ad_boosted_wrap">
+		<input type="checkbox" id="ad_boosted" />
+		<label for="ad_boosted">Boosted build speed with watching ads</label>
+	</nobr>
+</div>
+
+<div id="data_holder" style="display:none;">
+
+<a href="#" id="data_holder-close"></a>
+
+<img src="img/x.gif" class="icon--scalable" id="data_holder-icon" />
+<h2 id="data_holder-title"></h2>
+<div id="data_holder-req"></div>
+<div id="data_holder-desc"></div>
+
+<table id="data" class="wire" cellspacing="0">
+<thead><tr class="rbg">
+	<td>lvl</td>
+	<td><img alt="Lumber" class="icon--scalable res r1" src="img/x.gif"></td>
+	<td><img alt="Clay" class="icon--scalable res r2" src="img/x.gif"></td>
+	<td><img alt="Iron" class="icon--scalable res r3" src="img/x.gif"></td>
+	<td><img alt="Crop" class="icon--scalable res r4" src="img/x.gif"></td>
+	<td><img alt="Total cost" class="icon--scalable res r6" src="img/x.gif"></td>
+	<td><img alt="upkeep" class="icon--scalable res r5" src="img/x.gif"></td>
+	<td><img alt="Warehouse" class="icon--scalable building g10" src="img/x.gif"></td>
+	<td><img alt="Granary" class="icon--scalable building g11" src="img/x.gif"></td>
+	<td>CP</td>
+	<td><img alt="Time" class="icon--scalable res r7" src="img/x.gif"></td>
+	<td></td>
+</tr></thead>
+<tbody>
+	<tr class="sum"><td>&sum;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<div id="build_list">
+    <div class="build_list__column">
+        <h3>resources</h3>
+    </div>
+    <div class="build_list__column">
+        <h3>military</h3>
+    </div>
+    <div class="build_list__column">
+        <h3>infrastructure</h3>
+    </div>
+</div>
+
+<script type="text/javascript" src="js/utils.js?d"></script>
+<script type="text/javascript">
+function RoundMul(v, n) {
+    return Math.round(v / n) * n;
+}
+function TimeT3(a, k, b) {
+    this.a = a;
+    if (arguments.length < 3) {
+        this.k = 1.16;
+        if (arguments.length === 1) { k = 1; }
+        this.b = 1875 * k;
+    } else {
+        this.k = k;
+        this.b = b;
+    }
+}
+TimeT3.prototype.valueOf = function (lvl) {
+    return this.a * Math.pow(this.k, lvl-1) - this.b;
+};
+function TimeT5 () {}
+TimeT5.prototype.valueOf = function (lvl) { return this.b * this.mul[lvl-1] + this.e; };
+// resource fields
+function TimeT5a(b) { this.b = b; this.e = 0; }
+TimeT5a.prototype = new TimeT5();
+TimeT5a.prototype.mul = [1, 4.5, 15, 60, 120, 240, 360, 720, 1080, 1620, 2160, 2700, 3240, 3960, 4500, 5400, 7200, 9000, 10800, 14400];
+// most buildings
+function TimeT5b(b, e) { this.b = b; this.e = e || 0; }
+TimeT5b.prototype = new TimeT5();
+TimeT5b.prototype.mul = [3, 22.5, 48, 90, 210, 480, 720, 990, 1200, 1380, 1680, 1980, 2340, 2640, 3060, 3420, 3960, 4680, 5400, 6120];
+// factories
+function TimeT5c(e) { this.b = 60; this.e = e * 60 || 0; }
+TimeT5c.prototype = new TimeT5();
+TimeT5c.prototype.mul = [8, 25, 55, 140, 240];
+// wonder of the world
+function TimeT5w() { this.b = 300; this.e = 0; }
+TimeT5w.prototype = new TimeT5();
+TimeT5w.prototype.mul = [12,16,20,24,28,32,36,40,44,46,46,47,48,48,49,50,51,51,52,53,54,55,57,58,59,60,62,63,64,66,67,69,70,72,74,75,77,79,81,83,85,87,89,91,93,96,98,100,103,105,107,110,113,115,118,121,123,126,129,132,135,138,141,144,147,150,154,157,160,164,167,171,174,178,181,185,189,193,196,200,204,208,212,216,220,225,229,233,237,242,246,251,255,260,264,269,274,278,288,576];
+
+var buildings = [
+	{name:"Woodcutter",  cost: [  40, 100,  50,  60], k:1.67, cu:2,	cp:1, time:new TimeT3(1780/3,1.6, 1000/3),maxLvl:22, extra:1, type:1, desc:"Maximum level is 10, except capital — limited by stockyards there.", req: {capital: 10}},
+	{name:"Clay Pit",  cost: [  80,  40,  80,  50], k:1.67, cu:2,	cp:1, time:new TimeT3(1660/3,1.6, 1000/3),maxLvl:22, extra:1, type:1, desc:"Maximum level is 10, except capital — limited by stockyards there.", req: {capital: 10}},
+	{name:"Iron Mine",  cost: [ 100,  80,  30,  60], k:1.67, cu:3,	cp:1, time:new TimeT3(2350/3,1.6, 1000/3),maxLvl:22, extra:1, type:1, desc:"Maximum level is 10, except capital — limited by stockyards there.", req: {capital: 10}},
+	{name:"Cropland",  cost: [  70,  90,  70,  20], k:1.67, cu:0,	cp:1, time:new TimeT3(1450/3,1.6, 1000/3),maxLvl:22, extra:1, type:1, desc:"Maximum level is 10, except capital — limited by stockyards there.", req: {capital: 10}},
+	{name:"Sawmill",  cost: [ 520, 380, 290,  90], k:1.80, cu:4,	cp:1, time:new TimeT3( 5400, 1.5,  2400), maxLvl:5,  extra:2, type:1, desc:"Increases lumber production in village.<br/>Bonus from oases is added, not multiplied.", breq: {'1':10, '15':5}},
+	{name:"Brickyard",  cost: [ 440, 480, 320,  50], k:1.80, cu:3,	cp:1, time:new TimeT3( 5240, 1.5,  2400), maxLvl:5,  extra:2, type:1, desc:"Increases clay production in village.<br/>Bonus from oases is added, not multiplied.", breq: {'2':10, '15':5}},
+	{name:"Iron Foundry",  cost: [ 200, 450, 510, 120], k:1.80, cu:6,	cp:1, time:new TimeT3( 6480, 1.5,  2400), maxLvl:5,  extra:2, type:1, desc:"Increases iron production in village.<br/>Bonus from oases is added, not multiplied.", breq: {'3':10, '15':5}},
+	{name:"Grain Mill",  cost: [ 500, 440, 380,1240], k:1.80, cu:3,	cp:1, time:new TimeT3( 4240, 1.5,  2400), maxLvl:5,  extra:2, type:1, desc:"Increases crop production in village.<br/>Bonus from oases is added, not multiplied.", breq: {'4':5}},
+	{name:"Bakery",  cost: [1200,1480, 870,1600], k:1.80, cu:4,	cp:1, time:new TimeT3( 6080, 1.5,  2400), maxLvl:5,  extra:2, type:1, desc:"Increases crop production in village.<br/>Bonus from oases is added, not multiplied.", breq: {'4':10, '8':5, '15':5}},
+	{name:"Warehouse", cost: [ 130, 160,  90,  40], k:1.28, cu:1,	cp:1, time:new TimeT3( 3875), maxLvl:20, extra:3, type:1, desc:"Limits maximum amount of resources available in village.<br/>When no stockyards, capacity is 800.", breq: {'15':1}, req:{multi:true}},
+	{name:"Granary", cost: [  80, 100,  70,  20], k:1.28, cu:1,	cp:1, time:new TimeT3( 3475), maxLvl:20, extra:3, type:1, desc:"Limits maximum amount of crop available in village.<br/>When no stockyards, capacity is 800.", breq: {'15':1}, req:{multi:true}},
+	{name:"Blacksmith", cost: [ 170, 200, 380, 130], k:1.28, cu:4,	cp:2, time:new TimeT3( 3875), maxLvl:20, extra:12,type:2, desc:"Troops' weapons are enhanced here. Each village has separate upgrades.<br/>Upgrades remain after this building is torn down, but vanish after conquer.", breq: {'15':3, '22':3}, req:{version:[0,3]}},
+	{name:"Armoury", cost: [ 130, 210, 410,	130], k:1.28, cu:4,	cp:2, time:new TimeT3( 3875), maxLvl:20, extra:12,type:2, desc:"Troops' armors are enhanced here. Each village has separate upgrades.<br/>Upgrades remain after this building is torn down, but vanish after conquer.", breq: {'15':3, '22':1}},
+	{name:"Tournament Square", cost: [1750,2250,1530,	240], k:1.28, cu:1,	cp:1, time:new TimeT3( 5375), maxLvl:20, extra:4, type:2, desc:"Increases army speed, but only for part of distance exceeding 20 squares. Doesn't affect merchants.", breq: {'16':15}},
+	{name:"Main Building", cost: [  70,  40,  60,  20], k:1.28, cu:2,	cp:2, time:new TimeT3( 3875), maxLvl:20, extra:7, type:3, desc:"Affects construction speed of other buildings. Building speed is 5x slower on 0th level (destroyed) comparing to 1st level."},
+	{name:"Rally Point", cost: [ 110, 160,  90,	 70], k:1.28, cu:1,	cp:1, time:new TimeT3( 3875), maxLvl:20, extra:13,type:2, desc:"In T4 rally point level N detects types of units in incomgin attacks, unless there're &ge; N units in that attack."},
+	{name:"Marketplace", cost: [  80,  70, 120,  70], k:1.28, cu:4,	cp:3, time:new TimeT3( 3675), maxLvl:20, extra:14,type:3, desc:"Could be used as extra stockyard (but not a cranny!), by placing sell offer.<br/>Keep in mind, that resources could be stolen in raid.", breq: {'15':3, '10':1, '11':1}},
+	{name:"Embassy", cost: [ 180, 130, 150,	 80], k:1.28, cu:3, cp:4, time:new TimeT3( 3875), maxLvl:20, extra:8, type:3, desc:"Limits maximum alliance size. Embassy with maximum level among all alliance members is considred, not only from the founder's villages.", breq: {'15':1}},
+	{name:"Barracks", cost: [ 210, 140, 260,	120], k:1.28, cu:4,	cp:1, time:new TimeT3( 3875), maxLvl:20, extra:7, type:2, desc:"Once troops queued for training, their training time won't be changed disregarding of further changes in barracks level, effect from artifacts or items(T4).<br/>Even if barracks would be demolished, troops training will be continued.<br/>On classic (2.5) servers train speed is 20% slower.", breq: {'15':3, '16':1}},
+	{name:"Stable", cost: [ 260, 140, 220,	100], k:1.28, cu:5,	cp:2, time:new TimeT3( 4075), maxLvl:20, extra:7, type:2, desc:"Once cavalry queued for training, their training time won't be changed disregarding of further changes in stable level, effect from artifacts or items(T4).<br/>Even if stable would be demolished, cavalry training will be continued.<br/>On classic (2.5) servers train speed is 20% slower.", breq: {'12':3, '22':5}},
+	{name:"Workshop", cost: [ 460, 510, 600,	320], k:1.28, cu:3,	cp:3, time:new TimeT3( 4875), maxLvl:20, extra:7, type:2, desc:"Once war machines queued for building, their building time won't be changed disregarding of future changes in workshop level or effect from artifacts.<br/>Even if workshop would be demolished, constructing will be continued.", breq: {'15':5, '22':10}},
+	{name:"Academy", cost: [ 220, 160,  90,  40], k:1.28, cu:4,	cp:4, time:new TimeT3( 3875), maxLvl:20, extra:0, type:2, desc:"New types of troops are researched here. Researches remain after this building is torn down, but vanish after conquer.", breq: {'15':3, '19':3}},
+	{name:"Cranny", cost: [  40,  50,  30,  10], k:1.28, cu:0,	cp:1, time:new TimeT3( 2625), maxLvl:10, extra:3, type:3, desc:"Capacity for each of 4 resouce types. Gaulish cranny is 2x larger.<br/>Crannies have 20% less capacity against teuton raids.", req:{multi:true}},
+	{name:"Town Hall", cost: [1250,1110,1260, 600], k:1.28, cu:4,	cp:5, time:new TimeT3(14375), maxLvl:20, extra:0, type:3, desc:"Celebrations are kept here. Resources are taken before start and culture points are added after the end.<br/>Great celebration increases effectiveness of administrators.", breq: {'15':10, '22':10}},
+	{name:"Residence", cost: [ 580, 460, 350,	180], k:1.28, cu:1,	cp:2, time:new TimeT3( 3875), maxLvl:20, extra:9, type:3, desc:"Increases village defense a bit and opens access to 2 expansion slots: on 10<sup>th</sup> and 20<sup>th</sup> levels.<br/>While not destroyed, prevents from loyalty descending in certain village and even increases it with rate = %*building level/hour.<br/>Also its level affect train time of settlers and administrators.", breq: {'15':5, '26':-1}},
+	{name:"Palace", cost: [ 550, 800, 750,	250], k:1.28, cu:1,	cp:5, time:new TimeT3( 6875), maxLvl:20, extra:9, type:3, desc:"Similar to residence, but gives an option to move your capital and extra expansion slot on 15<sup>th</sup> level.", breq: {'15':5, '18':1, '25':-1}},
+	{name:"Treasury", cost: [2880,2740,2580,	990], k:1.26, cu:4,	cp:6, time:new TimeT3( 9875), maxLvl:20, extra:15,type:3, desc:"Artifacts are kept here. In classic version max level is 10 and treasury couldn't be built in captial.<br/>", breq: {'15':10, '40':-1}},
+	{name:"Trade Office", cost: [1400,1330,1200,	400], k:1.28, cu:3,	cp:3, time:new TimeT3( 4875), maxLvl:20, extra:3, type:3, desc:"Increase merchants' capacity by 20%/level.<br/>For Romans bonus is 40%.", breq: {'17':20, '20':10}},
+	{name:"Great Barracks", cost: [ 630, 420, 780,	360], k:1.28, cu:4,	cp:1, time:new TimeT3( 3875), maxLvl:20, extra:7, type:2, desc:"Allows to build infantry simultaneously with normal barracks, but for 3x more resources.", breq: {'19':20}, req:{capital:-1}},
+	{name:"Great Stable", cost: [ 780, 420, 660,	300], k:1.28, cu:5,	cp:2, time:new TimeT3( 4075), maxLvl:20, extra:7, type:2, desc:"The same as great barracks, but for cavalry.", breq: {'20':20}, req:{capital:-1}},
+	{name:"City Wall", cost: [  70,  90, 170,  70], k:1.28, cu:0,	cp:1, time:new TimeT3( 3875), maxLvl:20, extra:9, type:2, desc:"1x durability. Disappear after conquering of the village.", req: {race:1}},
+	{name:"Earth Wall", cost: [ 120, 200,   0,  80], k:1.28, cu:0,	cp:1, time:new TimeT3( 3875), maxLvl:20, extra:9, type:2, desc:"5x durability. Disappear after conquering of the village.", req: {race:2}},
+	{name:"Palisade", cost: [ 160, 100,  80,  60], k:1.28, cu:0,	cp:1, time:new TimeT3( 3875), maxLvl:20, extra:9, type:2, desc:"2x durability. Disappear after conquering of the village.", req: {race:3}},
+	{name:"Stonemason", cost: [ 155, 130, 125,  70], k:1.28, cu:2,	cp:1, time:new TimeT3( 5950,2), maxLvl:20, extra:5, type:2, desc:"Increases durability of all buildings in capital, including resourcefields and wall.<br/>It is always the last building destroyed by catapults. If village is affected by random targets artifact, it is the last building among inner ones (i.e. excluding resourcefields)", breq: {'15':5,'26':3}, req:{version:[3,9], capital: 1}},
+	{name:"Brewery", cost: [1460, 930,1250,1740], k:1.40, cu:6,	cp:4, time:new TimeT3(11750,2), maxLvl:10, extra:6, type:3, desc:"If you change level of a brewery after start of celebration, this will have no effect on started celebration.", breq: {'11':20,'16':10}, req:{race:2, version:[3,9]}},
+	{name:"Trapper", cost: [ 100, 100, 100,	100], k:1.28, cu:4,	cp:1, time:new TimeT3( 2000,0), maxLvl:20, extra:10,type:2, desc:"Multiple trappers don't build/repair traps simultaneously. Repair time is always 1 minute and doesn't depend on server speed or level of trapper.", breq: {'16':1}, req:{race:3, multi:true, version:[3,9]}},
+	{name:"Hero's Mansion", cost: [ 700, 670, 700, 240], k:1.33, cu:2,	cp:1, time:new TimeT3( 2300,0), maxLvl:20, extra:11,type:2, desc:"In T4 adventures spawn around villages, which have this building and<br/>Capital is always considered as having this building.", breq: {'15':3, '16':1}, req:{version:[3,4]}},
+	{name:"Great Warehouse", cost: [ 650, 800, 450, 200], k:1.28, cu:1,	cp:1, time:new TimeT3(10875), maxLvl:20, extra:3, type:1, desc:"Just a 3 times larger warehouse. Can be built either in WW village, or in villages affected by special artifact.<br/>In second case, artifact is required not only for constructing of 1st level.", breq: {'15':10}, req:{multi:true}},
+	{name:"Great Granary", cost: [ 400, 500, 350, 100], k:1.28, cu:1,	cp:1, time:new TimeT3( 8875), maxLvl:20, extra:3, type:1, desc:"Just a 3 times larger granary. Can be built either in WW village, or in villages affected by special artifact.<br/>In second case, artifact is required not only for constructing of 1st level.", breq: {'15':10}, req:{multi:true}},
+	{name:"Wonder of the World", cost:[66700,69050,72200,13200],k:1.0275,cu:1,cp:0,time:new TimeT3(60857,1.014,42857),maxLvl:100,extra:0, type:3, desc:"Isn't affected by durability artifacts.",
+		req:{capital:-1,nat:true,version:[2.5, 3.6, 4.5, 4.6, 5]},
+									 cost100: [1e6, 1e6, 1e6, 193630]},
+	{name:"Horse Drinking Trough", cost: [ 780, 420, 660, 540], k:1.28, cu:5,	cp:3, time:new TimeT3( 5950,2), maxLvl:20, extra:7, type:3, desc:"Increases training speed of roman cavalry in certain village.<br/>Decreases crop consumption of roman cavalry, fed (supplied) from that village.", breq: {'16':10, '20':20}, req:{race:1, version:[3,9]}},
+	{name:"Stone Wall",cost: [ 110, 160, 70, 60], k:1.28, cu:0, cp:1, time:new TimeT3( 3875), maxLvl:20, extra:9, type:2, desc:"5x durability. Disappear after conquering of the village.", req: {race:6,version:[4.2,5]}},
+	{name:"Makeshift Wall", cost: [  50,  80,  40,  30], k:1.28, cu:0,	cp:1, time:new TimeT3( 3875), maxLvl:20, extra:9, type:2, desc:"1x durability. Disappear after conquering of the village.", req: {race:7,version:[4.2,4]}},
+	{name:"Command Center", cost: [1600,1250,1050, 200], k:1.22, cu:1,	cp:2, time:new TimeT3( 3875), maxLvl:20, extra:9, type:3, desc:"Best of Residence and Palace: 3 chiefs, can be built in every village.", req: {race:7,version:[4.2,4]}, breq: {'15':5, '25':-1, '26':-1}},
+	{name:"Waterworks", cost: [ 910, 945, 910, 340], k:1.31, cu:1,	cp:2, time:new TimeT3( 3875), maxLvl:20, extra:2, type:1, desc:"Increases oases bonus", req: {race:6,version:[4.2,4]}, breq: {'37':10}},
+	{name:"Hospital", cost: [ 320, 280, 420, 360], k:1.28, cu:3, cp:4, time:new TimeT3( 4875), maxLvl:20, extra:2, type:2, desc:"Heals up to 40% troops lost in battle", req: {version:[4.31,4.32,4.51,4.6]}, breq: {'22':15,'15':10}},
+	{name:"Defensive wall", cost: [ 240, 110, 275, 100], k:1.28, cu:4, cp:3, time:new TimeT3( 2800,1.16,0), maxLvl:20, extra:16, type:2, desc:"Increases rally point bonus", req: {version:[4.32,4.32,4.32]}, breq: {'31':1,'32':1,'33':1}},
+	{name:"Sapartans hosptial", cost: [ 160, 100,  80,  60], k:1.28, cu:4, cp:3, time:new TimeT3( 3875), maxLvl:20, extra:5, type:2, desc:"Heals up to 60% troops lost in battle", req: {version:[4.32]}, breq: {race:8}},
+	{name:"Harbor", cost: [1440,1370,1290, 495], k:1.28, cu:3, cp:3, time:new TimeT3( 3875), maxLvl:20, extra:5, type:2, desc:"Allows building ships", req: {version:[4.32]}, breq: {race:9}},
+	{name:"Barricade", cost: [ 110, 170,  70,  50], k:1.28, cu:0, cp:1, time:new TimeT3( 3875), maxLvl:20, extra:9, type:2, desc:"2x durability. Disappear after conquering of the village.", req: {version:[4.32]}, breq: {race:9}},
+];
+buildings.getByGid = function getByGid(gid) {
+	return this.find(function (b) { return b.gid === gid });
+};
+var i18n = {
+	capital: "Capital",
+	tribes: "tribes",
+	race1: "Romans",
+	race2: "Teutons",
+	race3: "Gauls",
+	race6: "Egyptians",
+	race7: "Huns",
+}
+
+TableHelper.stores = function(cell, value) {
+	if (isNaN(value)) {
+		cell.innerHTML = "&mdash;";
+		return;
+	}
+	if (value <= 20) {
+		cell.innerHTML = '<span class="none">1<small>[' + value + ']</small></span>';
+	} else {
+		cell.innerHTML = Math.ceil(value / 20) + '<span class="none"><small>[' + (value % 20) + ']</small></span>';
+	}
+}
+TableHelper.cellTime = function(cell, v) {
+    var r = 10;
+    if (parseVersion(state.s).major == 5) {
+        r = (v>=1800) ? (v>=7200?300:60) : (v>=600?30:5);
+    }
+	cell.innerHTML = isNaN(v) ? "&mdash;" : timeI2S(RoundMul(v, r));
+}
+SummatorHelper.storesDelta = {
+	defaultValue: 0,
+	func: function(model, field) {
+		var ranges = model.getRange();
+		var subLowerValue = model.getValue(ranges.low-1, field);
+		if (typeof(subLowerValue) == "undefined") {
+			subLowerValue = this.defaultValue;
+		}
+		return 20 * (
+			Math.ceil(model.getValue(ranges.high, field)/20) -
+			Math.ceil(subLowerValue / 20)
+		);
+	}
+}
+SummatorHelper.deltaSmart = {
+	defaultValue: 0,
+	func: function(model, field) {
+		var ranges = model.getRange();
+		var subLowerValue = model.getValue(ranges.low-1, field);
+		if (typeof(subLowerValue) == "undefined") {
+			subLowerValue = this.defaultValue;
+		}
+		var currentValue = model.getValue(ranges.high, field);
+		if (/%$/.test(currentValue)) {
+			return (parseInt(currentValue, 10) - parseInt(subLowerValue, 10)) + "%";
+		} else {
+			var value = currentValue - subLowerValue;
+			if (isNaN(value)) {
+				return "n/a";
+			} else {
+				return value;
+			}
+		}
+	}
+}
+var convertFields = {
+	'lvl': TableHelper.trivial,
+	'res0': TableHelper.trivial,
+	'res1': TableHelper.trivial,
+	'res2': TableHelper.trivial,
+	'res3': TableHelper.trivial,
+	'res_sum': TableHelper.trivial,
+	'uc': TableHelper.trivial,
+	'wh': TableHelper.stores,
+	'gr': TableHelper.stores,
+	'cp': TableHelper.trivial,
+	'time': TableHelper.cellTime,
+	'extra': TableHelper.trivial
+};
+var costController = new DOMTableRangeSelect( $('data'), {
+	fields: "lvl,res0,res1,res2,res3,res_sum,uc,wh,gr,cp,time,extra".split(','),
+	convert: convertFields,
+	offsetTop: 1
+});
+var costModel = new DataTableRangeSum({
+	lvl:   SummatorHelper.delta,
+	res0:  SummatorHelper.trivial,
+	res1:  SummatorHelper.trivial,
+	res2:  SummatorHelper.trivial,
+	res3:  SummatorHelper.trivial,
+res_sum:   SummatorHelper.trivial,
+	uc:    SummatorHelper.trivial,
+	wh:    SummatorHelper.delta,
+	gr:    SummatorHelper.delta,
+	cp:    SummatorHelper.delta,
+	time:  SummatorHelper.trivial,
+	extra: SummatorHelper.deltaSmart
+});
+costModel.addEvent('change', function(evt){
+	costController.updateCell(evt.idx, evt.name, evt.value);
+});
+costController.addEvent("rangeChange", function(evt){
+	costModel.updateRange(evt.low, evt.high);
+	if (typeof evt.low != "undefined" &&
+		typeof evt.high != "undefined") {
+		state.lvls = [evt.low, evt.high];
+	} else {
+		state.lvls = [0, 0];
+	}
+	StateSaver.save();
+});
+
+var state = {
+	b: 0,
+	mb: 1,
+	s: getMyVersion(),
+	n: false,
+	bs: false,
+	lvls: [0,0],
+	ad: false,
+};
+var overrides = {
+	n: false,
+	bs: false,
+	ad: false,
+};
+function getOverride(name) {
+	return overrides[name] == null ? state[name] : overrides[name];
+}
+
+(function(_st) {
+	buildings.t2 = {
+		'1': {maxLvl: 12},
+		'2': {maxLvl: 12},
+		'3': {maxLvl: 12},
+		'4': {maxLvl: 12},
+		'17': {breq: {'15':1}},
+        '23': {desc: "Capacity for each of 4 resouce types. Gaulish cranny is 2x larger.<br/>Crannies have 20% less capacity against teuton raids with hero + 10-20% from any hero with sack item."},
+		'27': {k:1.28, cp:10, maxLvl:10, req:{capital:-1}}
+    }
+    buildings.t3 = [null].concat(buildings);
+	function wall4(k, a) {
+		return (function(lvl){
+			return "+" + (a*lvl) + ", +" + (100*(Math.pow(k, lvl)-1)).toFixed(1)+"%";
+		});
+	}
+	buildings.t4 = {
+		'13': {cost: [180, 250, 500, 160], name:"Smithy", desc:"Troops' armors and weapons are enhanced here. Each village has separate upgrades.<br/>Upgrades remain after this building is torn down, but vanish after conquer." },
+        '20': {breq: {'13':3, '22':5}},
+        '23': {time: new TimeT3(2175, 1.16, 1875), desc: "Capacity for each of 4 resouce types. Gaulish cranny is 2x larger.<br/>Crannies have 20% less capacity against teuton raids with hero + 10-20% from any hero with sack item."},
+		'34': {breq: {'15':5}},
+		'36': {cost: [80, 120, 70, 90]},
+		'31': {benefit: wall4(1.030,10) },
+		'32': {benefit: wall4(1.020, 6) },
+		'33': {benefit: wall4(1.025, 8) },
+		'42': {benefit: wall4(1.025, 8) },
+		'43': {benefit: wall4(1.015, 6) },
+    };
+    buildings['t4.2'] = {
+        '23': {
+            benefit: function (lvl) { return cranny(lvl) * parseVersion(_st.s).speed; }
+        }
+	};
+    buildings['t4.3'] = {
+        '14': {
+            benefit: p20
+        }
+    };
+    buildings['t4.4'] = {
+		'23': {
+            benefit: function (lvl) { return cranny(lvl) * 2; },
+            desc: "Capacity for each of 4 resouce types. Gaulish cranny is 1.5x larger.<br/>Crannies have 20% less capacity against teuton raids with hero + 10-20% from any hero with sack item."
+        },
+        '24': {
+            desc: "Celebrations are kept here. Culture points added instantly and their amount equals to daily village/account CP production, but no more than 500/2000 for small/great celebration correspondingly.<br/>Great celebration increases effectiveness of administrators."
+        }
+    };
+    buildings['t4.5'] = buildings['t4.6'] = {
+		'14': { benefit: p20 },
+		'35': {
+			cost: [3210,2050,2750,3830],
+			k: 1.24,
+			time:new TimeT3(11750,2),
+			maxLvl: 20
+        }
+    };
+	function capacity5(level) {
+	    return [8, 12, 17, 23, 31, 40, 50, 63, 77, 96, 120,
+    	    144, 180, 220, 260, 320, 380, 450, 550, 660, 800][level] * 100;
+	}
+	function big_capacity5(level) { return level != 0 ? capacity5(level) * 3 : 800; }
+	function treasury5(level) { return [0,1,2,3,4,5,6,7,8,9,10,12.5,15,17.5,20,22.5,25,27.5,30,35,40][level] * 100; }
+    buildings.t5 = {
+         '1': { time: new TimeT5a(24) },
+         '2': { time: new TimeT5a(22), maxLvl: 20 },
+         '3': { time: new TimeT5a(30) },
+         '4': { time: new TimeT5a(20),   cost: [  75,  90,  85,   0], maxLvl: 20  },
+         '5': { time: new TimeT5c(), },
+         '6': { time: new TimeT5c(), },
+         '7': { time: new TimeT5c(), },
+         '8': { time: new TimeT5c(), },
+         '9': { time: new TimeT5c(5), },
+        '10': { time: new TimeT5b(11.5), cost: [ 140, 180, 100,   0], k: 1.33, benefit: capacity5 },
+        '11': { time: new TimeT5b(11),   cost: [  80, 100,  70,  20], k: 1.33, benefit: capacity5 },
+        '13': { time: new TimeT5b(13.3), cost: [ 180, 250, 500, 160], name:"Smithy", desc:"Troops' armors and weapons are enhanced here. Each village has separate upgrades.<br/>Upgrades remain after this building is torn down, but vanish after conquer."  },
+        '14': { time: new TimeT5b(26.1, 300) },
+        '15': { time: new TimeT5b(10.8), k: 1.33 },
+        '16': { time: new TimeT5b(11.5), k: 1.33 },
+        '17': { time: new TimeT5b(11.2) },
+        '18': { time: new TimeT5b(11.8), cost: [ 700, 670, 700, 240], k: 1.33, cost1:[ 180, 130, 150,  80], extra: 11 },
+        '19': { time: new TimeT5b(12), k: 1.33 },
+        '20': { time: new TimeT5b(13), k: 1.33 },
+        '21': { time: new TimeT5b(15.5, 600) },
+        '22': { time: new TimeT5b(11.7), k: 1.33 },
+        '23': { time: new TimeT5b(3.3) },
+        '24': { time: new TimeT5b(21.9, 600) },
+        '25': { time: new TimeT5b(14.6, 1300) },
+        '26': { time: new TimeT5b(16.7, 3600) },
+        '27': { time: new TimeT5b(22.9, 2000), cost: [1440,1370,1290, 495], cost1: [ 720, 685, 645, 250], breq: { '15': 3 }, benefit: treasury5 },
+        '28': { time: new TimeT5b(22.2, 300) },
+        '29': { time: new TimeT5b(16.3, 600) },
+        '30': { time: new TimeT5b(16.2, 600) },
+        '31': { time: new TimeT5b(11.4) },
+        '32': { time: new TimeT5b(11.4) },
+        '33': { time: new TimeT5b(11.4) },
+        '34': { time: new TimeT5b(11.6) },
+        '35': { time: new TimeT5b(25, 600), k: 1.28, maxLvl: 20 },
+        '36': { time: new TimeT5b(11.3), cost: [  80, 120,  70,  90], k: 1.33 },
+        '38': { time: new TimeT5b(8, 300), benefit: big_capacity5 },
+        '39': { time: new TimeT5b(7, 300), benefit: big_capacity5 },
+        '40': { time: new TimeT5w(), cost100: undefined },
+        '41': { time: new TimeT5b(16.9, 600) },
+		'42': {name:"Water Ditch",    cost: [ 740, 850, 960, 620], k:1.28, cu:4,	cp:3, time:new TimeT5b(19, 300), maxLvl:20, extra:9, type:3, desc:"Provides additional defense. Cannot be destroyed by rams or catapults. Available only in cities.", breq: {'16':10, '20':20}, req:{version:[5,9]}},
+		'43': {name:"Natarian wall", cost: [ 120, 200,   0,  80], k:1.28, cu:0,	cp:1, time:new TimeT5b(11.4), maxLvl:20, extra:9, type:2, desc:"", req:{version:[5,9],nat:true}, benefit: wall4(1.02, 6)}
+    };
+	function stores_remain_lvl(amount, start_lvl) {
+		level = start_lvl;
+		var capacity_fn = getOverride('bs') ? big_capacity : capacity;
+		while (capacity_fn(level) < amount) level++;
+		return level;
+	}
+	function stores(amount) {
+		var MAX = getOverride('bs') ? 240000 : 80000;
+		num = Math.ceil(amount / MAX);
+		last_lvl = stores_remain_lvl(amount - (num-1)*MAX, +(num !== 1))
+		return (num-1)*20 + last_lvl;
+	}
+	function getStat(lvl) {
+        var k = this.get('k'),
+        	cost =
+				this.get('cost' + lvl) ||
+				this.get('cost').map(function (v) {
+					return RoundMul(v * Math.pow(k, lvl-1), 5);
+				});
+			if (this.gid == 40) {
+				cost = cost.map(function (value) {
+					return Math.min(value, 1e6);
+				});
+			}
+			v = parseVersion(_st.s),
+			cu = this.get('cu'),
+			t = this.get('time'),
+			mb = MB_Time(this.gid == 15 ? lvl-1 : _st.mb);
+		cu = (lvl != 1) ? Math.round((5*cu + lvl-1)/10) : cu;
+		if (getOverride('n') && v.major != 4) cu /= 2;
+		if ((this.gid == 15) && (lvl == 1)) mb = 1.25;
+		return ({
+			cost: cost,
+			stores: [
+				stores(Math.max(cost[0], cost[1], cost[2])),
+				stores(cost[3])
+			],
+			cu: cu,
+            time: t.valueOf(lvl) * mb
+				/ v.speed
+				/ (getOverride('n') && v.major < 5 ? 2 : 1)
+				* (getOverride('ad') && v.major == 4 ? 0.75 : 1),
+			cp: Math.round(this.get('cp') * Math.pow(1.2, lvl))
+		});
+	}
+	function production(lvl) {
+		var ver = parseVersion(_st.s);
+        return ver.speed * Math.round(
+            [2, 5, 9, 15, 22, 33, 50, 70, 100, 145, 200, 280, 375, 495, 635, 800, 1000, 1300, 1600, 2000, 2450, 3050, 3750][lvl] *
+            (1 + (ver.major == 4 && ver.minor > 2) * 0.4) // 40% boost for t4.4
+        );
+	}
+	buildings[0].benefit = production;
+	buildings[1].benefit = production;
+	buildings[2].benefit = production;
+	buildings[3].benefit = production;
+
+	function res_bonus(lvl) { return (lvl*5)+"%"; }
+	buildings[4].benefit = res_bonus;
+	buildings[5].benefit = res_bonus;
+	buildings[6].benefit = res_bonus;
+	buildings[7].benefit = res_bonus;
+	buildings[8].benefit = res_bonus;
+	buildings[44].benefit = res_bonus;
+	buildings[46].benefit = function (lvl) { return lvl * 3 };
+
+	function capacity(lvl) { return Math.round(21.2*Math.pow(1.2, lvl)-13.2)*100}
+	buildings[9].benefit = capacity;
+	buildings[10].benefit = capacity;
+	
+	function big_capacity(lvl) { return lvl != 0 ? capacity(lvl)*3 : 800; }
+    buildings[37].benefit = big_capacity;
+	buildings[38].benefit = big_capacity;
+
+    function cranny (lvl) { return 10*Math.round(10*Math.pow(1.2917, lvl-1)) }
+	buildings[22].benefit = cranny;
+
+	function linear_percent(lvl) { return (10+lvl)+"0%"} // TS, TO, SM
+	[27,33].forEach(function(g){ buildings[g].benefit = linear_percent });
+
+	function p20(lvl) { return 100 + lvl * 20 + '%'; };
+	buildings[13].benefit = p20;
+	buildings[27].benefit = p20;
+
+	function prod_army(lvl) { return (Math.pow(0.9, 1-lvl)).toFixed(1)+'x' }
+	[18,19,20,28,29,45].forEach(function(g){ buildings[g].benefit = prod_army });
+
+	function ident(lvl) { return lvl; } // smiths, RP, market
+	[11,12,15,16].forEach(function(g){ buildings[g].benefit = ident });
+
+	function res_def(lvl) { return 2*lvl*lvl }
+	buildings[24].benefit = res_def;
+	buildings[25].benefit = res_def;
+	buildings[43].benefit = res_def;
+
+	buildings[14].benefit = function(lvl) { return Math.round(100*(Math.pow(0.964, 1-lvl)))+"%" }
+	buildings[17].benefit = function(lvl) { return (lvl < 3 ? 0 : lvl*3) }
+	buildings[34].benefit = function(lvl) { return (100+lvl)+"%" }
+	buildings[35].benefit = function(lvl) { return ( lvl>10 ? (lvl*lvl+19*lvl+20)/2 : (lvl*lvl+21*lvl-2)/2 ) }
+	buildings[36].benefit = function(lvl) { return Math.max(Math.floor( (lvl-5) / 5), 0); }
+	buildings[40].benefit = function(lvl) { return (100/(100-lvl)).toFixed(2)+"x"; }
+	buildings[41].benefit = function(lvl) { return [0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,17,19,21,23,25,30][lvl]+"%"; }
+	// WW
+	buildings[39].benefit = function(lvl) {
+		if (lvl == 1) return "get BP";
+		if (lvl <= 10) return "rename";
+		if (lvl == 50) return "get 2nd BP";
+		if (lvl == 100) return "PROFIT!";
+		return "???";
+	}
+
+	function wall(k) { return (function(lvl){ return (100*(Math.pow(k, lvl)-1)).toFixed(1)+"%" }) }
+	buildings[30].benefit = wall(1.03);
+	buildings[31].benefit = wall(1.02);
+	buildings[32].benefit = wall(1.025);
+
+	function getExtra() {
+		return [
+			"",
+			"Production",
+			"Prod. increase",
+			"Capacity",
+			"Velocity",
+			"Durability",
+			"offense",
+			"Build Speed",
+			"Max.Members",
+			"+Defence",
+			"Traps",
+			"Oases",
+			"max_upgrade",
+			"units",
+			"traders",
+			"Artifact",
+			"bonus",
+		][this.extra];
+	}
+	function empty() {return ""}
+	function get(attr) {
+        var ver = parseVersion(_st.s),
+            sources = [
+                buildings['t' + ver.major + '.' + ver.minor],
+                buildings['t' + ver.major],
+                buildings.t3
+            ], s;
+        for (var i = 0; i < sources.length; i++) {
+            s = sources[i];
+            if (s && s[this.gid] && (attr in s[this.gid])) {
+                return s[this.gid][attr];
+            }
+        }
+	}
+
+	buildings.forEach(function(build, idx){
+		build.gid = idx + 1;
+		build.getStat = getStat;
+		build.getExtra = getExtra;
+		build.get = get;
+		if (!build.benefit) build.benefit = empty;
+	});
+})(state);
+
+/*** model ***/
+function MB_Time(lvl) { return (lvl != 0 ? Math.pow(0.964, lvl-1) : 5) }
+
+var vs = parseVersion(state.s);
+
+function buildMatchVersion(vRange, ver) {
+	if (!vRange) return true;
+	var va = parseFloat(ver.major + '.' + ver.minor);
+    if (vRange.length > 2) {
+		return vRange.indexOf(va) !== -1;
+	}
+	var lo = vRange[0];
+	var hi = vRange[1];
+	if (hi == ~~hi) hi += 0.99;
+	return lo <= va && va < hi;
+}
+buildings.reduce(function(a, b){
+    a[b.type].push(b);
+    return a;
+}, [,[],[],[]]).forEach(function(builds, type){
+    var elems = builds
+        .sort(function (a, b) { return a.name.localeCompare(b.name); })
+        .map(function (b) {
+            var v = b.req ? b.req.version : null;
+			var div = document.createElement('div');
+			div.id = "gid-" + b.gid,
+            div.dataset.gid = b.gid;
+            div.className = 'build_list__item';
+            div.innerHTML = '<img class="icon--scalable building g' + b.gid + '" src="img/x.gif">' + b.get('name');
+			div.style.display = buildMatchVersion(v, vs) ? '' : 'none';
+			return div;
+        }),
+    	container = document.querySelectorAll(".build_list__column")[type-1];
+    elems.forEach(function (buildElement) {
+		container.appendChild(buildElement);
+	});
+});
+
+function close_build(event) {
+	$('data_holder').style.display = "none";
+	state.b = 0;
+
+	natar.disabled = false;
+	natar.checked = state.n;
+	overrides.n = undefined;
+
+	stores.disabled = false;
+	stores.checked = state.bs;
+	overrides.bs = undefined;
+
+	ad_boosted.disabled = false;
+	ad_boosted.checked = state.ad;
+	overrides.ad = undefined;
+
+	StateSaver.save();
+	$('natar').disabled = false;
+	if (event) {
+		event.preventDefault();
+	}
+}
+function select_building(g) {
+	if (!g) return close_build();
+//	if (state.b == g) return;
+	var build = buildings.find(function (b) { return b.gid === g });
+	(function(){
+		var n = $('natar');
+		var bs = $('stores');
+		if (g == 25 || g == 26 || g == 44) {
+			ad_boosted.disabled = true;
+			ad_boosted.checked = false;
+			overrides.ad = false;
+		} else {
+			ad_boosted.disabled = false;
+			ad_boosted.checked = state.ad;
+			overrides.ad = undefined;
+		}
+		if (build.req && build.req.nat) {
+			natar.disabled = true;
+			natar.checked = true;
+			overrides.n = true;
+			
+			stores.disabled = true;
+			stores.checked = true;
+			overrides.bs = true;
+		} else if (g == 27) {
+			natar.disabled = true;
+			natar.checked = state.n;
+			overrides.n = false;
+
+			stores.disabled = false;
+			stores.checked = state.bs;
+			overrides.bs = undefined;
+		} else if (g == 38 || g == 39) {
+			stores.disabled = true;
+			stores.checked = true;
+			overrides.bs = true;
+
+			natar.disabled = false;
+			natar.checked = state.n;
+			overrides.n = undefined;
+		} else {
+			natar.disabled = false;
+			natar.checked = state.n;
+			overrides.n = undefined;
+
+			stores.disabled = false;
+			stores.checked = state.bs;
+			overrides.bs = undefined;
+		}
+	})();
+
+	var ml = build.get('maxLvl');
+	costController.updateRowCount(ml);
+	costModel.data.length = ml;
+	var a = [];
+	$('data').rows[0].cells[11].innerHTML = build.getExtra();
+	for (var l = 0; l < ml; l++) {
+		var stat = build.getStat(l+1);
+		var obj = { lvl: l+1 };
+		for (var r = 0; r < 4; r++) {
+			obj['res' + r] = stat.cost[r];
+		}
+		obj.res_sum = stat.cost.sum();
+		obj.uc = stat.cu;
+		obj.wh = stat.stores[0];
+		obj.gr = stat.stores[1];
+		obj.cp = stat.cp;
+		obj.time = stat.time;
+		obj.extra = build.get('benefit')(l+1);
+		a.push(obj);
+	}
+	costModel.updateRecords(a);
+	$('data_holder-title').innerHTML = build.get('name');
+	var req = build.get('req') || {};
+	var req_str = [];
+	(function(req_str){
+		var breq = build.get('breq') || {};
+		for (var gid in breq) {
+			var bHTML =
+				"<a href='#' onclick='select_building("+gid+");return false;'>" +
+				"<img class='icon--scalable building g" + gid + "' src='img/x.gif'> " +
+				buildings.getByGid(+gid).get('name') + "</a>";
+			if (breq[gid] > 0) {
+				req_str.push(bHTML  + " " + breq[gid]);
+			} else {
+				req_str.push("<strike>" + bHTML  + "</strike>");
+			}
+		}
+	})(req_str);
+	if ('capital' in req) {
+		if (req.capital == -1) {
+			req_str.push("<strike>" + i18n.capital + "</strike>");
+		} else if (req.capital == 1) {
+			req_str.push(i18n.capital);
+		}/* else {
+			desc += "<br/>" + i18n.capital + ": " + req.capital + "+";
+		}*/
+	}
+	if ('race' in req) {
+		req_str.push(i18n.tribes + ": <img src='img/x.gif' class='icon--scalable tribe tribe-" + req.race + "'> " + i18n['race' + req.race]);
+	}
+	if (!req_str.length) req_str.push("<span class='none'>none</span>");
+	$('data_holder-req').innerHTML = "<b>prerequiresites</b>: " + req_str.join(", ");
+	$('data_holder-desc').innerHTML = build.get('desc');
+	$('data_holder-icon').className = "building g" + build.gid;
+	$('data_holder').style.display = "";
+	state.b = build.gid;
+	StateSaver.save();
+}
+
+StateSaver.bind(state, {b:'i', mb:'i', s:'s', n:'b', bs:'b', lvls:'a', ad:'b'});
+
+function update_version() {
+	var old_v = parseVersion(state.s),
+        new_v = parseVersion(this.value),
+        build;
+    if (state.b) {
+		build = buildings.find(function (b) { return b.gid === state.b; });
+        if (build && build.req) {
+        	if (!buildMatchVersion(build.req.version, new_v)) {
+            	state.b = 0;
+			}
+		}
+	}
+	state.s = this.value;
+	StateSaver.save();
+	// name hacks
+	$('gid-13').lastChild.nodeValue = buildings.getByGid(13).get('name'); // smithy
+	if (new_v.major >= 4) {
+		$('gid-42').lastChild.nodeValue = buildings.getByGid(42).get('name'); // water ditch
+		$('gid-43').lastChild.nodeValue = buildings.getByGid(43).get('name'); // natarian wall
+	}
+	ad_boosted_wrap.style.display = new_v.major == 4 ? '' : 'none';
+	var ver = parseVersion(state.s);
+	buildings.forEach(function (build) {
+		if (!('req' in build)) return;
+        build_get_view(build.gid).style.display = buildMatchVersion(build.req.version, ver) ? '' : 'none';
+	});
+	select_building(state.b);
+}
+
+function update_mb() {
+	state.mb = this.value;
+	StateSaver.save();
+	if (!state.b) return;
+	// update times
+	var build = buildings.getByGid(state.b);
+	var a = [];
+	for (var l = 0; l < build.get('maxLvl'); l++) {
+		a.push({ time: build.getStat(l+1).time });
+	}
+	costModel.updateRecords(a);
+}
+
+function update_natars() {
+	state.n = this.checked;
+	StateSaver.save();
+	if (!state.b) return;
+	// update times and upkeep
+	var build = buildings.getByGid(state.b);
+	var a = [];
+	for (var l = 0; l < build.get('maxLvl'); l++) {
+		var stat = build.getStat(l+1);
+		a.push({
+			time: stat.time,
+			uc: stat.cu
+		});
+	}
+	costModel.updateRecords(a);
+}
+
+function update_stores() {
+	var headerImages = document.querySelectorAll('#data img');
+	state.bs = this.checked;
+	var isBS = getOverride('bs');
+	headerImages[6].className = "building g" + (isBS ? 10 : 38);
+	headerImages[7].className = "building g" + (isBS ? 11 : 39);
+	StateSaver.save();
+	if (!state.b) return;
+	// update storehouse amounts
+	var build = buildings.getByGid(state.b);
+	var a = [];
+	for (var l = 0; l < build.get('maxLvl'); l++) {
+		var stat = build.getStat(l+1);
+		a.push({
+			wh: stat.stores[0],
+			gr: stat.stores[1]
+		});
+	}
+	costModel.updateRecords(a);
+}
+
+function update_ads() {
+	state.ad = this.checked;
+	StateSaver.save();
+	if (!state.b) return;
+	// update times and upkeep
+	var build = buildings.getByGid(state.b);
+	var a = [];
+	for (var l = 0; l < build.get('maxLvl'); l++) {
+		var stat = build.getStat(l+1);
+		a.push({
+			time: stat.time
+		});
+	}
+	costModel.updateRecords(a);
+}
+
+function build_get_view(gid) {
+	return $('gid-' + gid);
+}
+
+$$('div[data-gid]')
+	.on('click', function (event) {
+		select_building(+this.dataset.gid);
+	})
+	.on('mouseenter', function (event) {
+		this.classList.add('hover');
+		var build = buildings.getByGid(+this.dataset.gid);
+		var rq = build.get('breq') || {};
+		for (var gid in rq) {
+			var elt = build_get_view(gid);
+			elt.classList.add('active');
+			var lvl = rq[gid];
+			if (lvl > 0) {
+				var levelElt = elt.querySelector(".level")
+					|| (function () {
+						var span = document.createElement("span");
+						span.classList.add("level");
+						elt.appendChild(span);
+						return span;
+					}());
+				levelElt.innerHTML = lvl;
+			} else {
+				elt.classList.add('active-not');
+			}
+		}
+	})
+	.on('mouseout', function(event){
+		this.classList.remove('hover');
+		var build = buildings.getByGid(+this.dataset.gid);
+		var rq = build.get('breq') || {};
+		for (var gid in rq) {
+			var elt = build_get_view(gid);
+			elt.classList.remove('active');
+			if (rq[gid] == -1) elt.classList.remove('active-not');
+		}
+	});
+
+$('data_holder-close').addEventListener('click', close_build);
+$('server').addEventListener('change', update_version);
+$('mb_level').addEventListener('change', update_mb);
+$('natar').addEventListener('click', update_natars);
+$('stores').addEventListener('click', update_stores);
+$('ad_boosted').addEventListener('click', update_ads);
+
+StateSaver.load();
+var b = state.b;
+state.b = 0;
+$('mb_level').value = state.mb;
+$('server').value = state.s;
+$('natar').checked = state.n;
+$('stores').checked = state.bs;
+update_version.call($('server'));
+if (b && b != 0) state.b = Math.min(Math.max(0, b), 45);
+select_building(b);
+if (b && state.lvls[1]) {
+	var maxLvl = buildings[b-1].get('maxLvl');
+	costController.setRange(
+		Math.min(+state.lvls[0], maxLvl-1),
+		Math.min(+state.lvls[1], maxLvl-1)
+	);
+}
+ --></script>
+</div>
+</div>
+<div id="icons">
+	This is a site about browser online game „Travian”.<br/>
+	Which contains different tools and calculators,<br/>
+	helping you playing this wonderful MMOG.
+	<noscript><p style="background:red">It will works properly only if JavaScript is enabled!</p></noscript>
+</div>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-64635667-1', 'auto');
+  ga('set', 'language', document.documentElement.lang);
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

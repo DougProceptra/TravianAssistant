@@ -1,0 +1,506 @@
+[
+  {
+    "id": 1,
+    "name": "Woodcutter",
+    "baseCost": {
+      "wood": 40,
+      "clay": 100,
+      "iron": 50,
+      "crop": 60
+    },
+    "k": 1.67,
+    "upkeep": 2,
+    "culture": 1,
+    "maxLevel": 22
+  },
+  {
+    "id": 2,
+    "name": "Clay Pit",
+    "baseCost": {
+      "wood": 80,
+      "clay": 40,
+      "iron": 80,
+      "crop": 50
+    },
+    "k": 1.67,
+    "upkeep": 2,
+    "culture": 1,
+    "maxLevel": 22
+  },
+  {
+    "id": 3,
+    "name": "Iron Mine",
+    "baseCost": {
+      "wood": 100,
+      "clay": 80,
+      "iron": 30,
+      "crop": 60
+    },
+    "k": 1.67,
+    "upkeep": 3,
+    "culture": 1,
+    "maxLevel": 22
+  },
+  {
+    "id": 4,
+    "name": "Cropland",
+    "baseCost": {
+      "wood": 70,
+      "clay": 90,
+      "iron": 70,
+      "crop": 20
+    },
+    "k": 1.67,
+    "upkeep": 0,
+    "culture": 1,
+    "maxLevel": 22
+  },
+  {
+    "id": 5,
+    "name": "Sawmill",
+    "baseCost": {
+      "wood": 520,
+      "clay": 380,
+      "iron": 290,
+      "crop": 90
+    },
+    "k": 1.8,
+    "upkeep": 4,
+    "culture": 1,
+    "maxLevel": 5
+  },
+  {
+    "id": 6,
+    "name": "Brickyard",
+    "baseCost": {
+      "wood": 440,
+      "clay": 480,
+      "iron": 320,
+      "crop": 50
+    },
+    "k": 1.8,
+    "upkeep": 3,
+    "culture": 1,
+    "maxLevel": 5
+  },
+  {
+    "id": 7,
+    "name": "Iron Foundry",
+    "baseCost": {
+      "wood": 200,
+      "clay": 450,
+      "iron": 510,
+      "crop": 120
+    },
+    "k": 1.8,
+    "upkeep": 6,
+    "culture": 1,
+    "maxLevel": 5
+  },
+  {
+    "id": 8,
+    "name": "Grain Mill",
+    "baseCost": {
+      "wood": 500,
+      "clay": 440,
+      "iron": 380,
+      "crop": 1240
+    },
+    "k": 1.8,
+    "upkeep": 3,
+    "culture": 1,
+    "maxLevel": 5
+  },
+  {
+    "id": 9,
+    "name": "Bakery",
+    "baseCost": {
+      "wood": 1200,
+      "clay": 1480,
+      "iron": 870,
+      "crop": 1600
+    },
+    "k": 1.8,
+    "upkeep": 4,
+    "culture": 1,
+    "maxLevel": 5
+  },
+  {
+    "id": 10,
+    "name": "Warehouse",
+    "baseCost": {
+      "wood": 130,
+      "clay": 160,
+      "iron": 90,
+      "crop": 40
+    },
+    "k": 1.28,
+    "upkeep": 1,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 11,
+    "name": "Granary",
+    "baseCost": {
+      "wood": 80,
+      "clay": 100,
+      "iron": 70,
+      "crop": 20
+    },
+    "k": 1.28,
+    "upkeep": 1,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 12,
+    "name": "Blacksmith",
+    "baseCost": {
+      "wood": 170,
+      "clay": 200,
+      "iron": 380,
+      "crop": 130
+    },
+    "k": 1.28,
+    "upkeep": 4,
+    "culture": 2,
+    "maxLevel": 20
+  },
+  {
+    "id": 15,
+    "name": "Main Building",
+    "baseCost": {
+      "wood": 70,
+      "clay": 40,
+      "iron": 60,
+      "crop": 20
+    },
+    "k": 1.28,
+    "upkeep": 2,
+    "culture": 2,
+    "maxLevel": 20
+  },
+  {
+    "id": 17,
+    "name": "Marketplace",
+    "baseCost": {
+      "wood": 80,
+      "clay": 70,
+      "iron": 120,
+      "crop": 70
+    },
+    "k": 1.28,
+    "upkeep": 4,
+    "culture": 3,
+    "maxLevel": 20
+  },
+  {
+    "id": 22,
+    "name": "Academy",
+    "baseCost": {
+      "wood": 220,
+      "clay": 160,
+      "iron": 90,
+      "crop": 40
+    },
+    "k": 1.28,
+    "upkeep": 4,
+    "culture": 4,
+    "maxLevel": 20
+  },
+  {
+    "id": 23,
+    "name": "Cranny",
+    "baseCost": {
+      "wood": 40,
+      "clay": 50,
+      "iron": 30,
+      "crop": 10
+    },
+    "k": 1.28,
+    "upkeep": 0,
+    "culture": 1,
+    "maxLevel": 10
+  },
+  {
+    "id": 24,
+    "name": "Town Hall",
+    "baseCost": {
+      "wood": 1250,
+      "clay": 1110,
+      "iron": 1260,
+      "crop": 600
+    },
+    "k": 1.28,
+    "upkeep": 4,
+    "culture": 5,
+    "maxLevel": 20
+  },
+  {
+    "id": 31,
+    "name": "City Wall",
+    "baseCost": {
+      "wood": 70,
+      "clay": 90,
+      "iron": 170,
+      "crop": 70
+    },
+    "k": 1.28,
+    "upkeep": 0,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 32,
+    "name": "Earth Wall",
+    "baseCost": {
+      "wood": 120,
+      "clay": 200,
+      "iron": 0,
+      "crop": 80
+    },
+    "k": 1.28,
+    "upkeep": 0,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 33,
+    "name": "Palisade",
+    "baseCost": {
+      "wood": 160,
+      "clay": 100,
+      "iron": 80,
+      "crop": 60
+    },
+    "k": 1.28,
+    "upkeep": 0,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 34,
+    "name": "Stonemason",
+    "baseCost": {
+      "wood": 155,
+      "clay": 130,
+      "iron": 125,
+      "crop": 70
+    },
+    "k": 1.28,
+    "upkeep": 2,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 35,
+    "name": "Brewery",
+    "baseCost": {
+      "wood": 1460,
+      "clay": 930,
+      "iron": 1250,
+      "crop": 1740
+    },
+    "k": 1.4,
+    "upkeep": 6,
+    "culture": 4,
+    "maxLevel": 10
+  },
+  {
+    "id": 37,
+    "name": "Hero's Mansion",
+    "baseCost": {
+      "wood": 700,
+      "clay": 670,
+      "iron": 700,
+      "crop": 240
+    },
+    "k": 1.33,
+    "upkeep": 2,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 38,
+    "name": "Great Warehouse",
+    "baseCost": {
+      "wood": 650,
+      "clay": 800,
+      "iron": 450,
+      "crop": 200
+    },
+    "k": 1.28,
+    "upkeep": 1,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 39,
+    "name": "Great Granary",
+    "baseCost": {
+      "wood": 400,
+      "clay": 500,
+      "iron": 350,
+      "crop": 100
+    },
+    "k": 1.28,
+    "upkeep": 1,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 40,
+    "name": "Wonder of the World",
+    "baseCost": {
+      "wood": 66700,
+      "clay": 69050,
+      "iron": 72200,
+      "crop": 13200
+    },
+    "k": 1.0275,
+    "upkeep": 1,
+    "culture": 0,
+    "maxLevel": 100
+  },
+  {
+    "id": 41,
+    "name": "Horse Drinking Trough",
+    "baseCost": {
+      "wood": 780,
+      "clay": 420,
+      "iron": 660,
+      "crop": 540
+    },
+    "k": 1.28,
+    "upkeep": 5,
+    "culture": 3,
+    "maxLevel": 20
+  },
+  {
+    "id": 42,
+    "name": "Stone Wall",
+    "baseCost": {
+      "wood": 110,
+      "clay": 160,
+      "iron": 70,
+      "crop": 60
+    },
+    "k": 1.28,
+    "upkeep": 0,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 43,
+    "name": "Makeshift Wall",
+    "baseCost": {
+      "wood": 50,
+      "clay": 80,
+      "iron": 40,
+      "crop": 30
+    },
+    "k": 1.28,
+    "upkeep": 0,
+    "culture": 1,
+    "maxLevel": 20
+  },
+  {
+    "id": 44,
+    "name": "Command Center",
+    "baseCost": {
+      "wood": 1600,
+      "clay": 1250,
+      "iron": 1050,
+      "crop": 200
+    },
+    "k": 1.22,
+    "upkeep": 1,
+    "culture": 2,
+    "maxLevel": 20
+  },
+  {
+    "id": 45,
+    "name": "Waterworks",
+    "baseCost": {
+      "wood": 910,
+      "clay": 945,
+      "iron": 910,
+      "crop": 340
+    },
+    "k": 1.31,
+    "upkeep": 1,
+    "culture": 2,
+    "maxLevel": 20
+  },
+  {
+    "id": 46,
+    "name": "Hospital",
+    "baseCost": {
+      "wood": 320,
+      "clay": 280,
+      "iron": 420,
+      "crop": 360
+    },
+    "k": 1.28,
+    "upkeep": 3,
+    "culture": 4,
+    "maxLevel": 20
+  },
+  {
+    "id": 47,
+    "name": "Defensive wall",
+    "baseCost": {
+      "wood": 240,
+      "clay": 110,
+      "iron": 275,
+      "crop": 100
+    },
+    "k": 1.28,
+    "upkeep": 4,
+    "culture": 3,
+    "maxLevel": 20
+  },
+  {
+    "id": 48,
+    "name": "Sapartans hosptial",
+    "baseCost": {
+      "wood": 160,
+      "clay": 100,
+      "iron": 80,
+      "crop": 60
+    },
+    "k": 1.28,
+    "upkeep": 4,
+    "culture": 3,
+    "maxLevel": 20
+  },
+  {
+    "id": 49,
+    "name": "Harbor",
+    "baseCost": {
+      "wood": 1440,
+      "clay": 1370,
+      "iron": 1290,
+      "crop": 495
+    },
+    "k": 1.28,
+    "upkeep": 3,
+    "culture": 3,
+    "maxLevel": 20
+  },
+  {
+    "id": 50,
+    "name": "Barricade",
+    "baseCost": {
+      "wood": 110,
+      "clay": 170,
+      "iron": 70,
+      "crop": 50
+    },
+    "k": 1.28,
+    "upkeep": 0,
+    "culture": 1,
+    "maxLevel": 20
+  }
+]
