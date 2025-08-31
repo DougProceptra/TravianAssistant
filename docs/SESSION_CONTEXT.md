@@ -1,6 +1,6 @@
 # SESSION_CONTEXT.md
-*Last Updated: August 31, 2025 - Session 3 Complete*
-*Next Session Ready: Ready for Monday Launch*
+*Last Updated: August 30, 2025 - Session 3 In Progress*
+*Server Launch: September 1, 2025 (36 hours remaining)*
 
 ## Project: TravianAssistant V3
 Browser-based AI assistant for Travian Legends gameplay optimization
@@ -8,192 +8,181 @@ Browser-based AI assistant for Travian Legends gameplay optimization
 ## Mission Statement
 Transform Travian gameplay from tedious spreadsheet calculations to AI-powered strategic excellence, enabling top-20 competitive play in under 2 hours per day.
 
-## CRITICAL SESSION PROGRESS - August 31, 2025
+## CRITICAL STATUS - 36 HOURS TO LAUNCH
 
-### Session 1: Data Extraction ✅ COMPLETE
-Successfully extracted ALL game data from Kirilloid's Travian calculator (http://travian.kirilloid.ru)
+### What's Complete ✅
+1. **Building Calculation Engine** 
+   - Build time formulas with modifiers
+   - Resource costs and requirements
+   - Basic ROI calculations
+   - Building data fully loaded
 
-### Session 2: Architecture & Data Management Design ✅ COMPLETE
-- Decided on LOCAL-FIRST calculation approach
-- Created data folder structure
-- Documented all decisions in `/docs/data-structures.md`
+2. **Basic Game Start Framework**
+   - Phase detection system
+   - Build order generation (buildings only)
+   - Resource optimization
 
-### Session 3: Calculation Engine Implementation ✅ COMPLETE
+3. **Data Organization**
+   - Building data: Complete
+   - Troop data: Loaded but NOT integrated
+   - Folder structure: Ready
 
-## 🎯 MONDAY LAUNCH READY!
+### What's MISSING for Launch 🔴
 
-### What Was Built Today
-1. **Complete Calculation Engine** (`/calculation-engine/index.js`)
-   - Build time calculations with all modifiers (MB, Gold Club, Ads, Artifacts)
-   - Resource cost calculations for all buildings
-   - Building requirement checking
-   - ROI calculations for efficiency
-   - Production calculations with oasis bonuses
+#### 1. TROOP CALCULATIONS (Critical)
+- **Training time formulas** - How long to train each unit
+- **Training costs** - Resources needed per unit
+- **Barracks/Stable queue optimization** - Parallel training
+- **Hero interaction with troops** - Fighting strength bonus
+- **Troop upkeep impact** - Crop consumption calculations
+- **Settler training optimization** - Critical for 7-day goal
 
-2. **Game Start Optimizer** (Specialized for first 7 days)
-   - Phase detection (Initial, Acceleration, CP Rush, Settlement)
-   - Optimal build order generation
-   - Settlement time predictions
-   - Gold usage recommendations
-   - Tribe-specific strategies
+#### 2. HERO MECHANICS (Critical for Early Game)
+- **Hero resource production** - How much bonus per point
+- **Hero adventure rewards** - Expected value calculations
+- **Hero fighting strength** - Impact on early raids
+- **Hero item management** - Which items to keep/use
+- **Hero experience optimization** - Adventure vs combat
+- **Skill point allocation** - Resource vs strength early game
 
-3. **Test Harness** (`/calculation-engine/test.js`)
-   - Validates all calculations
-   - Simulates Monday server launch scenario
-   - Tests different game phases
+#### 3. EARLY GAME SPECIFICS
+- **Quest optimization path** - Which quests when
+- **Adventure timing** - When to send hero
+- **First raid timing** - When to build troops vs economy
+- **Robber hideout strategies** - Clear or ignore?
+- **Oasis capture timing** - When is it worth it?
+- **Resource field vs building priorities** - Exact breakpoints
 
-### Data Files Loaded ✅
-- `/data/buildings/`
-  - `travian_buildings_SS1X.json` (1x server)
-  - `travian_complete_buildings_data.json` (2x server)
-  - `travian_special_server_buildings.json` (special servers)
-- `/data/troops/`
-  - `travian_troops_SS1X.json` (1x server, all 8 tribes)
-  - `travian_all_tribes_complete.json` (2x server, 7 tribes)
-  - `travian_spartans_troops.json` (Spartan tribe)
+#### 4. TRIBE-SPECIFIC CALCULATIONS
+- **Egyptian waterworks** - When to build, impact
+- **Roman double build queue** - How to optimize
+- **Teuton raiding bonus** - Changes early strategy
+- **Gaul defensive benefits** - Impact on troop choices
+- **Hun command center** - Settlement strategy changes
 
-## MONDAY SERVER LAUNCH STRATEGY
+## SESSION 3 TO-DO LIST (Next 36 Hours)
 
-### Configuration
-- **Server Speed**: 2x (adjust in calculator if different)
-- **Recommended Tribe**: Egyptians (best for fast start)
-- **Gold Strategy**: 100 gold for Gold Club
+### Immediate Priority (Next 4 hours)
+1. **Integrate troop calculations into engine**
+   - Training time formulas with barracks/stable levels
+   - Exact resource costs from loaded data
+   - Upkeep calculations affecting economy
 
-### Optimal 7-Day Path to Settlement
-```
-Day 1 (0-24h): Balance all resources L1-2, Main Building to 3
-Day 2 (24-48h): Focus strongest resource type to L5
-Day 3 (48-72h): CP buildings start (Embassy, Academy)
-Day 4 (72-96h): Continue CP, Marketplace for NPC
-Day 5 (96-120h): Residence to 10, warehouse expansion
-Day 6 (120-144h): Resource accumulation for settlers
-Day 7 (144-168h): Train 3 settlers, SETTLE!
-```
+2. **Add hero system**
+   - Resource production bonus formula
+   - Fighting strength calculations
+   - Adventure probability tables
+   - Experience requirements per level
 
-### Expected Results
-- **Settlement Time**: 6.5 days (Top 5-10 on server)
-- **CP at Settlement**: 205-210
-- **Resource Production**: 250-300/hour per type
+3. **Calculate settler timing precisely**
+   - Residence build requirements
+   - Resource accumulation needed (5000/7000/5000/4000)
+   - Training time with modifiers
+   - Optimal timing for top-5 finish
 
-## How to Use the Calculator
+### Before Launch (Next 32 hours)
+1. **Test complete 7-day simulation**
+   - Hour-by-hour build order
+   - Resource balance checkpoints
+   - CP accumulation tracking
+   - Settler readiness confirmation
 
-### In Chrome Extension (when built)
-```javascript
-// Initialize calculator
-const calc = new TravianCalculator(2, 'egyptians'); // 2x server
-await calc.init();
+2. **Create quick reference guide**
+   - First 24 hours exact steps
+   - Gold spending priorities
+   - Hero point allocation
+   - Raid timing guidelines
 
-// Get build time
-const time = calc.calculateBuildTime('Main Building', 5, {
-  mainBuildingLevel: 3,
-  goldClub: true
-});
+3. **Package for easy use**
+   - Simple HTML interface if no extension
+   - Copy-paste build orders
+   - Calculator for current state input
 
-// Get optimal build order
-const optimizer = new GameStartOptimizer(calc, 'egyptians', 100);
-const orders = optimizer.getOptimalBuildOrder(currentGameState);
-```
+## Key Questions to Resolve
 
-### Current Testing
-```bash
-# In calculation-engine folder
-node test.js
-```
+### Troop Questions
+1. What's the exact formula for troop training time?
+2. How do barracks/stable levels affect training speed?
+3. What's the Great Barracks/Stable speed bonus?
+4. How does hero helmet affect training time?
 
-## What Still Needs Implementation
+### Hero Questions
+1. Resource production: Is it 4 resources/hour per point at 1x?
+2. Fighting strength: What's the combat formula?
+3. Adventure rewards: What's the probability distribution?
+4. When should hero switch from adventures to raiding?
 
-### High Priority (After Monday Launch)
-1. **Chrome Extension UI** - Display recommendations in-game
-2. **State Scraper** - Auto-detect current game state
-3. **Real-time Updates** - Dynamic recommendation adjustments
+### Early Game Decisions
+1. First troop: When? (Usually day 2-3)
+2. Raid vs pure economy: Breakpoint calculation
+3. Oasis: 25% bonus worth the troops?
+4. Second village location: How far is optimal?
 
-### Medium Priority
-1. **Complete building dependencies** - We have partial list
-2. **Combat calculations** - Smithy/Wall bonuses
-3. **Troop training optimizer** - For after settlement
+## Data Still Needed
 
-### Low Priority
-1. **Farm list optimizer**
-2. **Trade route calculator**
-3. **Alliance coordination**
+### From Kirilloid or Game Knowledge
+1. **Hero formulas** - Production, strength, experience
+2. **Training speed formulas** - Per building level
+3. **Combat formulas** - For early raids
+4. **Quest rewards** - Exact values for planning
+5. **Adventure rewards** - Probability tables
 
-## Architecture Decisions Confirmed
+### From Game Experience
+1. **Optimal opening moves** per tribe
+2. **Gold spending priorities** for top-5
+3. **Hero skill distribution** for fast start
+4. **Raid timing** for server start
 
-### LOCAL-FIRST ✅
-- All calculations happen in browser
-- 0ms latency for recommendations
-- Works offline
-- No server costs for basic operations
-
-### Data Structure ✅
-- JSON files loaded into extension
-- ~500KB total data size
-- Instant lookups via hash maps
-
-### Calculation Accuracy ✅
-- Matches Kirilloid exactly
-- Accounts for all modifiers
-- Server speed aware
-
-## Files Created This Session
+## Current File Structure
 ```
 /calculation-engine/
-├── index.js           [✅ 16KB - Complete calculator & optimizer]
-└── test.js            [✅ 11KB - Validation suite]
+├── index.js           [🔶 Needs troop/hero integration]
+└── test.js            [🔶 Needs troop/hero tests]
 
 /data/
-├── buildings/         [✅ Has all building data]
-├── troops/           [✅ Has all troop data]
-├── production/       [🔴 Still needs base formulas]
-├── combat/           [🔴 Still needs modifiers]
-├── quests/           [🔴 Still needs quest data]
-└── tribe-specific/   [🔴 Still needs bonus values]
+├── buildings/         [✅ Complete]
+├── troops/           [✅ Loaded, 🔴 Not integrated]
+├── production/       [🔴 Need base formulas]
+├── combat/           [🔴 Need hero/combat formulas]
+├── quests/           [🔴 Need quest data]
+└── tribe-specific/   [🔴 Need bonus values]
 ```
 
-## Next Steps (After Monday)
+## Server Launch Countdown
 
-### Immediate
-1. Build Chrome extension UI
-2. Add game state scraper
-3. Connect calculator to UI
+### September 1, 2025 - Launch Day
+- **Time Remaining**: ~36 hours
+- **Critical Path**: Troop calculations → Hero mechanics → Full test
+- **Minimum Viable**: Building optimizer + manual troop timing
+- **Goal**: Complete system with troop/hero optimization
 
-### This Week
-1. Complete missing data files
-2. Add combat calculations
-3. Test with real gameplay
-
-### Future
-1. AI recommendations via Claude
-2. Multi-village support
-3. Alliance features
+### If We Run Out of Time
+**Fallback Plan**: 
+- Use building optimizer for economy
+- Manual calculations for troops/hero
+- Reference sheet for key timings
+- Update system during first week
 
 ## Session Notes
 
-### What Worked Well
-- Direct GitHub implementation (no code in chat!)
-- Clear separation of concerns
-- Test-driven validation
-- Focus on Monday deadline
+### Current Blockers
+1. Don't have troop training formulas
+2. Don't have hero mechanics formulas  
+3. Haven't integrated troop data yet
+4. Need to test complete 7-day simulation
 
-### Key Insights
-- 2x server changes everything (halves all times)
-- Egyptians best for fast start (resource bonus)
-- Gold Club essential for top-5 (25% speed boost)
-- CP efficiency more important than resources early
+### What's Working
+- Building calculations are accurate
+- Data structure is solid
+- Architecture is extensible
+- Core optimizer logic is sound
 
-### For Monday Launch
-1. **Calculator is READY** - Just needs to be packaged
-2. **Strategy is CLEAR** - Follow the 7-day path
-3. **Testing COMPLETE** - All calculations verified
-
-## Repository Status
-```
-Main Branch: calculation-engine-complete
-Last Commit: "Create test harness for calculation engine validation"
-Ready for: Monday server launch
-Next Priority: Chrome extension packaging
-```
+### Next 4 Hours Focus
+1. Research/extract troop training formulas
+2. Integrate troop data into calculator
+3. Add hero mechanics
+4. Test settler timing calculations
 
 ---
-*Session 3 completed successfully. Calculation engine ready for Monday's new server launch.*
-*Focus achieved: Game start optimizer fully functional for achieving top-5 settler status.*
+*Session 3 continues. 36 hours to server launch. Focus on troops and hero mechanics.*
+*Building system complete, troop system critical for launch readiness.*
