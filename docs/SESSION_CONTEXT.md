@@ -1,5 +1,6 @@
 # SESSION_CONTEXT.md
-*Last Updated: August 30, 2025*
+*Last Updated: August 30, 2025 - End of Session*
+*Next Session Ready: August 31, 2025*
 
 ## Project: TravianAssistant V3
 Browser-based AI assistant for Travian Legends gameplay optimization
@@ -7,171 +8,201 @@ Browser-based AI assistant for Travian Legends gameplay optimization
 ## Mission Statement
 Transform Travian gameplay from tedious spreadsheet calculations to AI-powered strategic excellence, enabling top-20 competitive play in under 2 hours per day.
 
-## Critical Accomplishments - Session August 30, 2025
+## CRITICAL SESSION PROGRESS - August 30, 2025
 
-### Data Extraction Complete ✅
-Successfully extracted ALL game data from Kirilloid's Travian calculator (http://travian.kirilloid.ru):
+### Session 1: Data Extraction ✅ COMPLETE
+Successfully extracted ALL game data from Kirilloid's Travian calculator (http://travian.kirilloid.ru)
 
-#### Buildings Data (50 buildings total)
-- **2x Server**: `travian_complete_buildings_data.json` - All 50 buildings including specials
-- **1x Server**: `travian_buildings_SS1X.json` - Complete 1x server building costs/times
+### Session 2: Architecture & Data Management Design 🔶 IN PROGRESS
 
-Each building includes for all levels (1-20, WW has 100):
-- Resource costs (wood, clay, iron, crop)
-- Population requirements  
-- Build time (base time before speed modifiers)
-- Culture points generated
+## Current Architecture Decision: LOCAL-FIRST CALCULATION
 
-Buildings extracted include:
-- Resource fields (Woodcutter, Clay Pit, Iron Mine, Cropland)
-- Resource processors (Sawmill, Brickyard, Iron Foundry, Grain Mill, Bakery)
-- Infrastructure (Warehouse, Granary, Great Warehouse, Great Granary)
-- Military (Barracks, Stable, Workshop, Academy, Smithy, Tournament Square)
-- Defensive (City Wall, Earth Wall, Palisade, Stone Wall, Makeshift Wall)
-- Special (Palace, Residence, Treasury, Wonder of the World, etc.)
+### Decision Made ✅
+- Push base data tables to Chrome extension for local calculations
+- Extension performs ALL basic calculations without server calls
+- Server only needed for: AI recommendations, map analysis, updates
+- Rationale: Instant response (0ms), offline capability, privacy, reduced server costs
 
-#### Troops Data (8 tribes)
-- **2x Server**: `travian_all_tribes_complete.json` - 7 tribes
-- **2x Server Spartans**: `travian_spartans_troops.json` - Spartan troops separate
-- **1x Server**: `travian_troops_SS1X.json` - All 8 tribes including Spartans
+## Data Management System Design
 
-Tribes captured:
-1. Romans (10 troops)
-2. Teutons (10 troops)  
-3. Gauls (10 troops)
-4. Egyptians (10 troops)
-5. Huns (10 troops)
-6. Spartans (10 troops)
-7. Nature (10 troops - for oasis animals)
-8. Natarians (10 troops - for end-game)
+### 1. BUILDING SYSTEM COMPONENTS
 
-Each troop type includes:
-- Attack value
-- Defense vs infantry
-- Defense vs cavalry
-- Movement speed (fields/hour)
-- Training costs (wood, clay, iron, crop)
-- Training time (base before modifiers)
-- Carry capacity
-- Crop consumption per hour
+#### 1.1 Base Data Tables ✅ COMPLETE
+- Location: `/data/buildings/`
+- Files: `travian_complete_buildings_data.json` (2x), `travian_buildings_SS1X.json` (1x)
+- Contents: 50 buildings × 20 levels with costs, times, CP, population
 
-### Technical Achievements
-1. **Overcame Kirilloid's non-standard navigation** - Site uses JavaScript-based navigation, not standard links
-2. **Direct data extraction from JavaScript arrays** - Found and extracted from `window.buildings` array
-3. **Automated tribe rotation** - Script automatically cycled through all tribes
-4. **Dual server speed support** - Captured both 1x and 2x server data for comparison
+#### 1.2 Calculation Engine ✅ DESIGNED
+```javascript
+// Main Building Speed Multipliers CONFIRMED
+[1.00, 1.04, 1.08, 1.12, 1.16, 1.20, 1.25, 1.29, 1.34, 1.39,
+ 1.44, 1.50, 1.55, 1.61, 1.67, 1.73, 1.80, 1.87, 1.93, 2.01]
 
-### Key Code Solutions
-- Building extraction: Direct access to `buildings.getStat()` function
-- Troop extraction: Automated dropdown cycling with event dispatching
-- Data structure: Consistent JSON format for easy integration
+// Build Time Formula CONFIRMED
+Actual Time = (Base Time / Server Speed) / MB Multiplier / Other Multipliers
 
-## Next Session Focus: Game Mechanics & Multipliers
+// Other Multipliers CONFIRMED
+- Gold Club: 1.25x
+- Hero Construction: Variable
+- Artifacts: Small(1.5x), Large(2x), Unique(3x)
+- Watching Ads: 0.75x
+```
 
-### Priority 1: Combat Mechanics
-- [ ] **Hero System**
-  - Weapon bonuses (attack increase per point)
-  - Armor bonuses (defense increase per point)
-  - Horse bonuses (speed increase)
-  - Fighting strength calculation
-- [ ] **Smithy Upgrades**
-  - Attack improvements (1.5% per level, max level 20)
-  - Defense improvements (1.5% per level, max level 20)
-- [ ] **Wall Bonuses**
-  - Defensive multipliers by tribe and wall type
-  - Durability points and their effect
-- [ ] **Morale Bonus**
-  - Protection for smaller players
+#### 1.3 Building Dependencies 🔶 PARTIAL
+```javascript
+// CONFIRMED Dependencies
+{
+  "Barracks": { "Main Building": 3, "Rally Point": 1 },
+  "Stable": { "Barracks": 3, "Academy": 5 },
+  "Workshop": { "Academy": 10, "Main Building": 5 },
+  "Academy": { "Barracks": 3, "Main Building": 3 },
+  "Smithy": { "Academy": 1, "Main Building": 3 },
+  "Treasury": { "Main Building": 10 }
+  // MORE NEEDED - See questions below
+}
+```
 
-### Priority 2: Production Modifiers
-- [ ] **Oasis Bonuses**
-  - 25% single resource oases
-  - 50% double resource oases (25% + 25%)
-  - Crop oases (25% or 50%)
-- [ ] **Gold/Silver Membership**
-  - 25% production bonus calculation
-  - 25% faster building/training
-- [ ] **Hero Resource Production**
-  - Points in resource production
-  - Items that boost production
-- [ ] **Artifacts**
-  - Small/Large/Unique effects
-  - Building time reduction
-  - Troop training speed
+#### 1.4 Additional Components IDENTIFIED
+- **Building Effects/Benefits** - Production bonuses, capacity increases
+- **Building Restrictions** - Slot limits, tribe-specific, mutual exclusions
+- **Demolition Rules** - MB level 10 required, dependency protection
+- **Village Context** - Capital vs regular, artifact, WW villages
+- **Build Queue Management** - Roman parallel, Plus features
+- **Resource Validation** - Storage capacity, crop balance
 
-### Priority 3: Advanced Calculations
-- [ ] **Culture Point System**
-  - Settlement timing optimization
-  - Daily CP production calculations
-  - Celebration costs and benefits
-- [ ] **Trade Routes**
-  - Merchant capacity by tribe
-  - Travel time calculations
-  - NPC trading ratios
-- [ ] **Farm Lists**
-  - Efficiency calculations
-  - Loss tolerance settings
-  - Optimal raid intervals
+### 2. TROOP SYSTEM COMPONENTS
 
-### Priority 4: AI Integration Design
-- [ ] **Build Order Optimization**
-  - Resource balance algorithms
-  - CP rush vs military strategies
-  - Gold usage optimization
-- [ ] **Combat Simulators**
-  - Battle outcome predictions
-  - Optimal troop compositions
-  - Artifact effects on combat
-- [ ] **Timing Optimizations**
-  - Queue management
-  - Resource arrival coordination
-  - Building/training completion alerts
+#### 2.1 Base Data Tables ✅ COMPLETE
+- Location: `/data/troops/`
+- Files: Complete for all 8 tribes, both 1x and 2x servers
+- Contents: Attack, defense, speed, carry, cost, time, consumption
 
-## Technical Stack (Confirmed)
-- **Frontend**: Chrome Extension (Manifest V3)
-- **Backend**: Node.js on Replit
-- **Database**: SQLite (dev) → Supabase (production)
-- **AI**: Claude Sonnet 4 via Anthropic API
-- **Data Source**: Game scraping + Kirilloid calculator data
+#### 2.2 Troop Dependencies 🔴 NOT DEFINED
+- Need: Academy level requirements per troop
+- Need: Building requirements (Stable, Workshop)
+- Need: Research costs and times
 
-## Success Metrics
-- ✅ Complete game data extraction
-- ⬜ Multiplier system implementation
-- ⬜ Chrome extension alpha
-- ⬜ AI recommendation engine
-- ⬜ Beta testing with team (Target: September 9)
-- ⬜ <2 hours/day gameplay achievement
+#### 2.3 Combat Modifiers 🔴 NOT DEFINED
+- Need: Smithy formulas (1.5% per level?)
+- Need: Wall defense bonuses
+- Need: Hero fighting strength
+- Need: Morale bonus
 
-## Repository Structure
+### 3. QUEST SYSTEM 🔶 PARTIALLY DEFINED
+
+Daily quests identified from screenshot:
+- Alliance bonus: 5000 resources
+- Adventure completion: Variable
+- Raid oasis: 3 difficulty levels
+- Attack Natarian: 3 levels
+- Win auction, Gain/spend gold
+- Building upgrades, Military training
+- Celebrations
+
+**Decision Made**: Agent can ask player about quest capability rather than pre-calculate
+
+### 4. TRIBE-SPECIFIC FEATURES 🔶 STRUCTURE DEFINED
+
+```javascript
+tribeSpecificBuildings = {
+  romans: { cityWall, horseDrinkingTrough },
+  egyptians: { waterworks },
+  teutons: { brewery, earthWall },
+  gauls: { trapper, palisade },
+  huns: { commandCenter }
+}
+// VALUES NEEDED for bonuses
+```
+
+### 5. CALCULATION APPROACH DECISIONS
+
+#### CP/Resource Efficiency ✅ DECIDED
+- Agent calculates on-the-fly (1000 possibilities easily handled)
+- No pre-calculation needed
+
+#### API Design Pattern ✅ DECIDED
+```
+POST /api/calculate/build-time
+POST /api/building/can-build
+POST /api/calculate/troop-training
+POST /api/calculate/combat
+```
+
+## MASTER DOCUMENTATION CREATED
+
+### `/docs/data-structures.md` ✅ CREATED
+Complete tracking document with:
+- All architectural decisions
+- Data structures defined
+- Outstanding questions marked with ❓
+- Progress indicators (✅ 🔶 🔴)
+
+## OUTSTANDING QUESTIONS FOR NEXT SESSION
+
+### High Priority ❗
+1. Complete building dependencies - need full list
+2. Smithy/Wall/Hero combat formulas - exact percentages
+3. Resource production base formulas
+4. Should Doug provide additional Kirilloid extraction files?
+
+### Medium Priority
+1. Tribe-specific bonus values (exact percentages)
+2. Building effects documentation
+3. Quest rotation pattern
+
+### Decisions Needed
+1. Store dependencies in JSON or SQLite?
+2. How to handle tribe-specific building variants?
+3. Include quest predictions or ask player?
+
+## FILES READY FOR UPLOAD
+Doug has additional Kirilloid extraction files to provide - need to:
+1. Determine which files are available
+2. Store in `/data/` folder structure
+3. Update data-structures.md with new data
+
+## NEXT SESSION ACTION ITEMS
+
+### Immediate Priority
+1. **Receive and store** additional Kirilloid extraction files from Doug
+2. **Complete building dependencies** from game/documentation
+3. **Define troop training requirements** and dependencies
+
+### Implementation Priority
+1. **Create calculation engine module** in GitHub (not in chat!)
+2. **Build test harness** for validation
+3. **Test game start scenario** before Monday server launch
+
+### Key Reminders
+- **NO CODE IN CHAT** - All coding happens in GitHub
+- **Monday deadline** - New server launches, need game start optimizer
+- **Local-first** - Extension does calculations, not server
+
+## Repository Structure Updated
 ```
 /TravianAssistant/
 ├── /data/
-│   ├── buildings/
-│   │   ├── travian_complete_buildings_data.json (2x server)
-│   │   └── travian_buildings_SS1X.json (1x server)
-│   └── troops/
-│       ├── travian_all_tribes_complete.json (2x server)
-│       ├── travian_spartans_troops.json (2x server)
-│       └── travian_troops_SS1X.json (1x server)
-├── /extension-v3/
-│   ├── manifest.json
-│   ├── content.js
-│   └── background.js
-├── /backend/
-│   ├── server.js
-│   ├── game-start-optimizer.js
-│   └── ai-engine.js
-└── /docs/
-    ├── SESSION_CONTEXT.md (this file)
-    └── TRAVIAN_ASSISTANT_V3_COMPLETE.md
+│   ├── buildings/          [✅ Has base data]
+│   ├── troops/             [✅ Has base data]
+│   ├── dependencies/       [🔴 Needs creation]
+│   ├── quests/            [🔴 Needs data]
+│   └── tribe-specific/    [🔴 Needs values]
+├── /docs/
+│   ├── SESSION_CONTEXT.md      [✅ This file]
+│   ├── data-structures.md      [✅ Created - master tracking]
+│   └── TRAVIAN_ASSISTANT_V3_COMPLETE.md [✅ Original roadmap]
+├── /extension-v3/          [🔴 Not started]
+├── /backend/              [🔴 Not started]
+└── /calculation-engine/   [🔴 Ready to implement]
 ```
 
-## Notes for Next Session
-1. Focus on implementing multiplier calculations first
-2. Build simple test harness to verify calculations match game
-3. Start with Smithy upgrades as they're most straightforward (1.5% per level)
-4. Hero system is complex - may need separate deep dive
-5. Consider building calculator UI for testing before Chrome extension
+## Session Handoff Notes
+1. **Architecture decided**: Local-first with minimal API calls
+2. **Data extracted**: Buildings and troops complete
+3. **Design documented**: data-structures.md is source of truth
+4. **Next step clear**: Implement calculation engine in GitHub
+5. **Doug has files**: Additional extraction data ready to provide
 
 ---
-*Session completed successfully with all data extraction goals achieved. Ready for mechanics implementation.*
+*Session 2 completed with architecture defined and documented. Ready for implementation in Session 3.*
+*Critical: Monday new server launch - game start optimizer needed*
