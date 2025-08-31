@@ -1,1002 +1,1574 @@
 {
   "settings": {
-    "server": "T4.6 2x"
+    "server": "1x base values",
+    "extracted": "2025-08-31T21:15:19.388Z",
+    "note": "Training times need to be calculated from base values"
   },
   "tribes": {
-    "The Roman Troops": [
+    "Roman": [
       {
         "name": "Legionnaire",
         "attack": 40,
         "def_infantry": 35,
-        "def_cavalry": 50,
-        "speed": 12,
-        "wood": 50,
-        "clay": 120,
-        "iron": 100,
-        "crop": 150,
-        "consumption": 30,
-        "carry": 400,
-        "training_time": "1"
+        "def_cavalry": 70,
+        "speed": 6,
+        "cost": {
+          "wood": 50,
+          "clay": 120,
+          "iron": 100,
+          "crop": 150
+        },
+        "consumption": 1,
+        "carry": 40,
+        "training_time": 1600,
+        "building": "barracks"
       },
       {
         "name": "Praetorian",
         "attack": 30,
         "def_infantry": 65,
         "def_cavalry": 35,
-        "speed": 10,
-        "wood": 20,
-        "clay": 100,
-        "iron": 130,
-        "crop": 160,
-        "consumption": 70,
-        "carry": 460,
-        "training_time": "1"
+        "speed": 5,
+        "cost": {
+          "wood": 20,
+          "clay": 100,
+          "iron": 130,
+          "crop": 160
+        },
+        "consumption": 1,
+        "carry": 20,
+        "training_time": 1760,
+        "building": "barracks"
       },
       {
         "name": "Imperian",
         "attack": 70,
         "def_infantry": 40,
         "def_cavalry": 25,
-        "speed": 14,
-        "wood": 50,
-        "clay": 150,
-        "iron": 160,
-        "crop": 210,
-        "consumption": 80,
-        "carry": 600,
-        "training_time": "1"
+        "speed": 7,
+        "cost": {
+          "wood": 50,
+          "clay": 150,
+          "iron": 160,
+          "crop": 210
+        },
+        "consumption": 1,
+        "carry": 50,
+        "training_time": 1920,
+        "building": "barracks"
       },
       {
         "name": "Equites Legati",
         "attack": 0,
         "def_infantry": 20,
         "def_cavalry": 10,
-        "speed": 32,
-        "wood": 0,
-        "clay": 140,
-        "iron": 160,
-        "crop": 20,
-        "consumption": 40,
-        "carry": 360,
-        "training_time": "2"
+        "speed": 16,
+        "cost": {
+          "wood": 0,
+          "clay": 140,
+          "iron": 160,
+          "crop": 20
+        },
+        "consumption": 2,
+        "carry": 0,
+        "training_time": 1360,
+        "building": "stable"
       },
       {
         "name": "Equites Imperatoris",
         "attack": 120,
         "def_infantry": 65,
         "def_cavalry": 50,
-        "speed": 28,
-        "wood": 100,
-        "clay": 550,
-        "iron": 440,
-        "crop": 320,
-        "consumption": 100,
-        "carry": 1410,
-        "training_time": "3"
+        "speed": 14,
+        "cost": {
+          "wood": 100,
+          "clay": 550,
+          "iron": 440,
+          "crop": 320
+        },
+        "consumption": 3,
+        "carry": 100,
+        "training_time": 2640,
+        "building": "stable"
       },
       {
         "name": "Equites Caesaris",
         "attack": 180,
         "def_infantry": 80,
         "def_cavalry": 105,
-        "speed": 20,
-        "wood": 70,
-        "clay": 550,
-        "iron": 640,
-        "crop": 800,
-        "consumption": 180,
-        "carry": 2170,
-        "training_time": "4"
+        "speed": 10,
+        "cost": {
+          "wood": 70,
+          "clay": 550,
+          "iron": 640,
+          "crop": 800
+        },
+        "consumption": 4,
+        "carry": 70,
+        "training_time": 3520,
+        "building": "stable"
       },
       {
         "name": "Battering ram",
         "attack": 60,
         "def_infantry": 30,
         "def_cavalry": 75,
-        "speed": 8,
-        "wood": 0,
-        "clay": 900,
-        "iron": 360,
-        "crop": 500,
-        "consumption": 70,
-        "carry": 1830,
-        "training_time": "3"
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 900,
+          "iron": 360,
+          "crop": 500
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 4200,
+        "building": "workshop"
       },
       {
         "name": "Fire Catapult",
         "attack": 75,
         "def_infantry": 60,
         "def_cavalry": 10,
-        "speed": 6,
-        "wood": 0,
-        "clay": 950,
-        "iron": 1350,
-        "crop": 600,
-        "consumption": 90,
-        "carry": 2990,
-        "training_time": "6"
+        "speed": 3,
+        "cost": {
+          "wood": 0,
+          "clay": 950,
+          "iron": 1350,
+          "crop": 600
+        },
+        "consumption": 6,
+        "carry": 0,
+        "training_time": 9000,
+        "building": "workshop"
       },
       {
         "name": "Senator",
         "attack": 50,
         "def_infantry": 40,
         "def_cavalry": 30,
-        "speed": 8,
-        "wood": 0,
-        "clay": 30750,
-        "iron": 27200,
-        "crop": 45000,
-        "consumption": 37500,
-        "carry": 140450,
-        "training_time": "5"
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 30750,
+          "iron": 27200,
+          "crop": 45000
+        },
+        "consumption": 5,
+        "carry": 0,
+        "training_time": 25200,
+        "building": "residence",
+        "unit_type": "chief"
       },
       {
         "name": "Settler",
         "attack": 0,
         "def_infantry": 80,
         "def_cavalry": 80,
-        "speed": 10,
-        "wood": 3000,
-        "clay": 4600,
-        "iron": 4200,
-        "crop": 5800,
-        "consumption": 4400,
-        "carry": 19000,
-        "training_time": "1"
+        "speed": 5,
+        "cost": {
+          "wood": 3000,
+          "clay": 4600,
+          "iron": 4200,
+          "crop": 5800
+        },
+        "consumption": 1,
+        "carry": 3000,
+        "training_time": 26900,
+        "building": "residence",
+        "unit_type": "settler"
       }
     ],
-    "The Teutonic Troops": [
+    "Teutonic": [
       {
         "name": "Maceman",
         "attack": 40,
         "def_infantry": 20,
         "def_cavalry": 5,
-        "speed": 14,
-        "wood": 60,
-        "clay": 95,
-        "iron": 75,
-        "crop": 40,
-        "consumption": 40,
-        "carry": 250,
-        "training_time": "1"
+        "speed": 7,
+        "cost": {
+          "wood": 60,
+          "clay": 95,
+          "iron": 75,
+          "crop": 40
+        },
+        "consumption": 1,
+        "carry": 60,
+        "training_time": 1200,
+        "building": "barracks"
       },
       {
         "name": "Spearman",
         "attack": 10,
         "def_infantry": 35,
         "def_cavalry": 60,
-        "speed": 14,
-        "wood": 40,
-        "clay": 145,
-        "iron": 70,
-        "crop": 85,
-        "consumption": 40,
-        "carry": 340,
-        "training_time": "1"
+        "speed": 7,
+        "cost": {
+          "wood": 40,
+          "clay": 145,
+          "iron": 70,
+          "crop": 85
+        },
+        "consumption": 1,
+        "carry": 40,
+        "training_time": 1480,
+        "building": "barracks"
       },
       {
         "name": "Axeman",
         "attack": 60,
         "def_infantry": 30,
         "def_cavalry": 30,
-        "speed": 12,
-        "wood": 50,
-        "clay": 130,
-        "iron": 120,
-        "crop": 170,
-        "consumption": 70,
-        "carry": 490,
-        "training_time": "1"
+        "speed": 6,
+        "cost": {
+          "wood": 50,
+          "clay": 130,
+          "iron": 120,
+          "crop": 170
+        },
+        "consumption": 1,
+        "carry": 50,
+        "training_time": 1760,
+        "building": "barracks"
       },
       {
         "name": "Scout",
         "attack": 0,
         "def_infantry": 10,
         "def_cavalry": 5,
-        "speed": 18,
-        "wood": 0,
-        "clay": 160,
-        "iron": 100,
-        "crop": 50,
-        "consumption": 50,
-        "carry": 360,
-        "training_time": "1"
+        "speed": 9,
+        "cost": {
+          "wood": 0,
+          "clay": 160,
+          "iron": 100,
+          "crop": 50
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 1560,
+        "building": "barracks"
       },
       {
         "name": "Paladin",
         "attack": 55,
         "def_infantry": 100,
         "def_cavalry": 40,
-        "speed": 20,
-        "wood": 110,
-        "clay": 370,
-        "iron": 270,
-        "crop": 290,
-        "consumption": 75,
-        "carry": 1005,
-        "training_time": "2"
+        "speed": 10,
+        "cost": {
+          "wood": 110,
+          "clay": 370,
+          "iron": 270,
+          "crop": 290
+        },
+        "consumption": 2,
+        "carry": 110,
+        "training_time": 2320,
+        "building": "stable"
       },
       {
         "name": "Teutonic Knight",
         "attack": 150,
         "def_infantry": 50,
         "def_cavalry": 75,
-        "speed": 18,
-        "wood": 80,
-        "clay": 450,
-        "iron": 515,
-        "crop": 480,
-        "consumption": 80,
-        "carry": 1525,
-        "training_time": "3"
+        "speed": 9,
+        "cost": {
+          "wood": 80,
+          "clay": 450,
+          "iron": 515,
+          "crop": 480
+        },
+        "consumption": 3,
+        "carry": 80,
+        "training_time": 2880,
+        "building": "stable"
       },
       {
         "name": "Ram",
         "attack": 65,
         "def_infantry": 30,
         "def_cavalry": 80,
-        "speed": 8,
-        "wood": 0,
-        "clay": 1000,
-        "iron": 300,
-        "crop": 350,
-        "consumption": 70,
-        "carry": 1720,
-        "training_time": "3"
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 1000,
+          "iron": 300,
+          "crop": 350
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 4200,
+        "building": "workshop"
       },
       {
         "name": "Catapult",
         "attack": 50,
         "def_infantry": 60,
         "def_cavalry": 10,
-        "speed": 6,
-        "wood": 0,
-        "clay": 900,
-        "iron": 1200,
-        "crop": 600,
-        "consumption": 60,
-        "carry": 2760,
-        "training_time": "6"
+        "speed": 3,
+        "cost": {
+          "wood": 0,
+          "clay": 900,
+          "iron": 1200,
+          "crop": 600
+        },
+        "consumption": 6,
+        "carry": 0,
+        "training_time": 9000,
+        "building": "workshop"
       },
       {
         "name": "Chief",
         "attack": 40,
         "def_infantry": 60,
         "def_cavalry": 40,
-        "speed": 8,
-        "wood": 0,
-        "clay": 35500,
-        "iron": 26600,
-        "crop": 25000,
-        "consumption": 27200,
-        "carry": 114300,
-        "training_time": "4"
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 35500,
+          "iron": 26600,
+          "crop": 25000
+        },
+        "consumption": 4,
+        "carry": 0,
+        "training_time": 19800,
+        "building": "residence",
+        "unit_type": "chief"
       },
       {
         "name": "Settler",
         "attack": 10,
         "def_infantry": 80,
         "def_cavalry": 80,
-        "speed": 10,
-        "wood": 3000,
-        "clay": 5800,
-        "iron": 4400,
-        "crop": 4600,
-        "consumption": 5200,
-        "carry": 20000,
-        "training_time": "1"
+        "speed": 5,
+        "cost": {
+          "wood": 3000,
+          "clay": 5800,
+          "iron": 4400,
+          "crop": 4600
+        },
+        "consumption": 1,
+        "carry": 3000,
+        "training_time": 31000,
+        "building": "residence",
+        "unit_type": "settler"
       }
     ],
-    "The Gallic Troops": [
+    "Gallic": [
       {
         "name": "Phalanx",
         "attack": 15,
         "def_infantry": 40,
         "def_cavalry": 50,
-        "speed": 14,
-        "wood": 35,
-        "clay": 100,
-        "iron": 130,
-        "crop": 55,
-        "consumption": 30,
-        "carry": 315,
-        "training_time": "1"
+        "speed": 7,
+        "cost": {
+          "wood": 35,
+          "clay": 100,
+          "iron": 130,
+          "crop": 55
+        },
+        "consumption": 1,
+        "carry": 35,
+        "training_time": 1440,
+        "building": "barracks"
       },
       {
         "name": "Swordsman",
         "attack": 65,
         "def_infantry": 35,
         "def_cavalry": 20,
-        "speed": 12,
-        "wood": 45,
-        "clay": 140,
-        "iron": 150,
-        "crop": 185,
-        "consumption": 60,
-        "carry": 535,
-        "training_time": "1"
+        "speed": 6,
+        "cost": {
+          "wood": 45,
+          "clay": 140,
+          "iron": 150,
+          "crop": 185
+        },
+        "consumption": 1,
+        "carry": 45,
+        "training_time": 1920,
+        "building": "barracks"
       },
       {
         "name": "Pathfinder",
         "attack": 0,
         "def_infantry": 20,
         "def_cavalry": 10,
-        "speed": 34,
-        "wood": 0,
-        "clay": 170,
-        "iron": 150,
-        "crop": 20,
-        "consumption": 40,
-        "carry": 380,
-        "training_time": "2"
+        "speed": 17,
+        "cost": {
+          "wood": 0,
+          "clay": 170,
+          "iron": 150,
+          "crop": 20
+        },
+        "consumption": 2,
+        "carry": 0,
+        "training_time": 1360,
+        "building": "stable"
       },
       {
         "name": "Theutates Thunder",
         "attack": 100,
         "def_infantry": 25,
         "def_cavalry": 40,
-        "speed": 38,
-        "wood": 75,
-        "clay": 350,
-        "iron": 450,
-        "crop": 230,
-        "consumption": 60,
-        "carry": 1090,
-        "training_time": "2"
+        "speed": 19,
+        "cost": {
+          "wood": 75,
+          "clay": 350,
+          "iron": 450,
+          "crop": 230
+        },
+        "consumption": 2,
+        "carry": 75,
+        "training_time": 2480,
+        "building": "stable"
       },
       {
         "name": "Druidrider",
         "attack": 45,
         "def_infantry": 115,
         "def_cavalry": 55,
-        "speed": 32,
-        "wood": 35,
-        "clay": 360,
-        "iron": 330,
-        "crop": 280,
-        "consumption": 120,
-        "carry": 1090,
-        "training_time": "2"
+        "speed": 16,
+        "cost": {
+          "wood": 35,
+          "clay": 360,
+          "iron": 330,
+          "crop": 280
+        },
+        "consumption": 2,
+        "carry": 35,
+        "training_time": 2560,
+        "building": "stable"
       },
       {
         "name": "Haeduan",
         "attack": 140,
         "def_infantry": 60,
         "def_cavalry": 165,
-        "speed": 26,
-        "wood": 65,
-        "clay": 500,
-        "iron": 620,
-        "crop": 675,
-        "consumption": 170,
-        "carry": 1965,
-        "training_time": "3"
+        "speed": 13,
+        "cost": {
+          "wood": 65,
+          "clay": 500,
+          "iron": 620,
+          "crop": 675
+        },
+        "consumption": 3,
+        "carry": 65,
+        "training_time": 3120,
+        "building": "stable"
       },
       {
         "name": "Ram",
         "attack": 50,
         "def_infantry": 30,
         "def_cavalry": 105,
-        "speed": 8,
-        "wood": 0,
-        "clay": 950,
-        "iron": 555,
-        "crop": 330,
-        "consumption": 75,
-        "carry": 1910,
-        "training_time": "3"
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 950,
+          "iron": 555,
+          "crop": 330
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 4200,
+        "building": "workshop"
       },
       {
         "name": "Trebuchet",
         "attack": 70,
         "def_infantry": 45,
         "def_cavalry": 10,
-        "speed": 6,
-        "wood": 0,
-        "clay": 960,
-        "iron": 1450,
-        "crop": 630,
-        "consumption": 90,
-        "carry": 3130,
-        "training_time": "6"
+        "speed": 3,
+        "cost": {
+          "wood": 0,
+          "clay": 960,
+          "iron": 1450,
+          "crop": 630
+        },
+        "consumption": 6,
+        "carry": 0,
+        "training_time": 9000,
+        "building": "workshop"
       },
       {
         "name": "Chieftain",
         "attack": 40,
         "def_infantry": 50,
         "def_cavalry": 50,
-        "speed": 10,
-        "wood": 0,
-        "clay": 30750,
-        "iron": 45400,
-        "crop": 31000,
-        "consumption": 37500,
-        "carry": 144650,
-        "training_time": "4"
+        "speed": 5,
+        "cost": {
+          "wood": 0,
+          "clay": 30750,
+          "iron": 45400,
+          "crop": 31000
+        },
+        "consumption": 4,
+        "carry": 0,
+        "training_time": 19800,
+        "building": "residence",
+        "unit_type": "chief"
       },
       {
         "name": "Settler",
         "attack": 0,
         "def_infantry": 80,
         "def_cavalry": 80,
-        "speed": 10,
-        "wood": 3000,
-        "clay": 4400,
-        "iron": 5600,
-        "crop": 4200,
-        "consumption": 3900,
-        "carry": 18100,
-        "training_time": "1"
+        "speed": 5,
+        "cost": {
+          "wood": 3000,
+          "clay": 4400,
+          "iron": 5600,
+          "crop": 4200
+        },
+        "consumption": 1,
+        "carry": 3000,
+        "training_time": 26900,
+        "building": "residence",
+        "unit_type": "settler"
       }
     ],
-    "Nature's Troops": [
-      {
-        "name": "Rat",
-        "attack": 10,
-        "def_infantry": 25,
-        "def_cavalry": 20,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 100,
-        "carry": 100,
-        "training_time": "1"
-      },
-      {
-        "name": "Spider",
-        "attack": 20,
-        "def_infantry": 35,
-        "def_cavalry": 40,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      },
-      {
-        "name": "Serpent",
-        "attack": 60,
-        "def_infantry": 40,
-        "def_cavalry": 60,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      },
-      {
-        "name": "Bat",
-        "attack": 80,
-        "def_infantry": 66,
-        "def_cavalry": 50,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      },
-      {
-        "name": "Wild boar",
-        "attack": 50,
-        "def_infantry": 70,
-        "def_cavalry": 33,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "2"
-      },
-      {
-        "name": "Wolf",
-        "attack": 100,
-        "def_infantry": 80,
-        "def_cavalry": 70,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "2"
-      },
-      {
-        "name": "Bear",
-        "attack": 250,
-        "def_infantry": 140,
-        "def_cavalry": 200,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "3"
-      },
-      {
-        "name": "Crocodile",
-        "attack": 450,
-        "def_infantry": 380,
-        "def_cavalry": 240,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "3"
-      },
-      {
-        "name": "Tiger",
-        "attack": 200,
-        "def_infantry": 170,
-        "def_cavalry": 250,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "3"
-      },
-      {
-        "name": "Elephant",
-        "attack": 600,
-        "def_infantry": 440,
-        "def_cavalry": 520,
-        "speed": 40,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "5"
-      }
-    ],
-    "The Natarian Troops": [
-      {
-        "name": "Pikeman",
-        "attack": 20,
-        "def_infantry": 35,
-        "def_cavalry": 50,
-        "speed": 12,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      },
-      {
-        "name": "Thorned Warrior",
-        "attack": 65,
-        "def_infantry": 30,
-        "def_cavalry": 10,
-        "speed": 14,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      },
-      {
-        "name": "Guardsman",
-        "attack": 100,
-        "def_infantry": 90,
-        "def_cavalry": 75,
-        "speed": 12,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      },
-      {
-        "name": "Birds Of Prey",
-        "attack": 0,
-        "def_infantry": 10,
-        "def_cavalry": 0,
-        "speed": 50,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      },
-      {
-        "name": "Axerider",
-        "attack": 155,
-        "def_infantry": 80,
-        "def_cavalry": 50,
-        "speed": 28,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "2"
-      },
-      {
-        "name": "Natarian Knight",
-        "attack": 170,
-        "def_infantry": 140,
-        "def_cavalry": 80,
-        "speed": 24,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "3"
-      },
-      {
-        "name": "Warelephant",
-        "attack": 250,
-        "def_infantry": 120,
-        "def_cavalry": 150,
-        "speed": 10,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "4"
-      },
-      {
-        "name": "Ballista",
-        "attack": 60,
-        "def_infantry": 45,
-        "def_cavalry": 10,
-        "speed": 6,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "5"
-      },
-      {
-        "name": "Natarian Emperor",
-        "attack": 80,
-        "def_infantry": 50,
-        "def_cavalry": 50,
-        "speed": 10,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      },
-      {
-        "name": "Settler",
-        "attack": 30,
-        "def_infantry": 40,
-        "def_cavalry": 40,
-        "speed": 10,
-        "wood": 0,
-        "clay": 0,
-        "iron": 0,
-        "crop": 0,
-        "consumption": 0,
-        "carry": 0,
-        "training_time": "1"
-      }
-    ],
-    "The Egyptian Troops": [
+    "Egyptian": [
       {
         "name": "Slave Militia",
         "attack": 10,
         "def_infantry": 30,
         "def_cavalry": 20,
-        "speed": 14,
-        "wood": 15,
-        "clay": 45,
-        "iron": 60,
-        "crop": 30,
-        "consumption": 15,
-        "carry": 150,
-        "training_time": "1"
+        "speed": 7,
+        "cost": {
+          "wood": 15,
+          "clay": 45,
+          "iron": 60,
+          "crop": 30
+        },
+        "consumption": 1,
+        "carry": 15,
+        "training_time": 900,
+        "building": "barracks"
       },
       {
         "name": "Ash Warden",
         "attack": 30,
         "def_infantry": 55,
         "def_cavalry": 40,
-        "speed": 12,
-        "wood": 50,
-        "clay": 115,
-        "iron": 100,
-        "crop": 145,
-        "consumption": 60,
-        "carry": 420,
-        "training_time": "1"
+        "speed": 6,
+        "cost": {
+          "wood": 50,
+          "clay": 115,
+          "iron": 100,
+          "crop": 145
+        },
+        "consumption": 1,
+        "carry": 50,
+        "training_time": 1640,
+        "building": "barracks"
       },
       {
         "name": "Khopesh Warrior",
         "attack": 65,
         "def_infantry": 50,
         "def_cavalry": 20,
-        "speed": 14,
-        "wood": 45,
-        "clay": 170,
-        "iron": 180,
-        "crop": 220,
-        "consumption": 80,
-        "carry": 650,
-        "training_time": "1"
+        "speed": 7,
+        "cost": {
+          "wood": 45,
+          "clay": 170,
+          "iron": 180,
+          "crop": 220
+        },
+        "consumption": 1,
+        "carry": 45,
+        "training_time": 2080,
+        "building": "barracks"
       },
       {
         "name": "Sopdu Explorer",
         "attack": 0,
         "def_infantry": 20,
         "def_cavalry": 10,
-        "speed": 32,
-        "wood": 0,
-        "clay": 170,
-        "iron": 150,
-        "crop": 20,
-        "consumption": 40,
-        "carry": 380,
-        "training_time": "2"
+        "speed": 16,
+        "cost": {
+          "wood": 0,
+          "clay": 170,
+          "iron": 150,
+          "crop": 20
+        },
+        "consumption": 2,
+        "carry": 0,
+        "training_time": 1360,
+        "building": "stable"
       },
       {
         "name": "Anhur Guard",
         "attack": 50,
         "def_infantry": 110,
         "def_cavalry": 50,
-        "speed": 30,
-        "wood": 50,
-        "clay": 360,
-        "iron": 330,
-        "crop": 280,
-        "consumption": 120,
-        "carry": 1090,
-        "training_time": "2"
+        "speed": 15,
+        "cost": {
+          "wood": 50,
+          "clay": 360,
+          "iron": 330,
+          "crop": 280
+        },
+        "consumption": 2,
+        "carry": 50,
+        "training_time": 2560,
+        "building": "stable"
       },
       {
         "name": "Resheph Chariot",
         "attack": 110,
         "def_infantry": 120,
         "def_cavalry": 150,
-        "speed": 20,
-        "wood": 70,
-        "clay": 450,
-        "iron": 560,
-        "crop": 610,
-        "consumption": 180,
-        "carry": 1800,
-        "training_time": "3"
+        "speed": 10,
+        "cost": {
+          "wood": 70,
+          "clay": 450,
+          "iron": 560,
+          "crop": 610
+        },
+        "consumption": 3,
+        "carry": 70,
+        "training_time": 3360,
+        "building": "stable"
       },
       {
         "name": "Ram",
         "attack": 55,
         "def_infantry": 30,
         "def_cavalry": 95,
-        "speed": 8,
-        "wood": 0,
-        "clay": 995,
-        "iron": 575,
-        "crop": 340,
-        "consumption": 80,
-        "carry": 1990,
-        "training_time": "3"
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 995,
+          "iron": 575,
+          "crop": 340
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 4200,
+        "building": "workshop"
       },
       {
         "name": "Stone Catapult",
         "attack": 65,
         "def_infantry": 55,
         "def_cavalry": 10,
-        "speed": 6,
-        "wood": 0,
-        "clay": 980,
-        "iron": 1510,
-        "crop": 660,
-        "consumption": 100,
-        "carry": 3250,
-        "training_time": "6"
+        "speed": 3,
+        "cost": {
+          "wood": 0,
+          "clay": 980,
+          "iron": 1510,
+          "crop": 660
+        },
+        "consumption": 6,
+        "carry": 0,
+        "training_time": 9000,
+        "building": "workshop"
       },
       {
         "name": "Nomarch",
         "attack": 40,
         "def_infantry": 50,
         "def_cavalry": 50,
-        "speed": 8,
-        "wood": 0,
-        "clay": 34000,
-        "iron": 50000,
-        "crop": 34000,
-        "consumption": 42000,
-        "carry": 160000,
-        "training_time": "4"
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 34000,
+          "iron": 50000,
+          "crop": 34000
+        },
+        "consumption": 4,
+        "carry": 0,
+        "training_time": 19800,
+        "building": "residence",
+        "unit_type": "chief"
       },
       {
         "name": "Settler",
         "attack": 0,
         "def_infantry": 80,
         "def_cavalry": 80,
-        "speed": 10,
-        "wood": 3000,
-        "clay": 5040,
-        "iron": 6510,
-        "crop": 4830,
-        "consumption": 4620,
-        "carry": 21000,
-        "training_time": "1"
+        "speed": 5,
+        "cost": {
+          "wood": 3000,
+          "clay": 5040,
+          "iron": 6510,
+          "crop": 4830
+        },
+        "consumption": 1,
+        "carry": 3000,
+        "training_time": 31920,
+        "building": "residence",
+        "unit_type": "settler"
       }
     ],
-    "The Huns Troops": [
+    "Huns": [
       {
         "name": "Mercenary",
         "attack": 35,
         "def_infantry": 40,
         "def_cavalry": 30,
-        "speed": 12,
-        "wood": 50,
-        "clay": 130,
-        "iron": 80,
-        "crop": 40,
-        "consumption": 40,
-        "carry": 290,
-        "training_time": "1"
+        "speed": 6,
+        "cost": {
+          "wood": 50,
+          "clay": 130,
+          "iron": 80,
+          "crop": 40
+        },
+        "consumption": 1,
+        "carry": 50,
+        "training_time": 1400,
+        "building": "barracks"
       },
       {
         "name": "Bowman",
         "attack": 50,
         "def_infantry": 30,
         "def_cavalry": 10,
-        "speed": 12,
-        "wood": 30,
-        "clay": 140,
-        "iron": 110,
-        "crop": 60,
-        "consumption": 60,
-        "carry": 370,
-        "training_time": "1"
+        "speed": 6,
+        "cost": {
+          "wood": 30,
+          "clay": 140,
+          "iron": 110,
+          "crop": 60
+        },
+        "consumption": 1,
+        "carry": 30,
+        "training_time": 1480,
+        "building": "barracks"
       },
       {
         "name": "Spotter",
         "attack": 0,
         "def_infantry": 20,
         "def_cavalry": 10,
-        "speed": 38,
-        "wood": 0,
-        "clay": 170,
-        "iron": 150,
-        "crop": 20,
-        "consumption": 40,
-        "carry": 380,
-        "training_time": "2"
+        "speed": 19,
+        "cost": {
+          "wood": 0,
+          "clay": 170,
+          "iron": 150,
+          "crop": 20
+        },
+        "consumption": 2,
+        "carry": 0,
+        "training_time": 1360,
+        "building": "stable"
       },
       {
         "name": "Steppe Rider",
         "attack": 120,
         "def_infantry": 30,
         "def_cavalry": 15,
-        "speed": 32,
-        "wood": 75,
-        "clay": 290,
-        "iron": 370,
-        "crop": 190,
-        "consumption": 45,
-        "carry": 895,
-        "training_time": "2"
+        "speed": 16,
+        "cost": {
+          "wood": 75,
+          "clay": 290,
+          "iron": 370,
+          "crop": 190
+        },
+        "consumption": 2,
+        "carry": 75,
+        "training_time": 2030,
+        "building": "stable"
       },
       {
         "name": "Marksman",
         "attack": 110,
         "def_infantry": 80,
         "def_cavalry": 70,
-        "speed": 30,
-        "wood": 105,
-        "clay": 320,
-        "iron": 350,
-        "crop": 330,
-        "consumption": 50,
-        "carry": 1050,
-        "training_time": "2"
+        "speed": 15,
+        "cost": {
+          "wood": 105,
+          "clay": 320,
+          "iron": 350,
+          "crop": 330
+        },
+        "consumption": 2,
+        "carry": 105,
+        "training_time": 2430,
+        "building": "stable"
       },
       {
         "name": "Marauder",
         "attack": 180,
         "def_infantry": 60,
         "def_cavalry": 40,
-        "speed": 28,
-        "wood": 80,
-        "clay": 450,
-        "iron": 560,
-        "crop": 610,
-        "consumption": 140,
-        "carry": 1760,
-        "training_time": "3"
+        "speed": 14,
+        "cost": {
+          "wood": 80,
+          "clay": 450,
+          "iron": 560,
+          "crop": 610
+        },
+        "consumption": 3,
+        "carry": 80,
+        "training_time": 3370,
+        "building": "stable"
       },
       {
         "name": "Ram",
         "attack": 65,
         "def_infantry": 30,
         "def_cavalry": 90,
-        "speed": 8,
-        "wood": 0,
-        "clay": 1060,
-        "iron": 330,
-        "crop": 360,
-        "consumption": 70,
-        "carry": 1820,
-        "training_time": "3"
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 1060,
+          "iron": 330,
+          "crop": 360
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 4200,
+        "building": "workshop"
       },
       {
         "name": "Catapult",
         "attack": 45,
         "def_infantry": 55,
         "def_cavalry": 10,
-        "speed": 6,
-        "wood": 0,
-        "clay": 950,
-        "iron": 1280,
-        "crop": 620,
-        "consumption": 60,
-        "carry": 2910,
-        "training_time": "6"
+        "speed": 3,
+        "cost": {
+          "wood": 0,
+          "clay": 950,
+          "iron": 1280,
+          "crop": 620
+        },
+        "consumption": 6,
+        "carry": 0,
+        "training_time": 9000,
+        "building": "workshop"
       },
       {
         "name": "Logades",
         "attack": 50,
         "def_infantry": 40,
         "def_cavalry": 30,
-        "speed": 10,
-        "wood": 0,
-        "clay": 37200,
-        "iron": 27600,
-        "crop": 25200,
-        "consumption": 27600,
-        "carry": 117600,
-        "training_time": "4"
+        "speed": 5,
+        "cost": {
+          "wood": 0,
+          "clay": 37200,
+          "iron": 27600,
+          "crop": 25200
+        },
+        "consumption": 4,
+        "carry": 0,
+        "training_time": 19800,
+        "building": "residence",
+        "unit_type": "chief"
       },
       {
         "name": "Settler",
         "attack": 10,
         "def_infantry": 80,
         "def_cavalry": 80,
-        "speed": 10,
-        "wood": 3000,
-        "clay": 6100,
-        "iron": 4600,
-        "crop": 4800,
-        "consumption": 5400,
-        "carry": 20900,
-        "training_time": "1"
+        "speed": 5,
+        "cost": {
+          "wood": 3000,
+          "clay": 6100,
+          "iron": 4600,
+          "crop": 4800
+        },
+        "consumption": 1,
+        "carry": 3000,
+        "training_time": 32400,
+        "building": "residence",
+        "unit_type": "settler"
+      }
+    ],
+    "Spartan": [
+      {
+        "name": "Hoplite",
+        "attack": 50,
+        "def_infantry": 35,
+        "def_cavalry": 30,
+        "speed": 6,
+        "cost": {
+          "wood": 60,
+          "clay": 110,
+          "iron": 185,
+          "crop": 110
+        },
+        "consumption": 1,
+        "carry": 60,
+        "training_time": 1720,
+        "building": "barracks"
+      },
+      {
+        "name": "Sentinel",
+        "attack": 0,
+        "def_infantry": 40,
+        "def_cavalry": 22,
+        "speed": 9,
+        "cost": {
+          "wood": 0,
+          "clay": 185,
+          "iron": 150,
+          "crop": 35
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 1520,
+        "building": "barracks"
+      },
+      {
+        "name": "Shieldsman",
+        "attack": 40,
+        "def_infantry": 85,
+        "def_cavalry": 45,
+        "speed": 8,
+        "cost": {
+          "wood": 40,
+          "clay": 145,
+          "iron": 95,
+          "crop": 245
+        },
+        "consumption": 1,
+        "carry": 40,
+        "training_time": 1960,
+        "building": "barracks"
+      },
+      {
+        "name": "Twinsteel Therion",
+        "attack": 90,
+        "def_infantry": 55,
+        "def_cavalry": 40,
+        "speed": 6,
+        "cost": {
+          "wood": 50,
+          "clay": 130,
+          "iron": 200,
+          "crop": 400
+        },
+        "consumption": 1,
+        "carry": 50,
+        "training_time": 2360,
+        "building": "barracks"
+      },
+      {
+        "name": "Elpida Rider",
+        "attack": 55,
+        "def_infantry": 120,
+        "def_cavalry": 90,
+        "speed": 16,
+        "cost": {
+          "wood": 110,
+          "clay": 555,
+          "iron": 445,
+          "crop": 330
+        },
+        "consumption": 2,
+        "carry": 110,
+        "training_time": 2760,
+        "building": "stable"
+      },
+      {
+        "name": "Corinthian Crusher",
+        "attack": 195,
+        "def_infantry": 80,
+        "def_cavalry": 75,
+        "speed": 9,
+        "cost": {
+          "wood": 80,
+          "clay": 660,
+          "iron": 495,
+          "crop": 995
+        },
+        "consumption": 3,
+        "carry": 80,
+        "training_time": 3840,
+        "building": "stable"
+      },
+      {
+        "name": "Ram",
+        "attack": 65,
+        "def_infantry": 30,
+        "def_cavalry": 80,
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 525,
+          "iron": 260,
+          "crop": 790
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 4200,
+        "building": "workshop"
+      },
+      {
+        "name": "Ballista",
+        "attack": 50,
+        "def_infantry": 60,
+        "def_cavalry": 10,
+        "speed": 3,
+        "cost": {
+          "wood": 0,
+          "clay": 550,
+          "iron": 1240,
+          "crop": 825
+        },
+        "consumption": 6,
+        "carry": 0,
+        "training_time": 9000,
+        "building": "workshop"
+      },
+      {
+        "name": "Ephor",
+        "attack": 40,
+        "def_infantry": 60,
+        "def_cavalry": 40,
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 33450,
+          "iron": 30665,
+          "crop": 36240
+        },
+        "consumption": 4,
+        "carry": 0,
+        "training_time": 19800,
+        "building": "residence",
+        "unit_type": "chief"
+      },
+      {
+        "name": "Settler",
+        "attack": 10,
+        "def_infantry": 80,
+        "def_cavalry": 80,
+        "speed": 5,
+        "cost": {
+          "wood": 3000,
+          "clay": 5115,
+          "iron": 5580,
+          "crop": 6045
+        },
+        "consumption": 1,
+        "carry": 3000,
+        "training_time": 31380,
+        "building": "residence",
+        "unit_type": "settler"
+      }
+    ],
+    "Viking": [
+      {
+        "name": "Thrall",
+        "attack": 45,
+        "def_infantry": 22,
+        "def_cavalry": 5,
+        "speed": 7,
+        "cost": {
+          "wood": 55,
+          "clay": 95,
+          "iron": 80,
+          "crop": 50
+        },
+        "consumption": 1,
+        "carry": 55,
+        "training_time": 1280,
+        "building": "barracks"
+      },
+      {
+        "name": "Shield Maiden",
+        "attack": 20,
+        "def_infantry": 50,
+        "def_cavalry": 30,
+        "speed": 7,
+        "cost": {
+          "wood": 40,
+          "clay": 125,
+          "iron": 70,
+          "crop": 85
+        },
+        "consumption": 1,
+        "carry": 40,
+        "training_time": 1440,
+        "building": "barracks"
+      },
+      {
+        "name": "Berserker",
+        "attack": 70,
+        "def_infantry": 30,
+        "def_cavalry": 25,
+        "speed": 5,
+        "cost": {
+          "wood": 75,
+          "clay": 235,
+          "iron": 220,
+          "crop": 200
+        },
+        "consumption": 2,
+        "carry": 75,
+        "training_time": 2240,
+        "building": "barracks"
+      },
+      {
+        "name": "Heimdall's Eye",
+        "attack": 0,
+        "def_infantry": 10,
+        "def_cavalry": 5,
+        "speed": 9,
+        "cost": {
+          "wood": 0,
+          "clay": 155,
+          "iron": 95,
+          "crop": 50
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 1520,
+        "building": "barracks"
+      },
+      {
+        "name": "Huskarl Rider",
+        "attack": 45,
+        "def_infantry": 95,
+        "def_cavalry": 100,
+        "speed": 12,
+        "cost": {
+          "wood": 110,
+          "clay": 385,
+          "iron": 295,
+          "crop": 290
+        },
+        "consumption": 2,
+        "carry": 110,
+        "training_time": 2400,
+        "building": "stable"
+      },
+      {
+        "name": "Valkyrie's Blessing",
+        "attack": 160,
+        "def_infantry": 50,
+        "def_cavalry": 75,
+        "speed": 9,
+        "cost": {
+          "wood": 80,
+          "clay": 475,
+          "iron": 535,
+          "crop": 515
+        },
+        "consumption": 2,
+        "carry": 80,
+        "training_time": 3120,
+        "building": "stable"
+      },
+      {
+        "name": "Ram",
+        "attack": 65,
+        "def_infantry": 30,
+        "def_cavalry": 80,
+        "speed": 4,
+        "cost": {
+          "wood": 0,
+          "clay": 950,
+          "iron": 325,
+          "crop": 375
+        },
+        "consumption": 2,
+        "carry": 0,
+        "training_time": 4200,
+        "building": "workshop"
+      },
+      {
+        "name": "Catapult",
+        "attack": 50,
+        "def_infantry": 60,
+        "def_cavalry": 10,
+        "speed": 3,
+        "cost": {
+          "wood": 0,
+          "clay": 850,
+          "iron": 1225,
+          "crop": 625
+        },
+        "consumption": 6,
+        "carry": 0,
+        "training_time": 9000,
+        "building": "workshop"
+      },
+      {
+        "name": "Jarl",
+        "attack": 40,
+        "def_infantry": 40,
+        "def_cavalry": 60,
+        "speed": 5,
+        "cost": {
+          "wood": 0,
+          "clay": 35500,
+          "iron": 26600,
+          "crop": 25000
+        },
+        "consumption": 4,
+        "carry": 0,
+        "training_time": 19800,
+        "building": "residence",
+        "unit_type": "chief"
+      },
+      {
+        "name": "Settler",
+        "attack": 10,
+        "def_infantry": 80,
+        "def_cavalry": 80,
+        "speed": 5,
+        "cost": {
+          "wood": 3000,
+          "clay": 5800,
+          "iron": 4600,
+          "crop": 4800
+        },
+        "consumption": 1,
+        "carry": 3000,
+        "training_time": 31000,
+        "building": "residence",
+        "unit_type": "settler"
+      }
+    ],
+    "Nature": [
+      {
+        "name": "Rat",
+        "attack": 10,
+        "def_infantry": 25,
+        "def_cavalry": 20,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Spider",
+        "attack": 20,
+        "def_infantry": 35,
+        "def_cavalry": 40,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Serpent",
+        "attack": 60,
+        "def_infantry": 40,
+        "def_cavalry": 60,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Bat",
+        "attack": 80,
+        "def_infantry": 66,
+        "def_cavalry": 50,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Wild boar",
+        "attack": 50,
+        "def_infantry": 70,
+        "def_cavalry": 33,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 2,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Wolf",
+        "attack": 100,
+        "def_infantry": 80,
+        "def_cavalry": 70,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 2,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Bear",
+        "attack": 250,
+        "def_infantry": 140,
+        "def_cavalry": 200,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Crocodile",
+        "attack": 450,
+        "def_infantry": 380,
+        "def_cavalry": 240,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Tiger",
+        "attack": 200,
+        "def_infantry": 170,
+        "def_cavalry": 250,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Elephant",
+        "attack": 600,
+        "def_infantry": 440,
+        "def_cavalry": 520,
+        "speed": 20,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 5,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      }
+    ],
+    "Natarian": [
+      {
+        "name": "Pikeman",
+        "attack": 20,
+        "def_infantry": 35,
+        "def_cavalry": 50,
+        "speed": 6,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Thorned Warrior",
+        "attack": 65,
+        "def_infantry": 30,
+        "def_cavalry": 10,
+        "speed": 7,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Guardsman",
+        "attack": 100,
+        "def_infantry": 90,
+        "def_cavalry": 75,
+        "speed": 6,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Birds Of Prey",
+        "attack": 0,
+        "def_infantry": 10,
+        "def_cavalry": 0,
+        "speed": 25,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Axerider",
+        "attack": 155,
+        "def_infantry": 80,
+        "def_cavalry": 50,
+        "speed": 14,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 2,
+        "carry": 0,
+        "training_time": 0,
+        "building": "stable"
+      },
+      {
+        "name": "Natarian Knight",
+        "attack": 170,
+        "def_infantry": 140,
+        "def_cavalry": 80,
+        "speed": 12,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 3,
+        "carry": 0,
+        "training_time": 0,
+        "building": "stable"
+      },
+      {
+        "name": "Warelephant",
+        "attack": 250,
+        "def_infantry": 120,
+        "def_cavalry": 150,
+        "speed": 5,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 4,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Ballista",
+        "attack": 60,
+        "def_infantry": 45,
+        "def_cavalry": 10,
+        "speed": 3,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 5,
+        "carry": 0,
+        "training_time": 0,
+        "building": "workshop"
+      },
+      {
+        "name": "Natarian Emperor",
+        "attack": 80,
+        "def_infantry": 50,
+        "def_cavalry": 50,
+        "speed": 5,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "barracks"
+      },
+      {
+        "name": "Settler",
+        "attack": 30,
+        "def_infantry": 40,
+        "def_cavalry": 40,
+        "speed": 5,
+        "cost": {
+          "wood": 0,
+          "clay": 0,
+          "iron": 0,
+          "crop": 0
+        },
+        "consumption": 1,
+        "carry": 0,
+        "training_time": 0,
+        "building": "residence",
+        "unit_type": "settler"
       }
     ]
   },
-  "extracted": "2025-08-30T20:46:56.832Z"
+  "training_formula": "base_time * 0.9^(building_level - 1)",
+  "great_building_multiplier": 3
 }
