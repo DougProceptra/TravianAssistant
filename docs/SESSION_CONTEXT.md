@@ -1,136 +1,202 @@
 # SESSION_CONTEXT.md
-*Last Updated: August 31, 2025 3:30 PM MT*
-*Server Launch: September 1, 2025 (Less than 24 hours!)*
+*Last Updated: August 31, 2025 3:45 PM MT*
+*Server Launch: September 1, 2025 (TOMORROW!)*
 
-## Project: TravianAssistant V3
-Browser-based AI assistant for Travian Legends gameplay optimization
+## 🚨 PARADIGM SHIFT: AI-First Architecture
 
-## ✅ MAJOR MILESTONE: Complete Troop Data Extracted!
+### What Changed
+We are NOT building calculators or static optimization tools.
+We ARE building an **AI-powered game assistant** that dynamically analyzes and advises.
 
-### What's Complete
-1. **Building Calculation Engine** ✅
-   - Build time formulas with modifiers
-   - Resource costs and requirements
-   - ROI calculations
-   - Building data fully loaded
+## Project: TravianAssistant V4
+AI-powered browser assistant for Travian Legends using Claude for dynamic strategy
 
-2. **Troop Data - ALL 9 TRIBES** ✅ 
-   - Roman, Teutonic, Gallic - Complete with training times
-   - Egyptian, Huns - Complete with training times
-   - **Spartan** - Complete with training times
-   - **Viking** - Complete with training times
-   - Nature, Natarian - Complete (NPC only)
-   - Training times in seconds at level 1
-   - Consumption values corrected
-   - Carry capacity fixed
+## Architecture Overview
+```
+Chrome Extension (scrapes game) → Backend Server (serves data) → Claude AI (analyzes) → Chat HUD (in-game)
+```
 
-3. **Hero Mechanics** ✅
-   - Complete documentation in `/data/hero/hero-mechanics.md`
-   - Tribal bonuses documented
-   - Resource production formulas
-   - Speed calculations
+## ✅ What's Complete
 
-4. **Training Time Formula** ✅
-   ```javascript
-   Training Time = Base Time × 0.9^(Building Level - 1)
-   // Each level reduces by 10%
-   // Great Barracks/Stable: Additional 3× speed
-   ```
+### 1. Game Data Extraction - DONE
+- All 9 tribes with complete troop stats
+- Building costs and construction times
+- Hero mechanics and formulas
+- Training time calculations
 
-### Next Critical Tasks (Before Launch)
+### 2. Game Data Provider - DONE
+- TypeScript class in `/packages/extension/src/ai/game-data-provider.ts`
+- Formats all game data for AI consumption
+- Provides complete game context to Claude
+- Includes formulas and mechanics
 
-#### 1. Integrate Troop Training into Calculator
+### 3. Chrome Extension - EXISTS (needs testing)
+- Manifest V3 structure in place
+- Content scripts for scraping
+- Background service worker
+- HUD overlay capability
+
+## 🔴 Critical Tasks for Launch
+
+### 1. Test & Optimize Extension Scraping
+- Verify complete game state capture
+- Test on actual Travian pages
+- Ensure all resources, buildings, troops scraped
+- Validate page context detection
+
+### 2. Connect Extension to Backend
+- Wire up game-data-provider.ts
+- Establish communication channel
+- Route AI requests through backend
+- Handle response streaming
+
+### 3. Implement AI Chat Interface
+- Claude system prompt with game knowledge
+- Interactive dialogue in HUD
+- Context-aware responses
+- Natural language processing
+
+### 4. Deploy Backend Server
+- Host game data files
+- Proxy Claude API calls
+- Manage conversation context
+- Store user preferences
+
+## The AI Advantage
+
+### Traditional Approach (V3)
 ```javascript
-// calculation-engine/index.js needs:
-function calculateTroopTraining(troopName, buildingLevel, isGreat = false) {
-  const troop = getTroopData(troopName);
-  let time = troop.training_time * Math.pow(0.9, buildingLevel - 1);
-  if (isGreat) time = time / 3;
-  return time;
+// Static calculator
+function calculateSettlementTime(tribe, resources) {
+  return fixedFormula(tribe, resources);
 }
 ```
 
-#### 2. Create Game Start Optimizer
-- Combine building + troop calculations
-- Optimal settler timing (Day 7 target)
-- Resource accumulation planning
-- Quest path optimization
+### AI Approach (V4)
+```
+Player: "When should I settle?"
 
-#### 3. Package for Team Use
-- Simple HTML interface
-- Build order generator
-- Troop training scheduler
-- Settlement location finder
+AI: "I see you're Egyptian with 15/15/15/9 fields. Let me understand your situation:
+- Are you competing for a specific 15c?
+- What's your gold budget?
+- Any aggressive neighbors?
 
-## Files to Update
+Based on your 1200/hour total production and level 7 barracks, 
+you could settle by day 6 if you focus on...]"
+```
 
-1. `/calculation-engine/index.js` - Add troop training calculations
-2. `/calculation-engine/test.js` - Add troop training tests
-3. Create `/implementation/game-start-optimizer.js`
-4. Create `/implementation/settlement-calculator.js`
+## Key Insights
 
-## Settlement Math (Egyptians)
-- **3 Settlers Cost**: 9,000 wood, 15,120 clay, 19,530 iron, 14,490 crop
-- **Training Time**: ~26.5 hours at Residence 10 (3 × 8.97 hours)
-- **Target**: Day 6-7 settlement for top-5 finish
+### AI Asks Questions Instead of Assuming
+- Server spawn location relative to center
+- Alliance vs solo play
+- Gold spending tolerance
+- Offensive vs defensive goals
+- Risk tolerance for early aggression
 
-## Launch Readiness Checklist
+### AI Sees Context
+- What page the player is viewing
+- Current game state in real-time
+- Historical patterns from session
+- Server-specific conditions
 
-- [x] Building calculations working
-- [x] Troop data complete for all tribes
-- [x] Hero mechanics documented
-- [ ] Troop training integrated into calculator
-- [ ] Game start optimizer built
-- [ ] Settlement calculator ready
-- [ ] Team testing guide created
-- [ ] Chrome extension packaged
+### AI Adapts Strategy
+- No fixed "optimal" build order
+- Responds to changing conditions
+- Learns from player preferences
+- Considers unpredictable variables
 
-## Session Success Metrics
+## Technical Status
 
-### Today's Wins
-- ✅ Extracted Spartan and Viking troop data
-- ✅ Fixed training times for all troops
-- ✅ Corrected consumption values
-- ✅ All 9 tribes now in database
+### Working Components
+- ✅ Complete game data in JSON
+- ✅ Data provider class
+- ✅ Extension structure
+- ✅ Building/troop formulas
 
-### Remaining Work (Time Estimate: 2-3 hours)
-1. **30 min**: Integrate troop calculations
-2. **45 min**: Build game start optimizer
-3. **30 min**: Create settlement calculator
-4. **30 min**: Package and test
-5. **30 min**: Documentation for team
+### Needs Implementation
+- ❌ Extension-to-backend connection
+- ❌ Claude AI integration
+- ❌ Chat interface in HUD
+- ❌ Conversation context management
+
+### Needs Testing
+- ⚠️ Game state scraping accuracy
+- ⚠️ Real-time data updates
+- ⚠️ AI response quality
+- ⚠️ Performance under load
+
+## Next Session Actions
+
+1. **Test Extension Scraping**
+   - Load extension in Chrome
+   - Navigate to Travian pages
+   - Verify data extraction
+   - Check console for errors
+
+2. **Connect Backend Pipeline**
+   - Set up Node.js server
+   - Configure Claude API
+   - Implement WebSocket/HTTP bridge
+   - Test data flow
+
+3. **Configure AI Agent**
+   - Write comprehensive system prompt
+   - Include all game mechanics
+   - Add conversation patterns
+   - Test with real scenarios
+
+4. **Package for Team**
+   - Extension installation guide
+   - Backend deployment steps
+   - API key configuration
+   - Testing checklist
+
+## Success Metrics
+
+### Launch Day (Sept 1)
+- Extension captures game state
+- AI provides relevant advice
+- Chat interface responds
+- No critical errors
+
+### Week 1
+- AI helps achieve competitive settlement
+- Accurate calculations on demand
+- Contextual strategy recommendations
+- Learning from interactions
 
 ## Quick Reference
 
-### Egyptian Slave Militia (Cheapest Raid Unit)
-- Cost: 15 wood, 45 clay, 60 iron, 30 crop
-- Training: 900s (15 min) at Barracks 1
-- Training: 322s (5.4 min) at Barracks 10
-- Carry: 15 resources
-- Speed: 7 fields/hour
+### File Locations
+- Extension: `/packages/extension/`
+- Game Data: `/data/`
+- Data Provider: `/packages/extension/src/ai/game-data-provider.ts`
+- Documentation: `/docs/`
 
-### Roman Legionnaire (Balanced Early Unit)  
-- Cost: 50 wood, 120 clay, 100 iron, 150 crop
-- Training: 1600s (26.7 min) at Barracks 1
-- Training: 573s (9.5 min) at Barracks 10
-- Carry: 40 resources
-- Speed: 6 fields/hour
+### Key Formulas
+- Training: `base_time * 0.9^(building_level - 1)`
+- Great Building: `time / 3`
+- Building: `base_time / (1 + MB_level * 0.05)`
+- Travel: `distance / (speed * server_speed)`
 
-### Settlement Timing Formula
-```javascript
-Total Time = Building Time + Resource Accumulation + Training Time
-Building Time = Residence to 10 (~2 days with MB15)
-Resource Time = Production Rate dependent (~2-3 days)
-Training Time = 26.5 hours (can overlap with resource accumulation)
-Total: 5-7 days for competitive settlement
-```
+### Egyptian Quick Facts
+- Slave Militia: 15 wood, 45 clay, 60 iron, 30 crop
+- 15 min training at Barracks 1
+- 15 carry capacity
+- 7 fields/hour speed
+- Resource bonus: +25% from hero
 
-## Final Push Priority
+## Philosophy Change
 
-1. **MUST HAVE**: Working calculator with troop training
-2. **SHOULD HAVE**: Automated build order generator
-3. **NICE TO HAVE**: Chrome extension HUD
-4. **CAN WAIT**: AI integration for recommendations
+**OLD**: "Build these exact things in this exact order"
+**NEW**: "Tell me your situation, and I'll help you succeed"
+
+**OLD**: Static spreadsheet calculations
+**NEW**: Dynamic AI analysis
+
+**OLD**: Generic optimization
+**NEW**: Personalized strategy
 
 ---
-*Server launches in less than 24 hours. Focus on calculator functionality first, polish later.*
+*The game launches tomorrow. We're not building a calculator. We're building an AI advisor that understands Travian better than any spreadsheet ever could.*
