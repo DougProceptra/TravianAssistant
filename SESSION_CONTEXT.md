@@ -1,212 +1,198 @@
 # SESSION_CONTEXT.md
-*Last Updated: August 31, 2025 10:30 AM MT*
-*Session Focus: Hero & Troop Mechanics Implementation*
+*Last Updated: August 31, 2025 4:45 PM MT*
+*Session Focus: Extension → Backend Server Connection*
 
-## Current Session Status
-Working on completing troop data extraction for AI calculations. Hero mechanics documentation completed with 100% accuracy.
+## ⚠️ CRITICAL: READ THIS FIRST FOR NEW SESSIONS ⚠️
 
-## Critical Timeline
-- **Launch Date**: September 1, 2025 (Tomorrow!)
-- **Time Remaining**: ~36 hours
-- **Priority**: Get troop training calculations integrated TODAY
+### Required Context Documents
+1. **THIS FILE** (`SESSION_CONTEXT.md`) - Current state and immediate tasks
+2. **TravianAssistantV4.md** (in Google Drive) - Overall V4 architecture and design philosophy
+3. **DEVELOPMENT_GUIDE.md** (in repo) - Technical implementation details
 
-## ✅ Completed This Session
+### GitHub Repository
+- **Account**: DougProceptra (NOT dougproctor)
+- **Repo**: TravianAssistant
+- **All code lives in GitHub** - Do NOT look in Google Drive for code files
 
-### Hero Mechanics (DONE)
-- Created comprehensive `/data/hero/hero-mechanics.md` with:
-  - Exact tribal bonuses (Romans: 100 str/point, Egyptians: 25% resource bonus, etc.)
-  - Complete speed calculations with equipment
-  - All consumable items and effects
-  - Resource production formulas (3/hour standard, 3.75/hour Egyptian)
-  - Experience and leveling system
-  - Death/revival mechanics with formulas
-  - Can switch resource allocation (balanced/focused) WITHOUT Book of Wisdom ✓
+### Key Infrastructure
+- **Chrome Extension**: In `/extension-v3/` and `/packages/extension/`
+- **Backend Server**: Deployed on Replit at `https://TravianAssistant.dougdostal.replit.dev`
+- **Vercel Proxy**: Working at `https://travian-proxy-simple.vercel.app`
+- **Game Server**: 2x server at lusobr.x2.lusobrasileiro.travian.com
 
-### Troop Data Status (IN PROGRESS)
-- **Have**: Basic troop stats in `/data/troops/travian_all_tribes_complete.json`
-  - Attack/Defense values ✓
-  - Speed values ✓
-  - Cost values ✓
-  - Carrying capacity ✓
-  - BUT: Training times are wrong (just "1", "2", etc.)
-  - BUT: Consumption values are wrong (too high)
+## Current Status (Aug 31, 2025)
 
-## 🔴 Current Blocker: Incomplete Troop Data
+### ✅ What's Working
+1. **Game Data**: Complete troop/building data for ALL tribes (including Spartans/Vikings)
+2. **Chrome Extension**: Scraping game state successfully
+3. **Vercel Proxy**: Proxying Claude API calls without CORS issues
+4. **Backend Server**: Running on Replit with WebSocket support
+5. **Hero Mechanics**: Fully documented in `/data/hero/hero-mechanics.md`
 
-### Extraction Script Issues
-1. **Missing Tribes**: Spartans and Vikings not in Kirilloid dropdown
-2. **Script Location**: `/scripts/extraction/browser-extract-troops.js`
-3. **Target URL**: http://travian.kirilloid.ru/troops.php (set to 1x speed)
+### 🔴 Current Issues
 
-### Successfully Extracted (6 tribes):
+#### 1. Wrong Background Service File
+- **Problem**: Extension using old `background.js` (v0.4.2) instead of `service_worker.ts` (v0.5.1)
+- **Impact**: Chat doesn't work because old file lacks CHAT_MESSAGE handler
+- **Fix**: Update manifest.json to point to correct built file
+
+#### 2. Backend Connection Points to Localhost
+- **Problem**: Extension hardcoded to `ws://localhost:3002`
+- **Impact**: Can't connect to Replit backend
+- **Fix**: Make backend URL configurable, default to Replit
+
+#### 3. Version Mismatch
+- **Extension Version**: Shows v0.5.1 in UI
+- **Manifest Version**: Shows v0.4.9
+- **Background Service**: Running v0.4.2
+- **Fix**: Align all versions during build
+
+## V4 Architecture (AI-Powered Assistant)
+
+### Core Philosophy (from TravianAssistantV4.md)
+**V4 is NOT a calculator** - it's an AI assistant that:
+- Understands context from what page you're viewing
+- Asks clarifying questions instead of assuming
+- Adapts strategy based on your specific situation
+- Learns from your preferences and play style
+- Provides conversational help, not fixed formulas
+
+### Key Differences from V3
 ```javascript
-// Data available in browser as window.troopData
-{
-  "Roman": 10 troops,
-  "Teutonic": 10 troops,
-  "Gallic": 10 troops,
-  "Egyptian": 10 troops,
-  "Huns": 10 troops,
-  "Nature": 10 troops
+// V3 Approach (Static Calculator)
+function calculateSettlementTime(tribe, resources) {
+  return fixedFormula(tribe, resources);
 }
+
+// V4 Approach (AI Conversation)
+"I see you're Egyptian with those fields. Are you racing 
+for a specific 15c? What's your gold budget? Based on 
+your situation, I'd suggest..."
 ```
 
-### Still Needed:
-- **Spartan troops** (not in dropdown - may need different source)
-- **Viking troops** (not in dropdown - may need different source)
-- **Natarian troops** (optional, for completeness)
-- **Correct training times in seconds** (partially captured)
-- **Fix consumption values** (divide by something?)
-
-## Training Time Formula Confirmed
-```javascript
-Training Time = Base Time × 0.9^(Building Level - 1)
-// Each level reduces by 10%
-// Great Barracks/Stable: Additional 3× speed
+### Technical Architecture
+```
+Chrome Extension (Scrapes Game)
+       ↓
+Backend Server (Replit)
+       ↓
+Claude API (via Vercel Proxy)
+       ↓
+Contextual AI Response
 ```
 
-## AI Requirements for Scenarios
+## Immediate Tasks (Priority Order)
 
-### What AI Needs to Answer User Scenarios:
-1. **Combat calculations**: Attack/defense values ✓
-2. **Movement calculations**: Speed values ✓
-3. **Economic calculations**: Cost, upkeep, carrying capacity (partial)
-4. **Training optimization**: Base training times ✗
-5. **Building requirements**: Academy levels, prerequisites ✗
+### 1. Fix Extension Background Service (30 mins)
+```bash
+# Check what's actually in dist/
+ls -la packages/extension/dist/
 
-### Example Scenarios to Support:
-1. Egyptian slave militia raiding optimization
-2. Roman cheap raider selection
-3. Gaul hero + Theutates Thunder combinations
+# Ensure service_worker.ts is being built correctly
+cd packages/extension
+npm run build
 
-## Next Steps (Priority Order)
-
-### 1. Complete Troop Data Extraction (Next 2 hours)
-- [ ] Find source for Spartan/Viking troops
-- [ ] Fix training_time values to actual seconds
-- [ ] Fix consumption values (likely crop/hour upkeep)
-- [ ] Add building requirements (Academy levels)
-
-### 2. Alternative Data Sources to Try:
-```javascript
-// Option 1: Check for different server versions
-http://travian.kirilloid.ru/troops.php?s=6  // Version 6?
-http://travian.kirilloid.ru/troops.php?s=7  // Version 7?
-
-// Option 2: Direct data files
-http://travian.kirilloid.ru/data/troops.json
-http://travian.kirilloid.ru/js/troops.js
-
-// Option 3: Official Travian wiki
-https://wiki.travian.com/Troops
+# Verify manifest points to right file
+cat dist/manifest.json | grep service_worker
 ```
 
-### 3. Create Consolidated Troop Data File:
-```javascript
-// Target structure: /data/troops/troops_complete.json
-{
-  "tribes": {
-    "romans": {
-      "troops": [...],
-      "bonuses": {...}
-    },
-    // ... all 7 tribes
-  },
-  "mechanics": {
-    "training_formula": "base_time * 0.9^(level-1)",
-    "great_building_multiplier": 3,
-    "combat_formulas": {...}
-  },
-  "nature_troops": [...],
-  "building_requirements": {...}
-}
+### 2. Configure Backend URL (30 mins)
+Update `/packages/extension/src/backend/backend-sync.ts`:
+```typescript
+// Change from:
+const BACKEND_URL = 'ws://localhost:3002';
+
+// To:
+const BACKEND_URL = process.env.NODE_ENV === 'development' 
+  ? 'ws://localhost:3002'
+  : 'wss://TravianAssistant.dougdostal.replit.dev';
 ```
 
-## Script Refinement Needed
+### 3. Test Chat Functionality (15 mins)
+1. Rebuild extension with fixes
+2. Load in Chrome
+3. Navigate to Travian
+4. Open chat interface
+5. Verify it connects to Claude via backend
 
-### Current Script Location:
-`/scripts/extraction/browser-extract-troops.js`
+## File Locations Quick Reference
 
-### Issues to Fix:
-1. **Tribe Detection**: Script can't find Spartans/Vikings in dropdown
-2. **Time Parsing**: Successfully parsing MM:SS and H:MM:SS formats ✓
-3. **Building Assignment**: Logic for barracks/stable/workshop mostly correct ✓
-4. **Async Handling**: Working but could be more robust
+### Extension Files
+- **Manifest**: `/packages/extension/manifest.json`
+- **Background Service**: `/packages/extension/src/background/service_worker.ts`
+- **Chat UI**: `/packages/extension/src/content/conversational-ai.ts`
+- **Backend Sync**: `/packages/extension/src/backend/backend-sync.ts`
 
-### Working Script Pattern:
-```javascript
-// This part works:
-const timeText = cells[12]?.textContent.trim() || '';
-let trainingSeconds = 0;
+### Backend Files (on Replit)
+- **Main Server**: `/backend/server.js`
+- **AI Chat Handler**: `/backend/ai-chat-handler.js`
+- **Database**: SQLite at `/backend/travian.db`
 
-if (timeText && timeText.includes(':')) {
-    const parts = timeText.split(':').map(p => parseInt(p) || 0);
-    if (parts.length === 2) {
-        // MM:SS
-        trainingSeconds = parts[0] * 60 + parts[1];
-    } else if (parts.length === 3) {
-        // H:MM:SS
-        trainingSeconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-    }
-}
+### Data Files
+- **Troop Data**: `/data/troops/travian_all_tribes_complete.json`
+- **Building Data**: `/data/buildings/buildings.json`
+- **Hero Mechanics**: `/data/hero/hero-mechanics.md`
+
+## Build & Deploy Process
+
+### Extension Build
+```bash
+cd packages/extension
+./build-simple.sh  # Creates dist/ folder
+# Load dist/ folder in Chrome as unpacked extension
 ```
 
-## Known Good Data Points (for validation)
+### Backend Deploy (Replit)
+```bash
+# Push to GitHub
+git add -A
+git commit -m "Update backend"
+git push
 
-### Egyptian Slave Militia (confirmed):
-- Attack: 10
-- Def Infantry: 30
-- Def Cavalry: 20
-- Speed: 6 (7 on some servers?)
-- Cost: 45 wood, 60 clay, 30 iron, 15 crop
-- Consumption: 1 crop/hour
-- Training time: ~900 seconds (base)
-
-### Roman Legionnaire (from screenshot):
-- Training time: 26:40 (1600 seconds) at level 1
-
-## Files to Update Once Complete
-
-1. `/data/troops/travian_all_tribes_complete.json` - Fix training times
-2. `/data/troops/troops_spartans.json` - Add complete Spartan data
-3. `/data/troops/troops_vikings.json` - Add complete Viking data
-4. `/calculation-engine/index.js` - Integrate troop training calculations
-
-## Database Schema Needed
-```sql
-CREATE TABLE troops (
-  id INTEGER PRIMARY KEY,
-  tribe TEXT NOT NULL,
-  name TEXT NOT NULL,
-  attack INTEGER,
-  def_infantry INTEGER,
-  def_cavalry INTEGER,
-  speed INTEGER,
-  cost_wood INTEGER,
-  cost_clay INTEGER,
-  cost_iron INTEGER,
-  cost_crop INTEGER,
-  upkeep INTEGER,
-  carry_capacity INTEGER,
-  training_time INTEGER, -- seconds at level 1
-  building TEXT, -- barracks/stable/workshop/residence
-  requirements JSON -- {"academy": 5, "blacksmith": 1}
-);
+# In Replit
+git pull
+npm install
+# Click Run button
 ```
 
-## Session Goals
-- [x] Document hero mechanics with 100% accuracy
-- [ ] Complete troop data extraction for all 7 tribes
-- [ ] Integrate training time calculations
-- [ ] Create test scenarios for AI validation
-- [ ] Push everything to GitHub for team testing
+## Testing Checklist
+- [ ] Extension loads without errors
+- [ ] Game state scraping works
+- [ ] Backend WebSocket connects
+- [ ] Chat messages reach Claude
+- [ ] AI responses display in UI
+- [ ] Data syncs to backend database
 
-## Notes for Next Session
-- Spartans/Vikings may be in a different Kirilloid server version
-- Check if consumption values need to be divided by crop cost
-- Training times are critical for optimization calculations
-- Consider manual data entry for missing tribes if needed
-- Great Barracks/Stable 3× multiplier needs clarification on stacking
+## Common Issues & Solutions
+
+### "Unknown message type: CHAT_MESSAGE"
+**Cause**: Old background.js doesn't have handler
+**Fix**: Ensure extension uses new service_worker.ts
+
+### "WebSocket connection refused"
+**Cause**: Trying to connect to localhost
+**Fix**: Update to Replit URL
+
+### "CORS error on API calls"
+**Cause**: Direct calls to Anthropic API
+**Fix**: Use Vercel proxy URL
+
+### "Chat resets on page refresh"
+**Known Issue**: Chat history not persisted yet
+**TODO**: Store in backend database
+
+## Session Handoff Notes
+- Development happening on 2x speed server (faster for testing)
+- Launch target: September 1, 2025 (tomorrow!)
+- Doug plays Egyptians on this server
+- Focus on getting chat working for user testing
+- Backend has all game data, just needs connection
+
+## Next Session Should Start With
+1. Check this file for current state
+2. Review TravianAssistantV4.md for design context
+3. Verify which issues are still open
+4. Continue from "Immediate Tasks" section
 
 ---
-*Remember: AI doesn't need every calculation pre-built, just access to accurate data and game mechanics knowledge*
+*Remember: The goal is an AI assistant that helps players make decisions, not a calculator that tells them what to do*
