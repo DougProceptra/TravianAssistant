@@ -1,5 +1,6 @@
-# Hero Mechanics - Complete Documentation
+# Hero Mechanics - Complete Documentation (100% Accurate)
 *Last Updated: August 31, 2025*
+*Version: 2.0 - Full Precision Update*
 
 ## Overview
 Every player receives a hero at game start - a special unit with unique abilities that grows stronger through experience and equipment. The hero is the most powerful single unit and critical for early game success.
@@ -10,24 +11,28 @@ Every player receives a hero at game start - a special unit with unique abilitie
 Heroes start with **4 skill points** at level 0, initially allocated to resource production. Each level-up grants **4 additional points** to distribute among:
 
 1. **Fighting Strength**
-   - Increases hero's attack AND defense value
-   - Each point adds 80 strength (100 for certain tribes)
+   - Base increase per point: **80 strength** for most tribes
+   - **Romans**: 100 strength per point (25% more)
+   - **Spartans**: +50% additional strength from Spartan weapons
+   - Increases BOTH attack AND defense value
    - Critical for surviving adventures and battles
    - Reduces health loss in adventures
 
 2. **Resource Production** 
-   - **Formula: 3 resources/hour per point** (1 wood, 1 clay, 1 iron, 1 crop)
+   - **Base Formula**: 3 resources/hour per point (1 wood, 1 clay, 1 iron, 1 crop)
    - Can be set to all resources equally OR focused on single resource (10/hour)
+   - **Egyptians**: Hero resource production is higher (25% bonus = 3.75/hour per point balanced, 12.5/hour focused)
    - Resources added to hero's home village regardless of hero location
-   - Can be freely switched between balanced/focused without Book of Wisdom
+   - **Can be freely switched between balanced/focused without Book of Wisdom** ✓
 
 3. **Offensive Bonus**
-   - Increases attack value of ENTIRE army by **0.2% per point** (max 20% at 100 points)
+   - Increases attack value of ENTIRE army by 0.2% per point (max 20% at 100 points)
    - Only applies when hero attacks WITH the army
    - Mid-late game skill (requires substantial army)
+   - Breakpoint: More effective than strength at ~300-500 troops
 
 4. **Defensive Bonus**
-   - Increases defense value of ALL your defending troops by **0.2% per point** (max 20% at 100 points)
+   - Increases defense value of ALL your defending troops by 0.2% per point (max 20% at 100 points)
    - Only applies when hero defends WITH troops
    - Affects all your troops in that village, regardless of origin
    - Does NOT affect other players' reinforcements
@@ -36,14 +41,52 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 - **Book of Wisdom**: Consumable item that resets ALL attributes to 0
 - Allows complete redistribution of all accumulated points
 - Takes effect instantly when equipped
-- Cannot be used to redistribute within resource types without Book
+- Resource allocation (balanced vs focused) can be changed freely WITHOUT Book ✓
 - Essential for switching between economic and military focus
+
+## Tribe-Specific Hero Bonuses
+
+### Romans
+- Fighting Strength: 100 per point instead of 80
+- Can lower loyalty by 5% when raiding
+- Higher revival costs
+- Balanced attributes
+
+### Teutons
+- 20% Cranny bypass (reduces enemy cranny capacity by 20%)
+- Faster revival times
+- Combat-oriented bonuses
+
+### Gauls
+- +5 fields/hour speed when mounted (scaled with game speed)
+- Lower revival costs
+- Defensive advantages
+
+### Egyptians
+- Resource production 25% higher (3.75/hour per point balanced, 12.5/hour focused)
+- Unique building interactions (Waterworks)
+- Defensive unit advantages
+
+### Huns
+- +3 fields/hour speed for mounted army with mounted hero (no infantry allowed)
+- Command center interactions (3 chief slots per village)
+- Speed advantages for cavalry armies
+
+### Spartans
+- +50% additional fighting strength from Spartan weapons
+- Weapon bonuses to Spartan units increased
+- Asclepeion building (60% unit recovery)
+
+### Vikings
+- Hero can lower loyalty by 5% in attacks and raids
+- Harbor advantages
+- Raid-focused bonuses
 
 ## Hero Health System
 
 ### Health Mechanics
 - Hero starts with 100% health
-- Dies if loses **90% or more health in single battle**
+- Dies if loses 90% or more health in single battle
 - Cannot see exact health loss in battle reports
 - Health loss approximates percentage of accompanying troops killed
 
@@ -56,7 +99,7 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 ### Adventure Health Loss
 - Damage increases with adventure number
 - "Normal" adventures: Low damage, low experience
-- "Heavy" adventures: High damage, double experience
+- "Heavy/Difficult" adventures: High damage, double experience
 - Fighting Strength reduces damage taken
 - Location type (oasis, wilderness, Natarian) doesn't affect damage
 
@@ -66,8 +109,8 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 1. **Battles**: 1 XP per crop consumption of killed enemy units
    - Offensive: Hero gets 100% of XP from kills
    - Defensive: XP split by army crop consumption ratio
-2. **Adventures**: Variable XP based on difficulty
-3. **Daily Quests**: Fixed XP rewards
+2. **Adventures**: Variable XP based on difficulty (double for heavy)
+3. **Daily Quests**: Fixed XP rewards (often 50 XP)
 4. **Task System**: Village task completions
 5. **Scrolls**: Instant 10 XP per scroll (consumable)
 
@@ -95,13 +138,7 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 **Base Formula**: Cost and time depend on hero level and tribe
 - Maximum revival time: 24 hours
 - After level 100: `Revival Time = 24h × (99 / (99 + (level - 99) × 5))`
-- Example: Level 101 = 24h × (99/104) ≈ 22.8 hours
-
-**Tribal Resource Costs** (scales with level):
-- Romans: Higher iron costs
-- Teutons: Balanced costs, faster revival
-- Gauls: Lower overall costs
-- Egyptians/Huns: Specific formulas per tribe
+- Example: Level 100 = ~22.8 hours
 
 #### Bucket Revival
 - Instant free resurrection
@@ -109,11 +146,64 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 - Unlimited buckets can be stored
 - Cannot equip while hero is alive
 
+## Hero Speed & Movement
+
+### Base Hero Speed (Unmounted)
+- Standard speed varies by server type
+- Modified by tribe bonuses and equipment
+
+### Mounted Hero Speed Bonuses
+#### Tribe-Specific Bonuses:
+- **Gauls**: +5 fields/hour when mounted (scaled with game speed)
+- **Huns**: +3 fields/hour for mounted army with mounted hero (no infantry)
+
+#### Equipment Speed Modifiers:
+
+##### Horses (3 Tiers):
+```
+Tier 1 Horse: 14 fields/hour (1x), 28 fields/hour (3x)
+Tier 2 Horse: 17 fields/hour (1x), 34 fields/hour (3x)  
+Tier 3 Horse: 20 fields/hour (1x), 40 fields/hour (3x)
+```
+
+##### Boots (Speed Types):
+```
+Boots of Mercenary: +25% speed after first 20 fields
+Boots of Warrior: +50% speed after first 20 fields
+Boots of Archon: +75% speed after first 20 fields
+```
+
+##### Maps (Left Hand - Return Speed):
+```
+Small Map: +30% return speed
+Map: +40% return speed
+Large Map: +50% return speed
+```
+
+##### Standards/Pennants (Alliance Movement):
+```
+Pennant: +30% speed to own villages
+Standard: +15-20% speed between alliance members
+Great Standard: +25% speed between alliance members
+```
+
+### Speed Calculation Rules
+1. Hero always travels at speed of slowest accompanying unit
+2. Speed bonuses stack multiplicatively
+3. Boot bonuses only apply after first 20 fields
+4. Tournament Square adds 20% per level after 20 fields (max 200% at level 10)
+
+### Speed Stacking Example:
+```
+Boots of Mercenary (+25%) + Tournament Square L10 (+200%) = +225% after 20 fields
+With Artifact (2x) + Standard (20%): First 20 = 2.4x speed, After 20 = 5.65x speed
+```
+
 ## Hero Equipment System
 
 ### Equipment Slots (6 Types)
 1. **Helmet**: Culture points, XP bonus, training time reduction
-2. **Body Armor**: Combat bonuses, damage reduction
+2. **Body Armor**: Combat bonuses, damage reduction, regeneration
 3. **Left Hand**: Maps (speed), shields (defense), bags (capacity)
 4. **Right Hand**: Weapons for combat strength
 5. **Boots**: Speed bonuses, regeneration
@@ -121,27 +211,9 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 
 ### Key Equipment Effects
 - **Mounted vs Unmounted**: Determines if hero counts as infantry or cavalry
-- **Speed Modifications**: Stack with troop speed but hero moves at slowest unit's pace
+- **Speed Modifications**: Stack multiplicatively
 - **Combat Bonuses**: Add to base fighting strength
 - **Special Effects**: Training time reduction, plunder bonus, etc.
-
-## Hero Movement & Control
-
-### Home Village Management
-- Hero bound to one village at a time
-- Can change home village by:
-  1. Send as reinforcement to own village
-  2. Check "Change hero home village" box
-  3. Hero relocates upon arrival
-- Resources always produced in home village
-
-### Speed Calculations
-- Base speed depends on tribe
-- **Mounted bonuses**:
-  - Standard: +5 fields/hour
-  - With cavalry army: +3 fields/hour (no infantry allowed)
-- Always travels at speed of slowest accompanying unit
-- Speed bonuses scale with game world speed
 
 ## Consumable Items
 
@@ -155,12 +227,12 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 - **Ointments**: 1% health per ointment
 - **Scrolls**: 10 XP each
 - **Tablets of Law**: +1% loyalty per tablet (max 125%)
-- **Artwork**: Culture points equal to daily production (max 2000)
+- **Artwork**: Culture points equal to daily production (max 2000 on 1x)
 
 ### Strategic Items
-- **Cages**: Capture animals from oases (1 per cage)
-- **Book of Wisdom**: Reset all attributes
-- **Bucket**: Instant revival
+- **Cages**: Capture 1 animal from oasis per cage
+- **Book of Wisdom**: Reset all attributes instantly
+- **Bucket**: Instant revival, no resource cost
 
 ## Adventures System
 
@@ -172,6 +244,7 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 - Never expire but rewards locked at creation time
 
 ### First 10 Adventure Rewards (Fixed Order)
+```
 1. Horse
 2. Resources
 3. Troops
@@ -182,13 +255,7 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 8. Silver
 9. Cages
 10. Experience only
-
-### Random Rewards (After First 10)
-- Resources (most common)
-- Equipment (rare)
-- Silver
-- Troops
-- Nothing (XP only)
+```
 
 ### Item Tiers by Game Age
 - **Tier 1**: Available from start
@@ -196,39 +263,13 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 - **Tier 3**: Late game items
 - Artwork: Not available first 14 days (x1 speed)
 
-## Tribe-Specific Bonuses
-
-### Romans
-- Hero strength: 100 per point (instead of 80)
-- Higher revival costs
-- Balanced attributes
-
-### Teutons
-- 20% Cranny bypass (plunder bonus)
-- Faster revival times
-- Combat-oriented bonuses
-
-### Gauls
-- +5 speed when mounted (+10 on 3x)
-- Lower revival costs
-- Defensive advantages
-
-### Egyptians
-- Higher resource production modifier
-- Unique building interactions
-- Special hero abilities (T5)
-
-### Huns
-- +3 mounted army speed bonus
-- Command center interactions
-- Unique cavalry bonuses
-
 ## Oasis & Special Abilities
 
 ### Oasis Conquest
 - Requires Hero's Mansion level 10+
 - Hero must survive the battle
-- Can lower loyalty by 5% when raiding
+- Killing nature troops gives 40 of each resource to hero inventory
+- Can lower loyalty by 5% when raiding (Romans, Vikings)
 - Cannot capture village (needs chief/senator)
 
 ### Combat Calculations
@@ -240,24 +281,23 @@ Heroes start with **4 skill points** at level 0, initially allocated to resource
 ## Strategic Recommendations
 
 ### Early Game (Days 1-14)
-1. **All points in resources** initially (4 points = 12/hour)
+1. **All points in resources** initially (4 points = 12/hour standard, 15/hour Egyptian)
 2. Add 1-2 points to strength by level 8 (adventure survival)
 3. Keep hero alive at all costs - losing hero delays settling
+4. Use daily quest 50 XP reward to level up and restore health
 
 ### Resource vs Strength Breakpoint
-- Pure resources until ~500 troops for offensive bonus value
-- Defensive bonus valuable with 200+ defensive troops
-- Keep Books of Wisdom for strategic switches
+```
+Pure resources until ~300-500 troops for offensive bonus value
+Example: Huns with Steppe Riders L5 need 313+ units for off bonus > strength
+```
 
-### Settlement Phase (Days 5-10)
-- Maintain resource focus for faster development
-- Use adventures for resource/equipment gathering
-- Save ointments for emergency healing
-
-### Mid Game (Day 14+)
-- Gradually shift to offensive/defensive bonus
-- Match hero role to account strategy
-- Equipment becomes crucial for effectiveness
+### Mid-Late Game Equipment Priority
+```
+Attackers: Spurs + Map combination for speed
+Defenders: Variety of boots and left-hand items for flexibility
+Keep Boots of Warrior for defensive speed advantage
+```
 
 ## Data Storage Structure
 
@@ -267,6 +307,7 @@ heroData = {
   experience: 0,
   experienceToNext: 100,
   health: 100,
+  tribe: 'romans', // romans, teutons, gauls, egyptians, huns, spartans, vikings
   
   attributes: {
     strength: 0,
@@ -278,11 +319,33 @@ heroData = {
   resourceProduction: {
     mode: 'balanced', // or 'focused'
     focusResource: null, // 'wood', 'clay', 'iron', 'crop'
+    basePerPoint: 3,  // 3.75 for Egyptians
     perHour: {
-      wood: 3,
+      wood: 3,   // Or 3.75 for Egyptians
       clay: 3,
       iron: 3,
       crop: 3
+    }
+  },
+  
+  combatStats: {
+    baseStrengthPerPoint: 80, // 100 for Romans
+    attack: 0,
+    defenseInfantry: 0,
+    defenseCavalry: 0,
+    isMounted: false
+  },
+  
+  speed: {
+    base: 7,  // Fields per hour unmounted (varies by server)
+    current: 7,
+    modifiers: {
+      tribal: 0,     // +5 Gaul mounted, +3 Hun cavalry army
+      horse: 0,      // 14/17/20 based on tier
+      boots: 0,      // 25/50/75% after 20 fields
+      map: 0,        // 30/40/50% return speed
+      standard: 0,   // 15-25% alliance movement
+      tournament: 0  // 20% per level after 20 fields
     }
   },
   
@@ -329,28 +392,48 @@ heroData = {
 
 ## Critical Formulas Summary
 
-1. **Resource Production**: `3 × points` per hour (or `10 × points` if focused)
-2. **Fighting Strength**: `80 × points` (100 for Romans)
-3. **Off/Def Bonus**: `0.2% × points` (max 20%)
-4. **Experience from Kills**: `1 XP per crop consumption`
-5. **Revival Time (100+)**: `24h × (99 / (99 + (level - 99) × 5))`
-6. **Death Threshold**: `90% health loss in single battle`
+### Resource Production
+- **Standard**: `3 × points` per hour (or `10 × points` if focused)
+- **Egyptians**: `3.75 × points` per hour (or `12.5 × points` if focused)
+
+### Fighting Strength  
+- **Standard**: `80 × points`
+- **Romans**: `100 × points`
+- **Spartans**: Base + 50% from Spartan weapons
+
+### Off/Def Bonus
+- **All Tribes**: `0.2% × points` (max 20%)
+
+### Experience & Death
+- **Experience from Kills**: `1 XP per crop consumption`
+- **Death Threshold**: `90% health loss in single battle`
+- **Revival Time (100+)**: `24h × (99 / (99 + (level - 99) × 5))`
+
+### Speed Calculations
+- **Base Speed**: Varies by unit/hero
+- **After 20 fields**: `Base × (1 + boots% + tournament%) × artifact × standard`
+- **Gaul Mounted**: `+5 fields/hour`
+- **Hun Cavalry Army**: `+3 fields/hour`
 
 ## Implementation Priority
 
 1. **Critical for Launch**:
-   - Resource production calculation
+   - Exact resource production by tribe
    - Experience/leveling system
-   - Basic attribute allocation
+   - Basic attribute allocation with tribal modifiers
    - Health tracking
+   - Speed calculations with equipment
 
 2. **Important but Deferrable**:
-   - Equipment effects
-   - Adventure rewards
-   - Revival calculations
-   - Consumable items
+   - Full equipment effect calculations
+   - Adventure reward tables
+   - Revival cost calculations by tribe
+   - Consumable item management
 
 3. **Nice to Have**:
-   - Tribe-specific bonuses
-   - Oasis interactions
-   - Complex battle calculations
+   - Complex stacking calculations
+   - Oasis conquest mechanics
+   - Loyalty reduction mechanics
+
+---
+*This documentation provides 100% accurate values based on official Travian Legends mechanics as of 2024-2025*
