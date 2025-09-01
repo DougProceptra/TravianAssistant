@@ -1,7 +1,7 @@
 /**
  * Safe Scraper - Combines overview parser, AJAX interceptor, and current page data
- * NO NAVIGATION - only safe data collection methods
- * Version 1.4.0 - With Unicode fix and proper initialization
+ * PRIORITY: Always collect ALL villages data for strategic decisions
+ * Version 1.5.0 - Multi-village focus with Unicode fix
  */
 
 import { overviewParser, type OverviewState, type VillageOverviewData } from './overview-parser';
@@ -12,8 +12,8 @@ export interface SafeGameState {
   accountId: string;
   serverUrl: string;
   timestamp: number;
-  villages: VillageOverviewData[];
-  currentVillageId: string;
+  villages: VillageOverviewData[];  // ALL villages, always
+  currentVillageId: string;  // Which one is active in browser
   totals: {
     resources: {
       wood: number;
@@ -64,7 +64,7 @@ export class SafeScraper {
   private isInitialized = false;
   
   constructor() {
-    console.log('[TLA Safe Scraper] Initializing safe data collection...');
+    console.log('[TLA Safe Scraper] Initializing MULTI-VILLAGE data collection...');
   }
 
   /**
@@ -91,36 +91,61 @@ export class SafeScraper {
       this.handleDataUpdate(event.detail);
     });
     
-    // Scrape current page on load
-    this.scrapeCurrentPage();
-    
-    // Load cached state from storage
-    await this.loadCachedState();
+    // CRITICAL: Immediately fetch ALL villages data on initialization
+    console.log('[TLA Safe Scraper] Fetching initial ALL VILLAGES data...');
+    await this.getGameState(true);  // Force refresh to get all villages
     
     this.isInitialized = true;
-    console.log('[TLA Safe Scraper] Initialization complete');
+    console.log('[TLA Safe Scraper] Initialization complete with ALL villages loaded');
   }
 
   /**
-   * Get current game state (combines all data sources)
+   * Get current game state - ALWAYS includes ALL villages
    */
   public async getGameState(forceRefresh = false): Promise<SafeGameState> {
-    console.log('[TLA Safe Scraper] Getting game state...');
+    console.log('[TLA Safe Scraper] Getting COMPLETE game state (all villages)...');
     
-    // If we have recent data and not forcing refresh, return it
-    if (!forceRefresh && this.currentState && this.isDataFresh()) {
-      console.log('[TLA Safe Scraper] Returning cached state');
-      return this.currentState;
+    // Check if we need fresh overview data
+    const needsOverview = forceRefresh || 
+                          !this.currentState || 
+                          !this.isOverviewDataFresh() ||
+                          this.currentState.villages.length === 0;
+    
+    let overviewState: OverviewState;
+    
+    if (needsOverview) {
+      // ALWAYS fetch overview for ALL villages
+      console.log('[TLA Safe Scraper] Fetching ALL VILLAGES from overview...');
+      overviewState = await this.fetchOverviewSafely();
+      
+      // Validate we got multi-village data
+      if (overviewState.villages.length === 0) {
+        console.warn('[TLA Safe Scraper] No villages found in overview! Attempting alternate fetch...');
+        // Try to get from village switcher or other sources
+        overviewState = await this.attemptAlternateVillagesFetch();
+      }
+      
+      console.log(`[TLA Safe Scraper] Found ${overviewState.villages.length} villages in account`);
+    } else {
+      console.log('[TLA Safe Scraper] Using cached overview data');
+      overviewState = this.getCachedOverview();
     }
     
-    // Fetch overview data (safe - single request to dorf3.php)
-    const overviewState = await this.fetchOverviewSafely();
-    
-    // Enhance with current page data
+    // Enhance ONLY current village with detailed page data
     const currentPageData = this.scrapeCurrentPage();
+    console.log('[TLA Safe Scraper] Enhanced current village data:', currentPageData.name);
     
-    // Build complete state
+    // Build complete state with ALL villages
     const gameState = this.buildGameState(overviewState, currentPageData);
+    
+    // Log summary for verification
+    console.log('[TLA Safe Scraper] Game state summary:', {
+      totalVillages: gameState.villages.length,
+      currentVillage: gameState.villages.find(v => v.id === gameState.currentVillageId)?.name,
+      totalResources: gameState.totals.resources,
+      totalProduction: gameState.totals.production,
+      alerts: gameState.alerts.length
+    });
     
     // Store state
     this.currentState = gameState;
@@ -134,20 +159,32 @@ export class SafeScraper {
 
   /**
    * Safely fetch overview data with rate limiting
+   * CRITICAL: This is where we get ALL villages data
    */
   private async fetchOverviewSafely(): Promise<OverviewState> {
     try {
-      // Check rate limit (max once per minute)
+      // Check rate limit (max once per 30 seconds for overview)
       const lastOverviewFetch = this.currentState?.lastUpdate.overview || 0;
       const timeSinceLastFetch = Date.now() - lastOverviewFetch;
       
-      if (timeSinceLastFetch < 60000) {
+      if (timeSinceLastFetch < 30000 && this.currentState?.villages.length > 0) {
         console.log('[TLA Safe Scraper] Rate limited - using cached overview');
         return this.getCachedOverview();
       }
       
-      console.log('[TLA Safe Scraper] Fetching overview page...');
-      return await overviewParser.fetchAllVillages();
+      console.log('[TLA Safe Scraper] Fetching overview page (dorf3.php) for ALL villages...');
+      const overview = await overviewParser.fetchAllVillages();
+      
+      // Validate we got data
+      if (!overview.villages || overview.villages.length === 0) {
+        console.error('[TLA Safe Scraper] Overview fetch returned no villages!');
+        // Fall back to cached if available
+        if (this.currentState?.villages.length > 0) {
+          return this.getCachedOverview();
+        }
+      }
+      
+      return overview;
     } catch (error) {
       console.error('[TLA Safe Scraper] Overview fetch failed:', error);
       return this.getCachedOverview();
@@ -155,32 +192,89 @@ export class SafeScraper {
   }
 
   /**
-   * Get cached overview data
+   * Attempt to get villages data from alternate sources
    */
-  private getCachedOverview(): OverviewState {
-    const cachedVillages = overviewParser.getAllCachedVillages();
+  private async attemptAlternateVillagesFetch(): Promise<OverviewState> {
+    console.log('[TLA Safe Scraper] Attempting alternate village data fetch...');
     
+    // Try to get from village switcher dropdown
+    const villageSwitcher = document.querySelector('.villageList');
+    if (villageSwitcher) {
+      const villageLinks = villageSwitcher.querySelectorAll('a[href*="newdid"]');
+      console.log(`[TLA Safe Scraper] Found ${villageLinks.length} villages in switcher`);
+      
+      const villages: VillageOverviewData[] = Array.from(villageLinks).map(link => {
+        const href = link.getAttribute('href') || '';
+        const id = href.match(/newdid=(\d+)/)?.[1] || '0';
+        const name = link.querySelector('.name')?.textContent?.trim() || 'Unknown';
+        
+        return {
+          id,
+          name,
+          resources: { wood: 0, clay: 0, iron: 0, crop: 0 },
+          production: { wood: 0, clay: 0, iron: 0, crop: 0 },
+          isActive: link.parentElement?.classList.contains('active') || false
+        };
+      });
+      
+      return {
+        villages,
+        movements: { incoming: 0, outgoing: 0, attacks: [] },
+        culturePoints: { current: 0, production: 0, nextSlot: 0 },
+        timestamp: Date.now()
+      };
+    }
+    
+    // If no switcher, at least return current village
+    const currentVillage = this.scrapeCurrentPage();
     return {
-      villages: cachedVillages,
-      movements: {
-        incoming: 0,
-        outgoing: 0,
-        attacks: []
-      },
-      culturePoints: {
-        current: 0,
-        production: 0,
-        nextSlot: 0
-      },
+      villages: [{
+        id: currentVillage.id || '0',
+        name: currentVillage.name || 'Unknown',
+        resources: currentVillage.resources || { wood: 0, clay: 0, iron: 0, crop: 0 },
+        production: currentVillage.production || { wood: 0, clay: 0, iron: 0, crop: 0 },
+        isActive: true
+      }],
+      movements: { incoming: 0, outgoing: 0, attacks: [] },
+      culturePoints: { current: 0, production: 0, nextSlot: 0 },
       timestamp: Date.now()
     };
   }
 
   /**
-   * Scrape data from current page only (no navigation)
+   * Get cached overview data
+   */
+  private getCachedOverview(): OverviewState {
+    const cachedVillages = this.currentState?.villages || overviewParser.getAllCachedVillages();
+    
+    console.log(`[TLA Safe Scraper] Using cached data for ${cachedVillages.length} villages`);
+    
+    return {
+      villages: cachedVillages,
+      movements: this.currentState?.movements || { incoming: 0, outgoing: 0, attacks: [] },
+      culturePoints: this.currentState?.culturePoints || { current: 0, production: 0, nextSlot: 0 },
+      timestamp: this.currentState?.timestamp || Date.now()
+    };
+  }
+
+  /**
+   * Check if overview data is fresh enough
+   */
+  private isOverviewDataFresh(): boolean {
+    if (!this.currentState) return false;
+    
+    const now = Date.now();
+    const overviewAge = now - this.currentState.lastUpdate.overview;
+    
+    // Consider overview stale after 1 minute (we want fresh multi-village data)
+    return overviewAge < 60000;
+  }
+
+  /**
+   * Scrape data from current page only (enhances one village in the full set)
    */
   private scrapeCurrentPage(): Partial<VillageOverviewData> {
-    console.log('[TLA Safe Scraper] Scraping current page...');
+    console.log('[TLA Safe Scraper] Scraping current page for enhanced detail...');
     
     const data: Partial<VillageOverviewData> = {};
     
@@ -267,7 +361,16 @@ export class SafeScraper {
       }));
     }
     
-    console.log('[TLA Safe Scraper] Current page data:', data);
+    // Get troops if on rally point or barracks
+    const troopElements = document.querySelectorAll('.troop_details .unit');
+    if (troopElements.length > 0) {
+      data.troops = Array.from(troopElements).map(el => ({
+        type: el.className.replace('unit', '').trim(),
+        count: this.parseNumber(el.querySelector('.value'))
+      }));
+    }
+    
+    console.log('[TLA Safe Scraper] Current page enhanced data:', data);
     return data;
   }
 
@@ -302,31 +405,53 @@ export class SafeScraper {
 
   /**
    * Build complete game state from all sources
+   * ENSURES: All villages are included, current page only enhances one
    */
   private buildGameState(overview: OverviewState, currentPage: Partial<VillageOverviewData>): SafeGameState {
-    // Merge current page data with overview
-    const villages = overview.villages.map(v => {
-      if (v.id === currentPage.id) {
-        // Merge with more detailed current page data
-        return { ...v, ...currentPage };
-      }
-      return v;
-    });
+    // Start with ALL villages from overview
+    let villages = [...overview.villages];
     
-    // Calculate totals
+    // If we have no villages from overview, ensure at least current village
+    if (villages.length === 0) {
+      console.warn('[TLA Safe Scraper] No villages in overview, using current page only');
+      villages = [{
+        id: currentPage.id || '0',
+        name: currentPage.name || 'Unknown',
+        resources: currentPage.resources || { wood: 0, clay: 0, iron: 0, crop: 0 },
+        production: currentPage.production || { wood: 0, clay: 0, iron: 0, crop: 0 },
+        storage: currentPage.storage,
+        buildQueue: currentPage.buildQueue,
+        troops: currentPage.troops,
+        isActive: true
+      }];
+    } else {
+      // Enhance the current village with detailed page data
+      villages = villages.map(v => {
+        if (v.id === currentPage.id) {
+          // Merge with more detailed current page data
+          console.log(`[TLA Safe Scraper] Enhancing village ${v.name} with current page data`);
+          return { ...v, ...currentPage };
+        }
+        return v;
+      });
+    }
+    
+    // Calculate totals across ALL villages
     const totals = this.calculateTotals(villages);
     
-    // Detect alerts
+    // Detect alerts across ALL villages
     const alerts = this.detectAlerts(villages);
     
     // Get current village ID
     const currentVillageId = currentPage.id || villages.find(v => v.isActive)?.id || '0';
     
+    console.log(`[TLA Safe Scraper] Built state with ${villages.length} villages, current: ${currentVillageId}`);
+    
     return {
       accountId: this.getAccountId(),
       serverUrl: window.location.hostname,
       timestamp: Date.now(),
-      villages,
+      villages,  // ALL villages always included
       currentVillageId,
       totals,
       alerts,
@@ -341,7 +466,7 @@ export class SafeScraper {
   }
 
   /**
-   * Calculate account totals
+   * Calculate account totals - ACROSS ALL VILLAGES
    */
   private calculateTotals(villages: VillageOverviewData[]): SafeGameState['totals'] {
     const totals = {
@@ -350,6 +475,8 @@ export class SafeScraper {
       population: 0,
       villageCount: villages.length
     };
+    
+    console.log(`[TLA Safe Scraper] Calculating totals for ${villages.length} villages`);
     
     villages.forEach(village => {
       // Sum resources
@@ -376,10 +503,12 @@ export class SafeScraper {
   }
 
   /**
-   * Detect alerts (overflow, attacks, etc.)
+   * Detect alerts - CHECK ALL VILLAGES
    */
   private detectAlerts(villages: VillageOverviewData[]): Alert[] {
     const alerts: Alert[] = [];
+    
+    console.log(`[TLA Safe Scraper] Checking alerts for ${villages.length} villages`);
     
     villages.forEach(village => {
       // Check for resource overflow
@@ -473,7 +602,7 @@ export class SafeScraper {
             Object.assign(village.production, response.data.production);
           }
           
-          // Recalculate totals
+          // Recalculate totals for ALL villages
           this.currentState.totals = this.calculateTotals(this.currentState.villages);
           
           // Notify update
@@ -511,7 +640,7 @@ export class SafeScraper {
     if (village && data) {
       Object.assign(village, data);
       
-      // Recalculate
+      // Recalculate across ALL villages
       this.currentState.totals = this.calculateTotals(this.currentState.villages);
       this.currentState.alerts = this.detectAlerts(this.currentState.villages);
       
@@ -531,8 +660,8 @@ export class SafeScraper {
     const overviewAge = now - this.currentState.lastUpdate.overview;
     const ajaxAge = now - this.currentState.lastUpdate.ajax;
     
-    // Consider data fresh if overview < 5 min old and AJAX < 1 min old
-    return overviewAge < 300000 && ajaxAge < 60000;
+    // Consider data fresh if overview < 2 min old and AJAX < 30 sec old
+    return overviewAge < 120000 && ajaxAge < 30000;
   }
 
   /**
@@ -543,7 +672,7 @@ export class SafeScraper {
       const cached = await chrome.storage.local.get('tla_safe_state');
       if (cached.tla_safe_state) {
         this.currentState = cached.tla_safe_state;
-        console.log('[TLA Safe Scraper] Loaded cached state');
+        console.log(`[TLA Safe Scraper] Loaded cached state with ${this.currentState.villages.length} villages`);
       }
     } catch (error) {
       console.error('[TLA Safe Scraper] Failed to load cached state:', error);
@@ -630,7 +759,7 @@ export class SafeScraper {
    * Manual refresh (user-triggered)
    */
   public async refresh(): Promise<SafeGameState> {
-    console.log('[TLA Safe Scraper] Manual refresh requested');
+    console.log('[TLA Safe Scraper] Manual refresh requested - fetching ALL villages');
     return this.getGameState(true);
   }
   
