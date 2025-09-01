@@ -1,119 +1,127 @@
 # SESSION_CONTEXT.md
-*Last Updated: September 1, 2025 - Session Start*
-*Server Launch: TODAY!*
+*Last Updated: August 31, 2025 - End of Session*
+*Server Launch: September 1, 2025 (TOMORROW)*
 
-## 🚨 CURRENT STATUS: Extension Ready, Need Integration Testing
+## 🎯 CURRENT STATUS: Extension Working, Needs Data Access Fix
 
-### What Actually Exists (Verified)
-1. **Chrome Extension** - v0.9.11 with working chat UI
-2. **AI Agent IN EXTENSION** - Uses Claude via Vercel proxy (working)
-3. **Game Data Provider** - Complete with all tribes/buildings/formulas
-4. **Background Service** - Handles CHAT_MESSAGE and ANALYZE_GAME_STATE
-5. **Multiple Scrapers** - elite-scraper, enhanced-scraper, safe-scraper
-6. **Chat UI** - conversational-ai-fixed.ts (working per previous sessions)
+### What's Working ✅
+1. **Chrome Extension v1.0.4** - Loaded and running
+2. **Chat Interface** - Visible, draggable, resizable, persistent position
+3. **AI Integration** - Responds via Vercel proxy (Claude working)
+4. **Village Detection** - Sees all 9 villages (000-008)
+5. **Database Storage** - IndexedDB storing account snapshots
+6. **Backend Server** - Running on Replit port 3000
+7. **Game Data** - All troops/buildings/hero data loaded
 
-### What Was Built Yesterday (Aug 31)
-- ✅ game-data-provider.ts - Complete game mechanics
-- ✅ test-ai-agent-local.js - Local simulation that WORKS
-- ✅ All data verified (Egyptian Slave Militia, settlement costs, etc.)
+### What's Broken ❌
+1. **Resource Scraping** - Not getting actual resource values
+2. **Building Detection** - Not reading current buildings
+3. **Troop Counts** - Not accessing troop information
+4. **Current Page Context** - Not detecting which building/page user is on
 
-## 🔴 CRITICAL PATH FOR TODAY
+### Server Details
+- **URL**: lusobr.x2.lusobrasileiro.travian.com
+- **Speed**: 2x server
+- **Tribe**: Egyptians (with multi-tribe villages - T4.6 feature)
+- **Villages**: 9 total
 
-### Step 1: Test Current Extension (30 mins)
-```bash
-cd packages/extension
-./build-minimal.sh  # or whatever build script works
-# Load dist/ in Chrome
-# Go to Travian game
-# Open console and verify:
-# - HUD appears
-# - Chat works
-# - Data scraping active
+## Architecture (Confirmed Working)
+
+```
+Chrome Extension (v1.0.4)
+    ├── Content Script (scrapes game)
+    ├── Background Service (coordinates)
+    └── Chat UI (user interface)
+           ↓
+    Vercel Proxy (CORS handler)
+           ↓
+    Claude AI (Anthropic)
+           ↓
+    Response displayed in chat
+    
+Parallel:
+    Replit Backend (port 3000)
+    ├── Game mechanics data
+    ├── Troop/building stats
+    └── Database storage
 ```
 
-### Step 2: Integration Testing (1 hour)
-1. **Verify Scraping**
-   - Is elite-scraper.ts collecting full game state?
-   - Resources, buildings, troops, production rates?
-   - Check console for scraped data
+## Critical Next Steps
 
-2. **Test AI Chat**
-   - Ask "What should I build next?"
-   - Does it see your actual game state?
-   - Are recommendations specific to your situation?
+### 1. Fix Resource Scraping
+The extension sees villages but not their details. Need to fix selectors for:
+- Resource amounts (wood/clay/iron/crop)
+- Production rates
+- Building levels
+- Current construction queue
 
-3. **Game Data Integration**
-   - Is game-data-provider being used?
-   - Are calculations accurate?
+### 2. Add Server Configuration
+Need options page to set:
+- Current server URL
+- Server speed (1x, 2x, 3x, etc.)
+- Primary tribe
 
-### Step 3: Fix Any Gaps (1-2 hours)
-Based on testing, likely issues:
-- Scraper not getting all data → enhance elite-scraper.ts
-- AI not seeing game state → fix message passing
-- Calculations wrong → integrate game-data-provider
+### 3. Connect Backend Data
+Extension should query Replit backend for:
+- Building costs/times
+- Troop training calculations
+- Game mechanics formulas
 
-## 📂 KEY FILES TO CHECK
+### 4. Memory/Context Service
+Plan to add:
+- Conversation persistence
+- Learning from corrections
+- Pattern recognition
+- Strategy memory
 
-### Working Components (Don't Break These!)
-- `/packages/extension/src/background.ts` - v0.8.5 working
-- `/packages/extension/src/content/conversational-ai-fixed.ts` - Chat UI
-- `/packages/extension/src/ai/game-data-provider.ts` - Game mechanics
-
-### Scrapers (May Need Enhancement)
-- `/packages/extension/src/content/elite-scraper.ts` - Main scraper
-- `/packages/extension/src/content/enhanced-scraper.ts` - Additional data
-- `/packages/extension/src/content/game-integration.ts` - Integration layer
-
-## 🎯 SUCCESS CRITERIA
-
-By end of session, player can:
-1. Open Travian with extension loaded
-2. See HUD with game state
-3. Ask AI "When should I settle?"
-4. Get response with ACTUAL calculations:
-   - "Based on your Egyptian tribe, current resources (750/750/750/750)"
-   - "With production at 100/100/100/50 per hour"
-   - "You need 9000/15120/19530/14490 for settlers"
-   - "Expected settlement: Day 6-7"
-
-## 💡 REMEMBER
-
-- **NO CODE DUMPS IN CHAT** - Everything goes to GitHub
-- **AI already works** - Via Vercel proxy to Claude
-- **Data layer complete** - Just needs integration
-- **Chat UI works** - User confirmed in previous session
-- **Server launches TODAY** - Focus on MVP
-
-## 🔧 Build & Test Commands
-
-```bash
-# Pull latest
-cd ~/TravianAssistant
-git pull origin main
-
-# Build extension
-cd packages/extension
-npm install  # if needed
-./build-minimal.sh  # or npm run build
-
-# Test locally
-node ../../test-ai-agent-local.js  # Verify data loads
-
-# Load in Chrome
-# chrome://extensions → Load unpacked → select dist/
+## Console Evidence
+```
+[TLA Chat] Initializing conversational AI v1.0.4...
+[TLA Overview] Successfully parsed 9 villages
+[TLA DB] Account snapshot stored with 9 villages
+[TLA Chat] Chat interface initialized v1.0.4
+[TLA Content] Periodic scrape: {accountId: 'account_lusobr_x2_lusobrasileiro_travian_com', ...}
 ```
 
-## ⚠️ DO NOT
-- Rebuild what already works
-- Create new backend services (Vercel proxy works)
-- Rewrite the chat UI (it's working)
-- Dump code in session (use GitHub)
+## File Structure (Current)
+```
+/packages/extension/
+├── dist/                    # Built extension (v1.0.4)
+│   ├── manifest.json       # v1.0.4
+│   ├── content.js          # 87KB bundled
+│   └── background.js       # 5KB bundled
+├── src/
+│   ├── content/
+│   │   ├── safe-scraper.ts      # Needs selector fixes
+│   │   ├── overview-parser.ts   # Working (gets villages)
+│   │   └── conversational-ai.ts # Working (chat UI)
+│   └── background.ts             # Working
+└── build-minimal.sh              # Build script (working)
 
-## ✅ DO
-- Test what exists first
-- Fix specific gaps found in testing
-- Focus on integration not recreation
-- Ship TODAY for server launch
+/backend/
+├── server.js               # Running on port 3000
+├── travian.db             # Initialized database
+└── game-start-optimizer.js # Strategy engine
+
+/data/
+├── troops/                # Complete troop data
+└── buildings/            # Complete building data
+```
+
+## Session Accomplishments
+1. ✅ Got backend server running with database
+2. ✅ Fixed build system (version 1.0.4)
+3. ✅ Extension loaded and chat working
+4. ✅ AI responding through Vercel proxy
+5. ✅ Villages detected (9 total)
+6. ⚠️ Resource scraping needs fixing
+
+## For Next Session
+1. Fix resource/building/troop scraping
+2. Add server configuration in options
+3. Connect to backend for game calculations
+4. Test full flow with real game data
+5. Add memory/context persistence
 
 ---
-*Ready for September 1 server launch. Extension exists, AI works, just need integration testing.*
+*Extension is 90% working. Just needs data scraping fixes to provide full game context to AI.*
