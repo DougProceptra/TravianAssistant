@@ -1,101 +1,122 @@
-# TravianAssistant
+# TravianAssistant v0.9.5
 
-AI-powered strategic advisor for Travian Legends browser game.
+AI-powered strategic advisor for Travian Legends. **The AI agent IS the product.**
 
-## Current Status (August 31, 2025)
+## 🟢 Current Status
 
-✅ **Working**
-- Chrome Extension v1.0.4 with chat interface
-- AI responds via Claude (through Vercel proxy)
-- Detects all villages from game
-- Chat is draggable, resizable, persistent
+### What Works
+- ✅ **Chat Interface**: Draggable and resizable window
+- ✅ **AI Integration**: Claude Sonnet 4 via Vercel proxy
+- ✅ **Village Detection**: Finds all 9 villages from overview page
 
-⚠️ **Needs Fixing**
-- Resource scraping (outdated selectors)
-- Building level detection
-- Server configuration UI
+### Known Issues
+- 🔴 **Data Pipeline Bug**: Scrapers find 9 villages but AI receives 0
+  - See [docs/BUG_TRACKER.md](docs/BUG_TRACKER.md) for details
 
-## Quick Start
+## 📋 Core Philosophy
 
-### 1. Build Extension
+This is an **AI-first** application:
+- **NO HUDs** - The AI chat is the entire interface
+- **NO data displays** - The AI interprets and explains
+- **NO automation** - Strategic advice only
+
+The extension is just plumbing to get game data to the AI.
+
+## 🚀 Quick Start
+
 ```bash
+# Clone the repository
+git clone https://github.com/DougProceptra/TravianAssistant.git
+cd TravianAssistant
+
+# Build the working version
 cd packages/extension
+git checkout a00eca9  # Last known working version
 ./build-minimal.sh
+
+# Fix version number (build system bug)
+sed -i 's/"version": "1.0.0"/"version": "0.9.5"/' dist/manifest.json
+
+# Load in Chrome
+# 1. Open chrome://extensions/
+# 2. Enable Developer mode
+# 3. Click "Load unpacked"
+# 4. Select the dist/ folder
 ```
 
-### 2. Load in Chrome
-1. Open `chrome://extensions/`
-2. Enable Developer mode
-3. Click "Load unpacked"
-4. Select `packages/extension/dist` folder
+## 🎯 User Experience Goal
 
-### 3. Use in Game
-1. Navigate to your Travian server
-2. Chat interface appears (drag to position)
-3. Ask questions like "What should I build next?"
+**User asks**: "What should I build next?"
 
-## Documentation
+**AI responds**: "Your village at (50|-30) should upgrade the iron mine to level 8. This will take 45 minutes and increase production by 120/hour. You have sufficient resources."
 
-**Essential Docs** (Start Here):
-- [`docs/SESSION_CONTEXT.md`](docs/SESSION_CONTEXT.md) - Current state, what's broken, next steps
-- [`docs/TravianAssistantV4.md`](docs/TravianAssistantV4.md) - Architecture and design
+That's it. No complex UI. Just intelligent conversation.
 
-**Reference**:
-- [`docs/data-structures.md`](docs/data-structures.md) - Game data format
-- [`test-ai-agent-local.js`](test-ai-agent-local.js) - Test AI without extension
-
-## Project Structure
+## 🏗️ Architecture
 
 ```
-/packages/extension/    # Chrome extension source
-/backend/              # Replit server (game data)
-/data/                 # Game mechanics (troops, buildings)
-/docs/                 # Documentation
+Travian Game Page
+       ↓
+  Data Scrapers (✅ finds 9 villages)
+       ↓
+  Content Script (🔴 sees 0 villages - BUG HERE)
+       ↓
+  Background Worker
+       ↓
+  Vercel Proxy (✅ works)
+       ↓
+  Claude AI (✅ works)
+       ↓
+  Chat Response (✅ works)
 ```
 
-## Backend Services
+## 📁 Repository Structure
 
-### Replit Backend
-- URL: https://TravianAssistant.dougdostal.replit.dev
-- Provides game mechanics data
-- Run: `node backend/server.js`
-
-### Vercel Proxy
-- URL: https://travian-proxy-simple.vercel.app
-- Handles CORS for Claude API
-- Already deployed
-
-## Development
-
-### Version Management
-```bash
-cd packages/extension
-node scripts/version-manager.cjs set 1.0.5
-node scripts/version-manager.cjs sync
-./build-minimal.sh
+```
+TravianAssistant/
+├── packages/extension/     # Chrome extension source
+├── api/                   # Vercel proxy endpoint
+├── docs/                  # Documentation
+├── SESSION_CONTEXT.md     # Current development state
+├── TravianAssistantv4.md  # Project specification
+└── archive/               # Old/experimental files (not synced)
 ```
 
-### Testing
-```bash
-# Test AI locally without extension
-node test-ai-agent-local.js
+## 🐛 The One Bug That Matters
 
-# Check system state
-node test-current-state.js
+```javascript
+// Console output showing the disconnect:
+content.js:48 [TLA Overview] Successfully parsed 9 villages  ✅
+content.js:2474 [TLA Content] Found 0 villages              🔴
+
+// The fix is probably:
+// Current (broken):
+const villages = overviewParser.getAllCachedVillages(); 
+
+// Should be:
+const villages = await overviewParser.getAllVillages();
 ```
 
-## Known Issues
+## 📚 Documentation
 
-1. **Resource Scraping**: Selectors need updating for current Travian version
-2. **No Server Config**: Hardcoded to 2x speed server
-3. **Limited Context**: AI doesn't see full game state yet
+- [SESSION_CONTEXT.md](SESSION_CONTEXT.md) - Current state and lessons learned
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System design
+- [docs/BUG_TRACKER.md](docs/BUG_TRACKER.md) - Known issues and fixes
+- [docs/data-structures.md](docs/data-structures.md) - Game data formats
 
-See [`docs/SESSION_CONTEXT.md`](docs/SESSION_CONTEXT.md) for detailed status.
+## ⚠️ Important Notes
 
-## License
+1. **DO NOT** add complex UI features - the AI chat is the interface
+2. **DO NOT** break the v0.9.5 draggable chat - it works
+3. **DO** fix the data pipeline bug first before any new features
+4. **DO** test with actual game data
 
-Private project - Not for public distribution
+## 🔧 Development
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup instructions.
+
+Primary focus: Fix the data pipeline bug without breaking the working chat UI.
 
 ---
 
-*For detailed information about architecture, current issues, and next steps, see the documentation folder.*
+*Remember: The AI agent is the product. Everything else is just plumbing.*

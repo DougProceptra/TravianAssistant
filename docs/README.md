@@ -1,126 +1,71 @@
-# TravianAssistant Documentation Index
+# TravianAssistant Documentation
 
-## 📚 Documentation Overview
+## 📚 Active Documentation
 
-This directory contains all technical documentation for the TravianAssistant project. Start here to understand the system and find specific information.
+### Core Documents
+- [**ARCHITECTURE.md**](ARCHITECTURE.md) - System design and AI-first philosophy
+- [**BUG_TRACKER.md**](BUG_TRACKER.md) - Known issues and fixes
+- [**data-structures.md**](data-structures.md) - Game data formats and structures
 
-## 🚀 Quick Navigation
+### Project Status
+- [**SESSION_CONTEXT.md**](../SESSION_CONTEXT.md) - Current development state
+- [**TravianAssistantv4.md**](../TravianAssistantv4.md) - Project specification
 
-### For New Sessions
-1. **[SESSION_CONTEXT.md](./SESSION_CONTEXT.md)** - ⚠️ **START HERE EVERY SESSION**
-   - Current project state
-   - Active work items
-   - Critical warnings and quirks
-   - Next steps
+## 📦 Archived Documentation
 
-### Development Guides
-2. **[DEVELOPMENT_GUIDE.md](./DEVELOPMENT_GUIDE.md)** - How to develop
-   - Build process (-fixed.ts files!)
-   - Common pitfalls
-   - Project structure
-   - Testing procedures
+The following documents have been moved to `/docs/archived/` as they contain outdated or conflicting information:
 
-### Implementation Documentation
-3. **[PHASE1_IMPLEMENTATION_PLAN.md](./PHASE1_IMPLEMENTATION_PLAN.md)** - Complete Phase 1 blueprint
-   - Architecture overview
-   - API documentation
-   - Deployment instructions
-   - Cost analysis
+### Deprecated Planning Docs
+- `TRAVIAN_ASSISTANT_V3_COMPLETE.md` - Over-engineered approach
+- `PHASE1_IMPLEMENTATION_PLAN.md` - Outdated implementation plan
+- `DATA_IMPLEMENTATION_PLAN.md` - Old data architecture
 
-4. **[OPTIMIZER_NOT_DEPLOYED.md](./OPTIMIZER_NOT_DEPLOYED.md)** - Game optimizer details
-   - Algorithm documentation
-   - Files created but not active
-   - Integration requirements
-   - Why it's not deployed yet
+### Old Research
+- `DATA_EXTRACTION_RESEARCH.md` - Initial research notes
+- `KIRILLOID_INTEGRATION_PLAN.md` - External calculator integration (not needed)
+- `AI_SETTLEMENT_LOGIC.md` - Over-complex settlement planning
 
-### Project Requirements
-5. **[TRAVIAN_ASSISTANT_V3_COMPLETE.md](./TRAVIAN_ASSISTANT_V3_COMPLETE.md)** - Original requirements
-   - Mission statement
-   - Success metrics
-   - Roadmap
-   - Target capabilities
+### Superseded Guides
+- `DEVELOPMENT_GUIDE.md` - Old development instructions
+- `TEAM_TESTING_GUIDE.md` - Outdated testing procedures
+- `UPDATING_GAME_DATA.md` - Old data update process
 
-## 📋 Document Status
+## 🎯 Documentation Philosophy
 
-| Document | Purpose | Status | Last Updated |
-|----------|---------|--------|--------------|
-| SESSION_CONTEXT | Current state & next steps | 🟢 Active | Aug 28, 2025 |
-| DEVELOPMENT_GUIDE | Dev process & pitfalls | 🟢 Active | Aug 28, 2025 |
-| PHASE1_IMPLEMENTATION_PLAN | Technical blueprint | 🟡 Plan (not deployed) | Aug 28, 2025 |
-| OPTIMIZER_NOT_DEPLOYED | Optimizer documentation | 🟡 Created, not active | Aug 28, 2025 |
-| TRAVIAN_ASSISTANT_V3_COMPLETE | Requirements | 🟢 Reference | Aug 22, 2025 |
-
-## 🔄 Document Workflow
-
-### At Session Start:
-```mermaid
-graph LR
-    A[Start] --> B[Read SESSION_CONTEXT.md]
-    B --> C{Major changes?}
-    C -->|Yes| D[Read DEVELOPMENT_GUIDE.md]
-    C -->|No| E[Continue work]
-    D --> E
-```
-
-### When Adding Features:
-1. Check PHASE1_IMPLEMENTATION_PLAN for architecture
-2. Follow DEVELOPMENT_GUIDE for process
-3. Update SESSION_CONTEXT with changes
-4. Document new discoveries
-
-### When Debugging:
-1. Check DEVELOPMENT_GUIDE "Common Pitfalls"
-2. Review SESSION_CONTEXT "Critical Warnings"
-3. Add new discoveries to guides
-
-## 🎯 Current Priorities (Aug 28, 2025)
-
-From SESSION_CONTEXT.md:
-1. **Backend Connection** - Connect chat to port 3002
-2. **Data Scraping** - Expand beyond village names
-3. **Testing** - Verify data flow
-4. **Then Optimizer** - Only after foundation works
-
-## ⚠️ Critical Reminders
-
-- **Always read SESSION_CONTEXT.md first**
-- **Build uses `-fixed.ts` files, not regular `.ts`**
-- **Optimizer is created but NOT deployed**
-- **Backend connection needed before optimizer**
+Following the AI-first approach:
+1. **Keep it simple** - Documentation should be clear and focused
+2. **Document reality** - What actually works, not what we hope to build
+3. **One source of truth** - No duplicate or conflicting information
+4. **Archive don't delete** - Old docs moved to archive for reference
 
 ## 📝 Documentation Standards
 
-### File Naming:
-- UPPERCASE for important docs (SESSION_CONTEXT.md)
-- snake_case for scripts (check-dev-status.js)
-- kebab-case for web files (conversational-ai-fixed.ts)
+### For New Documentation
+- Start with current state, not aspirations
+- Include concrete examples
+- Mark broken features clearly
+- Date all documents
 
-### Update Frequency:
-- SESSION_CONTEXT.md - Every session
-- DEVELOPMENT_GUIDE.md - When discovering quirks
-- Implementation docs - When architecture changes
+### When Updating
+- Update in place for active docs
+- Move outdated docs to archive
+- Keep SESSION_CONTEXT.md current
+- Update BUG_TRACKER.md with new issues
 
-### Markdown Conventions:
-- Use emoji headers for visual scanning
-- Include code examples
-- Add "Last Updated" timestamps
-- Use tables for structured data
+## 🔍 Quick Reference
 
-## 🔍 Finding Information
+**Need to understand the system?**  
+→ Read [ARCHITECTURE.md](ARCHITECTURE.md)
 
-### By Topic:
-- **Current bugs/issues** → SESSION_CONTEXT.md
-- **How to build** → DEVELOPMENT_GUIDE.md
-- **Architecture** → PHASE1_IMPLEMENTATION_PLAN.md
-- **Algorithms** → OPTIMIZER_NOT_DEPLOYED.md
-- **Requirements** → TRAVIAN_ASSISTANT_V3_COMPLETE.md
+**Something not working?**  
+→ Check [BUG_TRACKER.md](BUG_TRACKER.md)
 
-### By Question:
-- "What should I work on?" → SESSION_CONTEXT.md
-- "Why isn't this working?" → DEVELOPMENT_GUIDE.md
-- "How does the optimizer work?" → OPTIMIZER_NOT_DEPLOYED.md
-- "What's the architecture?" → PHASE1_IMPLEMENTATION_PLAN.md
+**Want to know data formats?**  
+→ See [data-structures.md](data-structures.md)
+
+**Current development status?**  
+→ Read [SESSION_CONTEXT.md](../SESSION_CONTEXT.md)
 
 ---
 
-*This index is the entry point to all documentation. If you're lost, start here.*
+*Remember: The AI agent is the product. Documentation should support that goal.*

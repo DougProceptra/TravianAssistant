@@ -1,127 +1,104 @@
 # SESSION_CONTEXT.md
-*Last Updated: August 31, 2025 - End of Session*
-*Server Launch: September 1, 2025 (TOMORROW)*
+*Last Updated: September 1, 2025 - POST-DISASTER RECOVERY*
 
-## 🎯 CURRENT STATUS: Extension Working, Needs Data Access Fix
+## 🟢 CURRENT WORKING STATE (v0.9.5)
 
-### What's Working ✅
-1. **Chrome Extension v1.0.4** - Loaded and running
-2. **Chat Interface** - Visible, draggable, resizable, persistent position
-3. **AI Integration** - Responds via Vercel proxy (Claude working)
-4. **Village Detection** - Sees all 9 villages (000-008)
-5. **Database Storage** - IndexedDB storing account snapshots
-6. **Backend Server** - Running on Replit port 3000
-7. **Game Data** - All troops/buildings/hero data loaded
+### What Actually Works
+1. **Chat Interface** ✅
+   - Draggable and resizable (THIS IS CRITICAL - DON'T BREAK IT)
+   - Position persistence works
+   - Chat loads and responds
+   - Version 0.9.5 from commit a00eca9
+   
+2. **Village Detection** ✅
+   - Overview parser correctly finds all 9 villages
+   - Scrapes from dorf3.php successfully
 
-### What's Broken ❌
-1. **Resource Scraping** - Not getting actual resource values
-2. **Building Detection** - Not reading current buildings
-3. **Troop Counts** - Not accessing troop information
-4. **Current Page Context** - Not detecting which building/page user is on
+### What's Broken
+1. **Data Pipeline** ❌
+   - Overview parser finds 9 villages but content script sees 0
+   - AI gets incomplete/wrong data (0 population, etc.)
+   - Simple connection issue between parser and main script
+   
+2. **Version Management** ❌
+   - Version manager keeps resetting to 1.0.0
+   - Need to manually fix after each build
 
-### Server Details
-- **URL**: lusobr.x2.lusobrasileiro.travian.com
-- **Speed**: 2x server
-- **Tribe**: Egyptians (with multi-tribe villages - T4.6 feature)
-- **Villages**: 9 total
+## Critical Learning from Today's Failures
 
-## Architecture (Confirmed Working)
+### What NOT to Do
+1. **Don't create complex HUDs** - The AI agent IS the interface
+2. **Don't break working UI** - v0.9.5 chat drag/resize MUST be preserved
+3. **Don't add exports to content scripts** - Chrome doesn't support ES6 modules
+4. **Don't trust version managers** - They override everything
 
-```
-Chrome Extension (v1.0.4)
-    ├── Content Script (scrapes game)
-    ├── Background Service (coordinates)
-    └── Chat UI (user interface)
-           ↓
-    Vercel Proxy (CORS handler)
-           ↓
-    Claude AI (Anthropic)
-           ↓
-    Response displayed in chat
-    
-Parallel:
-    Replit Backend (port 3000)
-    ├── Game mechanics data
-    ├── Troop/building stats
-    └── Database storage
-```
+### The Actual Goal
+**AI AGENT FIRST** - Everything else is just plumbing to get data to the AI:
+- Scrape game data → Send to AI → AI provides strategic advice
+- The chat interface is the ONLY UI needed
+- No HUDs, no data displays, no complex visualizations
 
-## Critical Next Steps
+## Fix Priority
 
-### 1. Fix Resource Scraping
-The extension sees villages but not their details. Need to fix selectors for:
-- Resource amounts (wood/clay/iron/crop)
-- Production rates
-- Building levels
-- Current construction queue
-
-### 2. Add Server Configuration
-Need options page to set:
-- Current server URL
-- Server speed (1x, 2x, 3x, etc.)
-- Primary tribe
-
-### 3. Connect Backend Data
-Extension should query Replit backend for:
-- Building costs/times
-- Troop training calculations
-- Game mechanics formulas
-
-### 4. Memory/Context Service
-Plan to add:
-- Conversation persistence
-- Learning from corrections
-- Pattern recognition
-- Strategy memory
-
-## Console Evidence
-```
-[TLA Chat] Initializing conversational AI v1.0.4...
-[TLA Overview] Successfully parsed 9 villages
-[TLA DB] Account snapshot stored with 9 villages
-[TLA Chat] Chat interface initialized v1.0.4
-[TLA Content] Periodic scrape: {accountId: 'account_lusobr_x2_lusobrasileiro_travian_com', ...}
+### 1. Fix Data Connection (CRITICAL)
+```javascript
+// The bug is here - overview parser finds villages but they don't reach the AI
+content.js:48 [TLA Overview] Successfully parsed 9 villages
+content.js:2474 [TLA Content] Found 0 villages
 ```
 
-## File Structure (Current)
-```
-/packages/extension/
-├── dist/                    # Built extension (v1.0.4)
-│   ├── manifest.json       # v1.0.4
-│   ├── content.js          # 87KB bundled
-│   └── background.js       # 5KB bundled
-├── src/
-│   ├── content/
-│   │   ├── safe-scraper.ts      # Needs selector fixes
-│   │   ├── overview-parser.ts   # Working (gets villages)
-│   │   └── conversational-ai.ts # Working (chat UI)
-│   └── background.ts             # Working
-└── build-minimal.sh              # Build script (working)
+### 2. Keep What Works
+- DO NOT touch the chat UI code from v0.9.5
+- DO NOT add new UI elements
+- DO NOT change the drag/resize functionality
 
-/backend/
-├── server.js               # Running on port 3000
-├── travian.db             # Initialized database
-└── game-start-optimizer.js # Strategy engine
+## Build Instructions That Actually Work
 
-/data/
-├── troops/                # Complete troop data
-└── buildings/            # Complete building data
+```bash
+cd packages/extension
+
+# For v0.9.5 (working UI, broken data):
+git checkout a00eca9
+./build-minimal.sh
+
+# After any build:
+sed -i 's/"version": "1.0.0"/"version": "0.9.5"/' dist/manifest.json
 ```
 
-## Session Accomplishments
-1. ✅ Got backend server running with database
-2. ✅ Fixed build system (version 1.0.4)
-3. ✅ Extension loaded and chat working
-4. ✅ AI responding through Vercel proxy
-5. ✅ Villages detected (9 total)
-6. ⚠️ Resource scraping needs fixing
+## Architecture Reality Check
 
-## For Next Session
-1. Fix resource/building/troop scraping
-2. Add server configuration in options
-3. Connect to backend for game calculations
-4. Test full flow with real game data
-5. Add memory/context persistence
+```
+Game Page → Scrapers → AI Agent → Chat Response
+              ↑
+              This is broken (returns 0 villages to AI)
+```
+
+The scrapers find data but don't pass it correctly to the AI.
+
+## Documentation Status
+
+### Deprecated/Misleading Docs
+- ❌ `TRAVIAN_ASSISTANT_V3_COMPLETE.md` - Over-engineered, wrong approach
+- ❌ `DEVELOPMENT_PLAN.md` - Outdated, focuses on wrong things
+- ⚠️ `TravianAssistantV4.md` - Needs update to reflect AI-first approach
+
+### Current Reality Docs
+- ✅ `SESSION_CONTEXT.md` - This file (accurate current state)
+- ✅ `data-structures.md` - Still valid for game data format
+
+## Next Developer Instructions
+
+1. **Fix the data pipeline** without touching UI
+2. **Test with v0.9.5** as baseline
+3. **Keep the chat as primary interface**
+4. **No HUDs or complex displays**
+
+## What Success Looks Like
+
+User: "What's my total production?"
+AI: "Your 9 villages produce 45,000 resources per hour: 12k wood, 11k clay, 10k iron, 12k crop net."
+
+NOT: A HUD showing numbers the user can already see in the game.
 
 ---
-*Extension is 90% working. Just needs data scraping fixes to provide full game context to AI.*
+*The AI agent is the product. Everything else is just plumbing.*
