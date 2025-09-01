@@ -1,342 +1,459 @@
-// packages/extension/src/content/hud.ts
-// HUD overlay for displaying recommendations
+// HUD Module - Displays strategic recommendations
+// v1.0.6 - Enhanced with real multi-village data display
 
-export interface HUDConfig {
-  position?: { x: number; y: number };
-  expanded?: boolean;
-  visible?: boolean;
-}
-
-export interface Recommendation {
-  id: string;
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  category: string;
-  message: string;
+export interface HUDRecommendation {
+  priority: 'high' | 'medium' | 'low';
+  text: string;
   action?: string;
-  timestamp: Date;
 }
 
-export class HUD {
-  private container: HTMLElement;
-  private recommendations: Recommendation[] = [];
-  private config: HUDConfig = {
-    position: { x: 10, y: 60 },
-    expanded: true,
-    visible: true
-  };
-  private version: string = '';
-
+export class TravianHUD {
+  private container: HTMLDivElement;
+  private recommendations: string[] = [];
+  private version: string = '1.0.6';
+  private isMinimized: boolean = false;
+  private isDragging: boolean = false;
+  private dragOffset = { x: 0, y: 0 };
+  
   constructor() {
-    this.container = this.createElement();
-    this.attachToPage();
-    this.loadConfig();
-    this.makeMovable();
+    this.container = this.createHUD();
+    this.attachEventListeners();
+    this.loadPosition();
   }
-
-  private createElement(): HTMLElement {
-    const container = document.createElement('div');
-    container.id = 'tla-hud';
-    container.className = 'tla-hud';
-    container.innerHTML = `
-      <div class="tla-hud-header">
-        <span class="tla-hud-title">TravianAssistant <span class="tla-version"></span></span>
-        <div class="tla-hud-controls">
-          <button class="tla-hud-minimize">_</button>
-          <button class="tla-hud-close">×</button>
+  
+  private createHUD(): HTMLDivElement {
+    const hud = document.createElement('div');
+    hud.id = 'travian-assistant-hud';
+    hud.innerHTML = `
+      <div class="ta-hud-header">
+        <span class="ta-hud-title">TravianAssistant v${this.version}</span>
+        <div class="ta-hud-controls">
+          <button class="ta-minimize-btn">_</button>
+          <button class="ta-close-btn">×</button>
         </div>
       </div>
-      <div class="tla-hud-content">
-        <div class="tla-hud-recommendations">
-          <div class="tla-hud-empty">Loading recommendations...</div>
+      <div class="ta-hud-content">
+        <div class="ta-data-quality">
+          <span class="ta-quality-label">Data Quality:</span>
+          <span class="ta-quality-value">0%</span>
+          <div class="ta-quality-bar">
+            <div class="ta-quality-fill" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="ta-recommendations">
+          <div class="ta-loading">Collecting game data...</div>
+        </div>
+        <div class="ta-villages-summary">
+          <h4>Villages Overview</h4>
+          <div class="ta-villages-list"></div>
+        </div>
+        <div class="ta-priorities">
+          <h4>Current Priorities</h4>
+          <ul class="ta-priorities-list"></ul>
         </div>
       </div>
     `;
     
-    // Add event listeners
-    const minimize = container.querySelector('.tla-hud-minimize') as HTMLElement;
-    const close = container.querySelector('.tla-hud-close') as HTMLElement;
-    const content = container.querySelector('.tla-hud-content') as HTMLElement;
-    
-    minimize?.addEventListener('click', () => {
-      this.config.expanded = !this.config.expanded;
-      content.style.display = this.config.expanded ? 'block' : 'none';
-      minimize.textContent = this.config.expanded ? '_' : '□';
-      this.saveConfig();
-    });
-    
-    close?.addEventListener('click', () => {
-      this.config.visible = false;
-      container.style.display = 'none';
-      this.saveConfig();
-    });
-    
-    return container;
-  }
-
-  private attachToPage() {
-    document.body.appendChild(this.container);
-    this.applyStyles();
-  }
-
-  private applyStyles() {
+    // Add styles
     const style = document.createElement('style');
     style.textContent = `
-      .tla-hud {
+      #travian-assistant-hud {
         position: fixed;
-        top: ${this.config.position?.y || 60}px;
-        left: ${this.config.position?.x || 10}px;
-        width: 320px;
-        background: rgba(20, 20, 20, 0.95);
-        border: 2px solid #8B4513;
-        border-radius: 8px;
-        color: #fff;
-        font-family: Arial, sans-serif;
-        font-size: 14px;
+        top: 10px;
+        right: 10px;
+        width: 350px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 2px solid #0f3460;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
         z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: #e8e8e8;
+        transition: all 0.3s ease;
       }
       
-      .tla-hud-header {
-        background: linear-gradient(135deg, #8B4513, #A0522D);
-        padding: 8px 12px;
-        border-radius: 6px 6px 0 0;
+      #travian-assistant-hud.minimized {
+        height: auto !important;
+      }
+      
+      #travian-assistant-hud.minimized .ta-hud-content {
+        display: none;
+      }
+      
+      .ta-hud-header {
+        background: linear-gradient(90deg, #0f3460 0%, #53354a 100%);
+        padding: 12px 15px;
+        border-radius: 10px 10px 0 0;
+        cursor: move;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        cursor: move;
+        user-select: none;
       }
       
-      .tla-hud-title {
-        font-weight: bold;
-        font-size: 16px;
+      .ta-hud-title {
+        font-weight: 600;
+        font-size: 14px;
+        color: #00fff0;
+        text-shadow: 0 0 10px rgba(0, 255, 240, 0.5);
       }
       
-      .tla-version {
-        font-size: 12px;
-        opacity: 0.8;
-        margin-left: 4px;
-      }
-      
-      .tla-hud-controls {
+      .ta-hud-controls {
         display: flex;
-        gap: 5px;
-      }
-      
-      .tla-hud-controls button {
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: #fff;
-        width: 24px;
-        height: 24px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 16px;
-        line-height: 1;
-        transition: all 0.2s;
-      }
-      
-      .tla-hud-controls button:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: rgba(255, 255, 255, 0.5);
-      }
-      
-      .tla-hud-content {
-        padding: 12px;
-        max-height: 400px;
-        overflow-y: auto;
-        display: ${this.config.expanded ? 'block' : 'none'};
-      }
-      
-      .tla-hud-recommendations {
-        display: flex;
-        flex-direction: column;
         gap: 8px;
       }
       
-      .tla-hud-recommendation {
-        background: rgba(255, 255, 255, 0.05);
-        padding: 8px;
+      .ta-hud-controls button {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        padding: 4px 10px;
+        cursor: pointer;
         border-radius: 4px;
-        border-left: 3px solid #8B4513;
+        font-size: 16px;
+        transition: all 0.2s;
       }
       
-      .tla-hud-recommendation.priority-critical {
-        border-left-color: #ff4444;
-        background: rgba(255, 68, 68, 0.1);
+      .ta-hud-controls button:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.1);
       }
       
-      .tla-hud-recommendation.priority-high {
-        border-left-color: #ff9944;
-        background: rgba(255, 153, 68, 0.1);
+      .ta-hud-content {
+        padding: 15px;
+        max-height: 600px;
+        overflow-y: auto;
       }
       
-      .tla-hud-recommendation.priority-medium {
-        border-left-color: #ffcc44;
-        background: rgba(255, 204, 68, 0.1);
+      .ta-data-quality {
+        margin-bottom: 15px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
       }
       
-      .tla-hud-recommendation.priority-low {
-        border-left-color: #44ff44;
-        background: rgba(68, 255, 68, 0.1);
+      .ta-quality-label {
+        font-size: 12px;
+        color: #aaa;
       }
       
-      .tla-hud-category {
-        font-size: 11px;
-        text-transform: uppercase;
-        opacity: 0.7;
-        margin-bottom: 4px;
+      .ta-quality-value {
+        font-size: 14px;
+        font-weight: bold;
+        color: #00fff0;
+        margin-left: 8px;
       }
       
-      .tla-hud-message {
+      .ta-quality-bar {
+        margin-top: 8px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      
+      .ta-quality-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #00d2d3);
+        transition: width 0.5s ease;
+      }
+      
+      .ta-recommendations {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 15px;
+        min-height: 60px;
+      }
+      
+      .ta-recommendations .ta-loading {
+        color: #888;
+        font-style: italic;
+        text-align: center;
+      }
+      
+      .ta-recommendation-item {
+        padding: 8px 10px;
+        margin: 5px 0;
+        background: rgba(255, 255, 255, 0.05);
+        border-left: 3px solid #00fff0;
+        border-radius: 4px;
         font-size: 13px;
         line-height: 1.4;
       }
       
-      .tla-hud-action {
-        margin-top: 4px;
+      .ta-villages-summary {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 15px;
+      }
+      
+      .ta-villages-summary h4 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #00fff0;
+        font-weight: 600;
+      }
+      
+      .ta-villages-list {
         font-size: 12px;
-        color: #ffcc44;
-        cursor: pointer;
       }
       
-      .tla-hud-action:hover {
-        text-decoration: underline;
+      .ta-village-item {
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       }
       
-      .tla-hud-empty {
-        text-align: center;
-        opacity: 0.5;
-        padding: 20px;
+      .ta-village-item:last-child {
+        border-bottom: none;
+      }
+      
+      .ta-village-name {
+        color: #feca57;
+        font-weight: 500;
+      }
+      
+      .ta-village-stats {
+        color: #aaa;
+        font-size: 11px;
+        margin-top: 2px;
+      }
+      
+      .ta-priorities {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        padding: 12px;
+      }
+      
+      .ta-priorities h4 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #ff6b6b;
+        font-weight: 600;
+      }
+      
+      .ta-priorities-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font-size: 12px;
+      }
+      
+      .ta-priorities-list li {
+        padding: 6px 0;
+        padding-left: 20px;
+        position: relative;
+        color: #ddd;
+      }
+      
+      .ta-priorities-list li:before {
+        content: "⚠";
+        position: absolute;
+        left: 0;
+        color: #feca57;
+      }
+      
+      /* Custom scrollbar */
+      .ta-hud-content::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      .ta-hud-content::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 3px;
+      }
+      
+      .ta-hud-content::-webkit-scrollbar-thumb {
+        background: rgba(0, 255, 240, 0.3);
+        border-radius: 3px;
+      }
+      
+      .ta-hud-content::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 255, 240, 0.5);
       }
     `;
     document.head.appendChild(style);
-  }
-
-  private makeMovable() {
-    const header = this.container.querySelector('.tla-hud-header') as HTMLElement;
-    let isDragging = false;
-    let dragOffset = { x: 0, y: 0 };
+    document.body.appendChild(hud);
     
+    return hud;
+  }
+  
+  private attachEventListeners(): void {
+    const header = this.container.querySelector('.ta-hud-header') as HTMLElement;
+    const minimizeBtn = this.container.querySelector('.ta-minimize-btn') as HTMLButtonElement;
+    const closeBtn = this.container.querySelector('.ta-close-btn') as HTMLButtonElement;
+    
+    // Drag functionality
     header.addEventListener('mousedown', (e) => {
-      isDragging = true;
-      dragOffset.x = e.clientX - this.container.offsetLeft;
-      dragOffset.y = e.clientY - this.container.offsetTop;
-      e.preventDefault();
+      if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+      
+      this.isDragging = true;
+      this.dragOffset.x = e.clientX - this.container.offsetLeft;
+      this.dragOffset.y = e.clientY - this.container.offsetTop;
+      
+      document.addEventListener('mousemove', this.handleDrag);
+      document.addEventListener('mouseup', this.handleDragEnd);
     });
     
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      
-      const x = e.clientX - dragOffset.x;
-      const y = e.clientY - dragOffset.y;
-      
-      this.container.style.left = `${x}px`;
-      this.container.style.top = `${y}px`;
-      
-      this.config.position = { x, y };
+    // Minimize/Maximize
+    minimizeBtn.addEventListener('click', () => {
+      this.isMinimized = !this.isMinimized;
+      this.container.classList.toggle('minimized');
+      minimizeBtn.textContent = this.isMinimized ? '□' : '_';
+      this.savePosition();
     });
     
-    document.addEventListener('mouseup', () => {
-      if (isDragging) {
-        isDragging = false;
-        this.saveConfig();
-      }
+    // Close (hide)
+    closeBtn.addEventListener('click', () => {
+      this.container.style.display = 'none';
+      this.savePosition();
     });
   }
-
-  public setVersion(version: string) {
-    this.version = version;
-    const versionElement = this.container.querySelector('.tla-version') as HTMLElement;
-    if (versionElement) {
-      versionElement.textContent = `v${version}`;
+  
+  private handleDrag = (e: MouseEvent): void => {
+    if (!this.isDragging) return;
+    
+    e.preventDefault();
+    const x = e.clientX - this.dragOffset.x;
+    const y = e.clientY - this.dragOffset.y;
+    
+    // Keep within viewport
+    const maxX = window.innerWidth - this.container.offsetWidth;
+    const maxY = window.innerHeight - this.container.offsetHeight;
+    
+    this.container.style.left = Math.max(0, Math.min(x, maxX)) + 'px';
+    this.container.style.top = Math.max(0, Math.min(y, maxY)) + 'px';
+    this.container.style.right = 'auto';
+  };
+  
+  private handleDragEnd = (): void => {
+    this.isDragging = false;
+    document.removeEventListener('mousemove', this.handleDrag);
+    document.removeEventListener('mouseup', this.handleDragEnd);
+    this.savePosition();
+  };
+  
+  private savePosition(): void {
+    const position = {
+      left: this.container.style.left,
+      top: this.container.style.top,
+      minimized: this.isMinimized,
+      hidden: this.container.style.display === 'none'
+    };
+    localStorage.setItem('ta-hud-position', JSON.stringify(position));
+  }
+  
+  private loadPosition(): void {
+    const saved = localStorage.getItem('ta-hud-position');
+    if (saved) {
+      try {
+        const position = JSON.parse(saved);
+        if (position.left) this.container.style.left = position.left;
+        if (position.top) this.container.style.top = position.top;
+        if (position.left || position.top) this.container.style.right = 'auto';
+        if (position.minimized) {
+          this.isMinimized = true;
+          this.container.classList.add('minimized');
+          const minimizeBtn = this.container.querySelector('.ta-minimize-btn') as HTMLButtonElement;
+          if (minimizeBtn) minimizeBtn.textContent = '□';
+        }
+        if (position.hidden) {
+          this.container.style.display = 'none';
+        }
+      } catch (e) {
+        console.error('[TravianAssistant] Failed to load HUD position:', e);
+      }
     }
   }
-
-  public updateRecommendations(recommendations: Recommendation[]) {
+  
+  public updateRecommendations(recommendations: string[]): void {
     this.recommendations = recommendations;
-    this.render();
-  }
-
-  private render() {
-    const container = this.container.querySelector('.tla-hud-recommendations') as HTMLElement;
+    const container = this.container.querySelector('.ta-recommendations');
     
-    if (this.recommendations.length === 0) {
-      container.innerHTML = '<div class="tla-hud-empty">No recommendations available</div>';
-      return;
+    if (!container) return;
+    
+    if (recommendations.length === 0) {
+      container.innerHTML = '<div class="ta-loading">Analyzing game state...</div>';
+    } else {
+      container.innerHTML = recommendations
+        .map(rec => `<div class="ta-recommendation-item">${rec}</div>`)
+        .join('');
+    }
+  }
+  
+  public updateVillages(villages: any[]): void {
+    const container = this.container.querySelector('.ta-villages-list');
+    if (!container) return;
+    
+    if (villages.length === 0) {
+      container.innerHTML = '<div style="color: #888;">No villages detected</div>';
+    } else {
+      container.innerHTML = villages
+        .map(v => `
+          <div class="ta-village-item">
+            <div class="ta-village-name">${v.name} (${v.coordinates?.x || 0}|${v.coordinates?.y || 0})</div>
+            <div class="ta-village-stats">
+              Pop: ${v.population || 0} | 
+              Prod: +${v.production?.wood || 0}/+${v.production?.clay || 0}/+${v.production?.iron || 0}/+${v.production?.cropNet || 0}
+            </div>
+          </div>
+        `)
+        .join('');
+    }
+  }
+  
+  public updatePriorities(priorities: string[]): void {
+    const container = this.container.querySelector('.ta-priorities-list');
+    if (!container) return;
+    
+    if (priorities.length === 0) {
+      container.innerHTML = '<li style="color: #888;">No urgent priorities</li>';
+    } else {
+      container.innerHTML = priorities
+        .slice(0, 5) // Show top 5 priorities
+        .map(p => `<li>${p}</li>`)
+        .join('');
+    }
+  }
+  
+  public updateDataQuality(quality: number): void {
+    const valueElement = this.container.querySelector('.ta-quality-value') as HTMLElement;
+    const fillElement = this.container.querySelector('.ta-quality-fill') as HTMLElement;
+    
+    if (valueElement) {
+      valueElement.textContent = `${quality}%`;
     }
     
-    container.innerHTML = this.recommendations
-      .sort((a, b) => {
-        const priorities = { critical: 0, high: 1, medium: 2, low: 3 };
-        return priorities[a.priority] - priorities[b.priority];
-      })
-      .map(rec => `
-        <div class="tla-hud-recommendation priority-${rec.priority}">
-          <div class="tla-hud-category">${rec.category}</div>
-          <div class="tla-hud-message">${rec.message}</div>
-          ${rec.action ? `<div class="tla-hud-action">${rec.action}</div>` : ''}
-        </div>
-      `)
-      .join('');
-  }
-
-  private async loadConfig() {
-    try {
-      const stored = await chrome.storage.local.get(['hudConfig']);
-      if (stored.hudConfig) {
-        this.config = { ...this.config, ...stored.hudConfig };
-        this.applyConfig();
-      }
-    } catch (error) {
-      console.error('[TLA HUD] Failed to load config:', error);
+    if (fillElement) {
+      fillElement.style.width = `${quality}%`;
     }
   }
-
-  private async saveConfig() {
-    try {
-      await chrome.storage.local.set({ hudConfig: this.config });
-    } catch (error) {
-      console.error('[TLA HUD] Failed to save config:', error);
+  
+  public setVersion(version: string): void {
+    this.version = version;
+    const titleElement = this.container.querySelector('.ta-hud-title');
+    if (titleElement) {
+      titleElement.textContent = `TravianAssistant v${version}`;
     }
   }
-
-  private applyConfig() {
-    if (this.config.position) {
-      this.container.style.left = `${this.config.position.x}px`;
-      this.container.style.top = `${this.config.position.y}px`;
-    }
-    
-    const content = this.container.querySelector('.tla-hud-content') as HTMLElement;
-    if (content) {
-      content.style.display = this.config.expanded ? 'block' : 'none';
-    }
-    
-    this.container.style.display = this.config.visible ? 'block' : 'none';
-  }
-
-  public show() {
-    this.config.visible = true;
+  
+  public show(): void {
     this.container.style.display = 'block';
-    this.saveConfig();
+    this.savePosition();
   }
-
-  public hide() {
-    this.config.visible = false;
+  
+  public hide(): void {
     this.container.style.display = 'none';
-    this.saveConfig();
+    this.savePosition();
   }
-
-  public addRecommendation(recommendation: Recommendation) {
-    this.recommendations.push(recommendation);
-    this.render();
-  }
-
-  public clearRecommendations() {
-    this.recommendations = [];
-    this.render();
+  
+  public destroy(): void {
+    this.container.remove();
   }
 }
 
-export function createHUD(): HUD {
-  return new HUD();
+// Factory function
+export function createHUD(): TravianHUD {
+  return new TravianHUD();
 }
