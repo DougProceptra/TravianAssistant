@@ -1,223 +1,281 @@
-# TravianAssistant V4: AI-Powered Game Assistant
+# TravianAssistant V4: AI-Powered Strategic Advisor
 *Last Updated: August 31, 2025*
-*Server Launch: September 1, 2025*
+*Status: Beta - Chat Working, Data Scraping In Progress*
 
-## Core Concept: AI Agent, Not Calculator
-
-TravianAssistant V4 is an **AI-powered game assistant** that provides dynamic, contextual advice based on your actual game state. No spreadsheets, no static calculators - just intelligent analysis of YOUR specific situation.
-
-## How It Works
-
-```
-1. Chrome Extension scrapes your game state
-2. Game Data Provider supplies complete mechanics
-3. Claude AI analyzes your specific situation
-4. Interactive chat provides personalized advice
-5. Recommendations adapt to changing conditions
-```
-
-## Architecture Components
-
-### 1. Chrome Extension (Browser Layer)
-**Purpose**: Capture real-time game state
-- Scrapes resources, buildings, troops, queues
-- Detects current page context
-- Injects chat HUD overlay
-- Sends state to backend
-
-**Key Files**:
-- `/packages/extension/manifest.json` - Extension configuration
-- `/packages/extension/src/content/index.ts` - Page scraping
-- `/packages/extension/src/background/index.ts` - Service worker
-- `/packages/extension/src/ai/game-data-provider.ts` - Data access ✅
-
-### 2. Backend Service (AI Layer)
-**Purpose**: Process questions with Claude AI
-- Receives game state from extension
-- Loads complete game mechanics data
-- Formats prompts for Claude
-- Manages conversation context
-- Streams responses back
-
-**Key Files**:
-- `/server/ai-service.js` - Express server (TO CREATE)
-- Game data files in `/data/` directory ✅
-
-### 3. Game Data Provider (Knowledge Layer) ✅
-**Purpose**: Supply complete game mechanics
-- All troop stats for 9 tribes
-- Building costs and times
-- Training formulas
-- Combat calculations
-- Hero mechanics
-
-**Status**: COMPLETE AND TESTED
-
-### 4. Chat Interface (UI Layer)
-**Purpose**: Natural interaction in-game
-- Floating HUD overlay
-- Message input/output
-- Context-aware responses
-- Draggable/collapsible
-
-## The AI Difference
-
-### Traditional Tools (What We DON'T Do)
-❌ Static build orders  
-❌ Fixed optimization paths  
-❌ Generic spreadsheet formulas  
-❌ One-size-fits-all strategies  
-
-### AI-Powered Approach (What We DO)
-✅ Analyzes YOUR current game state  
-✅ Asks clarifying questions about YOUR goals  
-✅ Calculates based on YOUR specific situation  
-✅ Adapts recommendations as conditions change  
-✅ Learns from patterns across sessions  
-
-## Example Interactions
-
-### Settlement Timing
-```
-Player: "When should I settle?"
-
-AI: "I see you're Egyptian with 15/15/15/9 fields and 850 total production/hour.
-     
-     Questions to optimize my advice:
-     1. Are you competing for a specific 15-cropper?
-     2. What's your gold spending comfort level?
-     3. Any aggressive neighbors spotted?
-     
-     Based on current state: You need 48,000 total resources for settlers.
-     At current production, that's 56 hours of accumulation.
-     With Residence at level 3, you need 7 more levels (≈30 hours).
-     
-     Realistic settlement: Day 6-7 if undisturbed, Day 8-9 if defending."
-```
-
-### Troop Composition
-```
-Player: "Should I build troops or upgrade fields?"
-
-AI: "Looking at your Day 2 status with 200/hour production...
-     
-     Your neighbors:
-     - Player at (5, -3): No alliance, 89 pop (likely inactive)
-     - Player at (-2, 4): [ALLY] tag, 156 pop (potential threat)
-     
-     Recommendation: Build 10 Slave Militia first (2.5 hours of resources).
-     This enables safe scouting. After confirming inactive status,
-     you can raid for 300-500 resources per trip.
-     
-     Fields can wait until after your first successful raids."
-```
+## Vision
+Transform Travian gameplay from spreadsheet management to conversational AI strategy, enabling competitive play with minimal time investment.
 
 ## Current Implementation Status
 
-### ✅ Complete
-- Game data extraction (all 9 tribes)
-- Data provider class with calculations
-- Local testing environment
-- Training formulas and combat mechanics
+### ✅ Working Components
+- **Chat Interface**: Draggable, resizable, persistent position
+- **AI Integration**: Claude via Vercel proxy providing responses  
+- **Village Detection**: Parsing all 9 villages from overview
+- **Database Storage**: Account snapshots in IndexedDB
+- **Backend Server**: Running on Replit with game data
+- **Extension Build**: v1.0.4 stable
 
-### 🚧 In Progress
-- Chrome extension game state scraping
-- Backend AI service setup
-- Claude API integration
-- Chat HUD interface
+### 🔧 In Progress
+- **Resource Scraping**: Selectors need updating for current game version
+- **Building Detection**: Not reading building levels correctly
+- **Page Context**: Need to detect which page/building user is viewing
+- **Server Configuration**: Need UI for server URL/speed settings
 
-### 📋 TODO
-- Connect extension to backend
-- Implement conversation streaming
-- Add error recovery
-- Performance optimization
+### 📋 Planned Features
+- **Memory System**: Persist conversations and learning
+- **Strategy Patterns**: Learn from player corrections
+- **Alliance Integration**: Coordinate with alliance members
+- **Automation Suggestions**: Queue optimization recommendations
 
-## Technical Specifications
+## System Architecture
 
-### Data Storage
-- **Format**: JSON files for game mechanics
-- **Location**: `/data/` directory
-- **Coverage**: All tribes, buildings, heroes
-- **Server Speeds**: Separate tables per speed (1x, 2x, 3x, 5x)
+```
+Chrome Extension (v1.0.4)
+    ├── Content Script (scrapes game pages)
+    │   ├── Overview Parser (gets villages) ✅
+    │   ├── Safe Scraper (needs fixes) ⚠️
+    │   └── AJAX Interceptor (captures API) ✅
+    ├── Background Service (coordinates)
+    │   ├── Message routing ✅
+    │   └── Vercel API calls ✅
+    └── Chat UI (user interface)
+        ├── Draggable/Resizable ✅
+        ├── Persistent position ✅
+        └── Message history ✅
+           ↓
+    Vercel Proxy (CORS handler) ✅
+           ↓
+    Claude AI (Anthropic) ✅
+           ↓
+    Response displayed in chat ✅
+    
+Parallel Services:
+    Replit Backend (port 3000) ✅
+    ├── Game mechanics data ✅
+    ├── Troop/building stats ✅
+    └── Database storage ✅
+```
 
-### AI Configuration
+## Key Features
+
+### 1. Conversational Interface ✅
+- Natural language questions about strategy
+- Context-aware responses based on game state
+- No forms or complex UIs - just chat
+
+### 2. Real-Time Analysis ⚠️
+- Scrapes current game state (villages only currently)
+- Provides immediate recommendations
+- Calculates optimal paths dynamically
+
+### 3. Multi-Village Support ✅
+- Tracks all 9 villages simultaneously
+- Village names and populations detected
+- Resource coordination (pending scraping fix)
+
+### 4. Server-Specific Configuration 📋
+- Supports 2x server speed (hardcoded currently)
+- Multi-tribe village support (T4.6)
+- Need UI for configuration
+
+## User Experience Flow
+
+1. **Install Extension** → Load in Chrome ✅
+2. **Open Travian** → Extension auto-activates ✅
+3. **Chat Appears** → Draggable window ready ✅
+4. **Ask Questions** → Natural language input ✅
+5. **Get Advice** → AI responds (without full context) ⚠️
+6. **Take Action** → Follow recommendations in game
+
+## Current Limitations & Solutions
+
+### Problem: Resource Data Not Captured
+**Symptom**: AI doesn't know actual resource amounts
+**Cause**: Selectors outdated for current Travian version
+**Solution**: Update selectors in `safe-scraper.ts`:
 ```javascript
-{
-  model: "claude-3-sonnet",
-  temperature: 0.7,
-  maxTokens: 2000,
-  systemPrompt: "Complete Travian expert with access to game state...",
-  includeGameData: true,
-  includeFormulas: true
+// Need to update these selectors
+resources: {
+  wood: '#stockBar .wood .value',  // Find correct selector
+  clay: '#stockBar .clay .value',
+  iron: '#stockBar .iron .value', 
+  crop: '#stockBar .crop .value'
 }
 ```
 
-### Extension Permissions
-```json
-{
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["*://*.travian.com/*"],
-  "content_scripts": [{
-    "matches": ["*://*.travian.com/*"],
-    "js": ["content.js"]
-  }]
-}
+### Problem: Building Levels Unknown
+**Symptom**: AI can't see building progress
+**Cause**: Building parser not implemented
+**Solution**: Add building detection to scraper
+
+### Problem: Server Configuration
+**Symptom**: Hardcoded to 2x speed
+**Cause**: No configuration UI
+**Solution**: Add options page with server settings
+
+## Data Scraping Status
+
+### ✅ Working
+- Village list from /dorf3.php
+- Village names and populations  
+- Account ID generation
+- Database storage
+
+### ❌ Not Working
+- Resource amounts (wood/clay/iron/crop)
+- Production rates
+- Building levels
+- Troop counts
+- Current construction queue
+- Hero status
+
+### 📋 Needed Selectors
+```javascript
+// These need to be found and implemented
+const selectors = {
+  resources: {
+    wood: '?', // Find in game
+    clay: '?',
+    iron: '?',
+    crop: '?'
+  },
+  production: {
+    wood: '?',
+    clay: '?', 
+    iron: '?',
+    crop: '?'
+  },
+  buildings: {
+    slots: '.buildingSlot',
+    level: '.level',
+    underConstruction: '.underConstruction'
+  }
+};
 ```
 
-## Quick Start Guide
+## Deployment Guide
 
-### 1. Test Locally
+### Chrome Extension
 ```bash
-node test-ai-agent-local.js
+cd packages/extension
+./build-minimal.sh  # Builds v1.0.4
+# Load /dist folder in Chrome
 ```
 
-### 2. Start Backend (once created)
+### Backend Server (Replit)
 ```bash
-node server/ai-service.js
+cd backend
+node server.js  # Runs on port 3000
 ```
 
-### 3. Load Extension
-1. Open `chrome://extensions`
-2. Enable Developer mode
-3. Load unpacked → `/packages/extension/dist`
+### Vercel Proxy
+- Already deployed: travian-proxy-simple.vercel.app
+- No action needed
 
-### 4. Use In-Game
-1. Navigate to Travian
-2. Look for chat icon or press hotkey
-3. Ask questions naturally
-4. Get contextual advice
+## Testing Checklist
+
+### ✅ Verified Working
+- [x] Extension loads without errors
+- [x] Chat interface appears
+- [x] Can drag and resize chat
+- [x] Position persists on refresh
+- [x] AI responds to questions
+- [x] Villages are detected
+- [x] Database stores snapshots
+
+### ⚠️ Needs Verification
+- [ ] Resource amounts captured
+- [ ] Building levels detected
+- [ ] Production rates calculated
+- [ ] Troops counted
+- [ ] Hero status tracked
+
+### ❌ Known Issues
+- [ ] Resource scraping broken
+- [ ] No server configuration UI
+- [ ] Backend connection not utilized
+- [ ] Game mechanics not integrated
+
+## Next Session Priorities
+
+1. **Fix Resource Scraping** (30 mins)
+   - Identify correct selectors
+   - Update safe-scraper.ts
+   - Test data capture
+
+2. **Add Server Config** (30 mins)
+   - Create options page
+   - Store server URL and speed
+   - Apply to calculations
+
+3. **Connect Backend Data** (1 hour)
+   - Query Replit for game mechanics
+   - Integrate formulas
+   - Enhance AI responses
+
+4. **Memory System** (2 hours)
+   - Design persistence layer
+   - Implement context storage
+   - Add learning capabilities
 
 ## Success Metrics
 
-### Launch Day (Sept 1)
-- Extension loads without errors
-- Scrapes game state accurately
-- AI provides relevant responses
-- Basic calculations work
+### Current Status
+- Response time: ~2 seconds ✅
+- Accuracy: Limited without game data ⚠️
+- Manual entry: None required ✅
 
-### Week 1
-- Top-20 settler achievement
-- <2 hours daily gameplay
-- Accurate strategic advice
-- Positive user feedback
+### Target Metrics
+- Full game state capture
+- 95% calculation accuracy
+- <2 hours daily playtime
+- Top-20 ranking achievement
 
-### Month 1
-- Consistent top-20 ranking
-- Advanced strategy optimization
-- Pattern learning implemented
-- Alliance coordination features
+## File Structure
+```
+/packages/extension/
+├── dist/                    # Built extension (v1.0.4)
+│   ├── manifest.json       # v1.0.4
+│   ├── content.js          # 87KB bundled
+│   └── background.js       # 5KB bundled
+├── src/
+│   ├── content/
+│   │   ├── safe-scraper.ts      # Needs selector fixes
+│   │   ├── overview-parser.ts   # Working
+│   │   └── conversational-ai.ts # Working
+│   └── background.ts             # Working
+└── build-minimal.sh              # Build script
 
-## Philosophy
+/backend/
+├── server.js               # Running on port 3000
+├── travian.db             # Initialized database
+└── game-start-optimizer.js # Strategy engine
 
-**We don't tell you what to do.**  
-We help you understand what you COULD do, based on your unique situation.
+/data/
+├── troops/                # Complete troop data
+└── buildings/            # Complete building data
+```
 
-**We don't assume optimal conditions.**  
-We adapt to reality - aggressive neighbors, limited gold, time constraints.
+## Development Notes
 
-**We don't provide static solutions.**  
-We offer dynamic analysis that evolves with your game.
+### Build Process
+```bash
+# Version management
+node scripts/version-manager.cjs set 1.0.5
+node scripts/version-manager.cjs sync
+
+# Build extension
+./build-minimal.sh  # Simple, works
+# OR
+npm run build       # Full build, may have issues
+```
+
+### Debug Commands
+```javascript
+// In browser console on Travian
+console.log(document.querySelector('#stockBar')); // Find resources
+console.log(document.querySelectorAll('.buildingSlot')); // Find buildings
+```
 
 ---
-
-*This is not a calculator. This is your personal Travian strategist, watching every move, understanding every constraint, and optimizing for YOUR success.*
+*"90% there - just needs the final 10% to connect everything together."*
