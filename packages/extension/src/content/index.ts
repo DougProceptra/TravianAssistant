@@ -1,6 +1,6 @@
 // packages/extension/src/content/index.ts
 // Main content script entry point
-// v1.0.5 - FIXED function calls
+// v1.1.0 - Remove exports for Chrome extension compatibility
 
 import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
@@ -17,7 +17,7 @@ async function initialize() {
   // Initialize safe scraper first
   await safeScraper.initialize();
   
-  // Start safe scraping - FIXED: use getGameState not scrapeCurrentState
+  // Start safe scraping
   const gameState = await safeScraper.getGameState();
   console.log('[TLA Content] Initial scrape complete:', gameState);
   
@@ -67,5 +67,5 @@ if (document.readyState === 'loading') {
   initialize();
 }
 
-// Export for other modules
-export { safeScraper, overviewParser };
+// NO EXPORTS for Chrome extension content scripts
+// These modules are available internally but not exported
