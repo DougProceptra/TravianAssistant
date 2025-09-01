@@ -10,7 +10,7 @@ export default defineConfig({
       input: {
         content: resolve(__dirname, 'src/content/index.ts'),
         background: resolve(__dirname, 'src/background.ts'),
-        popup: resolve(__dirname, 'src/popup/popup.ts'),
+        popup: resolve(__dirname, 'src/popup.ts'),  // Fixed path
         options: resolve(__dirname, 'src/options/options.ts')
       },
       output: {
