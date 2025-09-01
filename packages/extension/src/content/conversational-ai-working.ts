@@ -2,7 +2,7 @@
 // This version ACTUALLY renders the chat button and interface
 
 import { safeScraper } from './safe-scraper';
-import { VERSION } from '../real-version';
+import { VERSION } from '../version';  // FIX: Use correct import path
 
 export function initConversationalAI() {
   console.log(`[TLA Chat] Initializing chat UI v${VERSION}`);
@@ -136,15 +136,20 @@ export function initConversationalAI() {
     `;
     
     try {
-      // Get game state
+      // Get game state - WITH ALL VILLAGES
       const gameState = await safeScraper.getGameState();
-      console.log('[TLA Chat] Sending to AI with game state:', gameState);
+      console.log('[TLA Chat] Sending to AI with game state:', {
+        totalVillages: gameState.villages.length,
+        currentVillage: gameState.currentVillageId,
+        totalResources: gameState.totals.resources,
+        totalProduction: gameState.totals.production
+      });
       
       // Send to background script
       chrome.runtime.sendMessage({
         type: 'CHAT_MESSAGE',
         message: message,
-        gameState: gameState
+        gameState: gameState  // Full multi-village state
       }, (response) => {
         // Remove loading
         const loading = document.getElementById('loading');
