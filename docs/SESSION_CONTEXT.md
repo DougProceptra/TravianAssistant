@@ -1,104 +1,77 @@
 # SESSION_CONTEXT.md
-*Last Updated: September 1, 2025 - POST-DISASTER RECOVERY*
+*Last Updated: September 1, 2025 - READY FOR v1.1.0*
 
-## 🟢 CURRENT WORKING STATE (v0.9.5)
+## 🎯 MISSION CRITICAL PRIORITIES
 
-### What Actually Works
-1. **Chat Interface** ✅
-   - Draggable and resizable (THIS IS CRITICAL - DON'T BREAK IT)
-   - Position persistence works
-   - Chat loads and responds
-   - Version 0.9.5 from commit a00eca9
-   
-2. **Village Detection** ✅
-   - Overview parser correctly finds all 9 villages
-   - Scrapes from dorf3.php successfully
+### Priority 1: Fix Real-Time Data Scraping ⚠️ CRITICAL
+**Problem:** Scrapers find data but AI receives empty/zero values
+**Solution:** Fix data pipeline from scraper → AI context
+**Success Metric:** AI can answer "What village am I in?" and "What's my production?"
 
-### What's Broken
-1. **Data Pipeline** ❌
-   - Overview parser finds 9 villages but content script sees 0
-   - AI gets incomplete/wrong data (0 population, etc.)
-   - Simple connection issue between parser and main script
-   
-2. **Version Management** ❌
-   - Version manager keeps resetting to 1.0.0
-   - Need to manually fix after each build
+### Priority 2: Connect to Backend Server
+**Goal:** Validate complete game data structures
+**Required Data:** Buildings, troops, hero, game mechanics
+**Success Metric:** Backend has accurate, complete game state
 
-## Critical Learning from Today's Failures
+### Priority 3: Context Intelligence Integration
+**Service:** https://proceptra.app.n8n.cloud/mcp/context-tools
+**Method:** context_intelligence capability
+**User ID:** Hashed email from extension options
+**Success Metric:** Every AI interaction stored and learning
 
-### What NOT to Do
-1. **Don't create complex HUDs** - The AI agent IS the interface
-2. **Don't break working UI** - v0.9.5 chat drag/resize MUST be preserved
-3. **Don't add exports to content scripts** - Chrome doesn't support ES6 modules
-4. **Don't trust version managers** - They override everything
+### Priority 4: End-to-End Testing
+**Environment:** New game server (Sept 1, 2025)
+**Focus:** Complete workflow validation
+**Success Metric:** Strategic advice based on actual game state
 
-### The Actual Goal
-**AI AGENT FIRST** - Everything else is just plumbing to get data to the AI:
-- Scrape game data → Send to AI → AI provides strategic advice
-- The chat interface is the ONLY UI needed
-- No HUDs, no data displays, no complex visualizations
+## 🔧 TECHNICAL SPECIFICATIONS
 
-## Fix Priority
+### Claude Model
+- **Model:** claude-sonnet-4-20250514
+- **Proxy:** travian-proxy-simple (Vercel)
 
-### 1. Fix Data Connection (CRITICAL)
+### Version Management
+- **ALL COMPONENTS:** v1.1.0 (manifest, extension, agent)
+
+### Required Game Context
 ```javascript
-// The bug is here - overview parser finds villages but they don't reach the AI
-content.js:48 [TLA Overview] Successfully parsed 9 villages
-content.js:2474 [TLA Content] Found 0 villages
+{
+  user: hashedEmail,
+  currentVillage: { id, name, coordinates, population },
+  allVillages: [...],
+  totals: { villages, population, culturePoints, production },
+  currentPage: "dorf1.php"
+}
 ```
 
-### 2. Keep What Works
-- DO NOT touch the chat UI code from v0.9.5
-- DO NOT add new UI elements
-- DO NOT change the drag/resize functionality
+### Context Intelligence Service
+- **URL:** https://proceptra.app.n8n.cloud/mcp/context-tools
+- **Capability:** context_intelligence
+- **User ID:** Hashed email from options page
+- **Storage:** Every request/response pair
 
-## Build Instructions That Actually Work
+## ✅ WHAT WORKS (DO NOT BREAK)
+- Chat interface drag/resize (v0.9.5 code)
+- Basic scraping (finds villages but doesn't pass to AI)
+- Proxy connection to Claude
 
-```bash
-cd packages/extension
+## ❌ WHAT'S BROKEN
+- Data pipeline (scraper → AI context)
+- Version management (keeps resetting)
+- Game context not reaching AI
 
-# For v0.9.5 (working UI, broken data):
-git checkout a00eca9
-./build-minimal.sh
+## 🚀 NEXT SESSION START PROTOCOL
+1. Set all versions to 1.1.0
+2. Verify claude-sonnet-4-20250514 in proxy
+3. Fix data pipeline (Priority 1)
+4. Follow implementation checklist
 
-# After any build:
-sed -i 's/"version": "1.0.0"/"version": "0.9.5"/' dist/manifest.json
-```
-
-## Architecture Reality Check
-
-```
-Game Page → Scrapers → AI Agent → Chat Response
-              ↑
-              This is broken (returns 0 villages to AI)
-```
-
-The scrapers find data but don't pass it correctly to the AI.
-
-## Documentation Status
-
-### Deprecated/Misleading Docs
-- ❌ `TRAVIAN_ASSISTANT_V3_COMPLETE.md` - Over-engineered, wrong approach
-- ❌ `DEVELOPMENT_PLAN.md` - Outdated, focuses on wrong things
-- ⚠️ `TravianAssistantV4.md` - Needs update to reflect AI-first approach
-
-### Current Reality Docs
-- ✅ `SESSION_CONTEXT.md` - This file (accurate current state)
-- ✅ `data-structures.md` - Still valid for game data format
-
-## Next Developer Instructions
-
-1. **Fix the data pipeline** without touching UI
-2. **Test with v0.9.5** as baseline
-3. **Keep the chat as primary interface**
-4. **No HUDs or complex displays**
-
-## What Success Looks Like
-
-User: "What's my total production?"
-AI: "Your 9 villages produce 45,000 resources per hour: 12k wood, 11k clay, 10k iron, 12k crop net."
-
-NOT: A HUD showing numbers the user can already see in the game.
+## ⚡ CRITICAL REMINDERS
+- **DO NOT** create complex HUDs - AI chat is the interface
+- **DO NOT** break working drag/resize functionality
+- **DO NOT** add exports to content scripts
+- **ALWAYS** include full game context with AI queries
+- **FOCUS** on strategic advice, not data display
 
 ---
 *The AI agent is the product. Everything else is just plumbing.*
