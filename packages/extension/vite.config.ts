@@ -10,20 +10,17 @@ export default defineConfig({
       input: {
         content: resolve(__dirname, 'src/content/index.ts'),
         background: resolve(__dirname, 'src/background.ts'),
-        popup: resolve(__dirname, 'src/popup.ts'),  // Fixed path
+        popup: resolve(__dirname, 'src/popup.ts'),
         options: resolve(__dirname, 'src/options/options.ts')
       },
       output: {
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
-        // CRITICAL: Use IIFE format for content scripts, not ES modules
-        format: 'iife'
+        // Don't use IIFE with multiple entries - use default format
+        // but ensure no exports in content script
       }
     },
-    // Disable module preload polyfill
-    modulePreload: false,
-    // Target older browsers for compatibility
     target: 'chrome91'
   },
   plugins: [
