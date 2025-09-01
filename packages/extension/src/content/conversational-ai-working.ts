@@ -1,8 +1,8 @@
-// WORKING Chat UI - v1.3.0
-// This version ACTUALLY renders the chat button and interface
+// WORKING Chat UI - v1.3.3 with drag and resize
+// This version has working drag and resize functionality
 
 import { safeScraper } from './safe-scraper';
-import { VERSION } from '../version';  // FIX: Use correct import path
+import { VERSION } from '../version';
 
 export function initConversationalAI() {
   console.log(`[TLA Chat] Initializing chat UI v${VERSION}`);
@@ -35,7 +35,7 @@ export function initConversationalAI() {
   document.body.appendChild(chatButton);
   console.log('[TLA Chat] Chat button added to page');
   
-  // Create the chat interface
+  // Create the chat interface with resize and drag capability
   const chatInterface = document.createElement('div');
   chatInterface.id = 'tla-chat-interface';
   chatInterface.style.cssText = `
@@ -44,27 +44,34 @@ export function initConversationalAI() {
     right: 20px;
     width: 380px;
     height: 500px;
+    min-width: 320px;
+    min-height: 400px;
     background: rgba(20, 20, 20, 0.95);
     border: 2px solid #8B4513;
     border-radius: 12px;
     display: none;
     z-index: 99998;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    resize: both;
+    overflow: auto;
   `;
   
   chatInterface.innerHTML = `
-    <div style="background: linear-gradient(135deg, #8B4513, #A0522D); padding: 12px; border-radius: 10px 10px 0 0; color: white; cursor: move;">
+    <div class="tla-chat-header" style="background: linear-gradient(135deg, #8B4513, #A0522D); padding: 12px; border-radius: 10px 10px 0 0; color: white; cursor: move; user-select: none;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <span style="font-weight: bold;">TravianAssistant Chat v${VERSION}</span>
         <button id="tla-chat-close" style="background: transparent; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
       </div>
     </div>
-    <div id="tla-chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; color: white; height: 380px;">
+    <div id="tla-chat-messages" style="flex: 1; overflow-y: auto; padding: 16px; color: white; height: calc(100% - 120px);">
       <div style="background: rgba(139, 69, 19, 0.2); padding: 12px; border-radius: 8px;">
-        Welcome! I'm your strategic advisor. Ask me anything about your Travian game.
+        <div style="margin-bottom: 8px; color: #4CAF50;">✓ v${VERSION} Initialized</div>
+        <div style="margin-bottom: 8px; color: #4CAF50;">✓ Multi-village data collection active</div>
+        <div style="margin-bottom: 8px;">Welcome! I'm your strategic advisor with full account visibility.</div>
+        <div style="font-size: 0.9em; opacity: 0.8;">Drag header to move • Resize from corners</div>
       </div>
     </div>
-    <div style="display: flex; padding: 12px; border-top: 1px solid rgba(139, 69, 19, 0.3);">
+    <div style="display: flex; padding: 12px; border-top: 1px solid rgba(139, 69, 19, 0.3); position: absolute; bottom: 0; left: 0; right: 0; background: rgba(20, 20, 20, 0.95); border-radius: 0 0 10px 10px;">
       <input id="tla-chat-input" type="text" placeholder="Ask me anything..." style="
         flex: 1;
         padding: 8px 12px;
@@ -89,6 +96,43 @@ export function initConversationalAI() {
   // ACTUALLY ADD THE CHAT INTERFACE TO THE PAGE
   document.body.appendChild(chatInterface);
   console.log('[TLA Chat] Chat interface added to page');
+  
+  // Make the chat draggable
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let chatStartX = 0;
+  let chatStartY = 0;
+  
+  const header = chatInterface.querySelector('.tla-chat-header') as HTMLElement;
+  if (header) {
+    header.addEventListener('mousedown', (e) => {
+      // Don't drag if clicking the close button
+      if ((e.target as HTMLElement).id === 'tla-chat-close') return;
+      
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      const rect = chatInterface.getBoundingClientRect();
+      chatStartX = rect.left;
+      chatStartY = rect.top;
+      e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      chatInterface.style.left = (chatStartX + deltaX) + 'px';
+      chatInterface.style.top = (chatStartY + deltaY) + 'px';
+      chatInterface.style.right = 'auto';
+      chatInterface.style.bottom = 'auto';
+    });
+    
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+  }
   
   // Toggle chat visibility
   chatButton.addEventListener('click', () => {
@@ -131,18 +175,19 @@ export function initConversationalAI() {
     // Add loading indicator
     messagesDiv.innerHTML += `
       <div id="loading" style="background: rgba(139, 69, 19, 0.15); padding: 8px 12px; border-radius: 8px; margin: 8px 0;">
-        Thinking...
+        Analyzing game state...
       </div>
     `;
     
     try {
       // Get game state - WITH ALL VILLAGES
       const gameState = await safeScraper.getGameState();
-      console.log('[TLA Chat] Sending to AI with game state:', {
+      console.log('[TLA Chat] Sending to AI with complete game state:', {
         totalVillages: gameState.villages.length,
         currentVillage: gameState.currentVillageId,
         totalResources: gameState.totals.resources,
-        totalProduction: gameState.totals.production
+        totalProduction: gameState.totals.production,
+        alerts: gameState.alerts.length
       });
       
       // Send to background script
@@ -200,5 +245,5 @@ export function initConversationalAI() {
     });
   }
   
-  console.log(`[TLA Chat] Chat UI v${VERSION} initialization complete`);
+  console.log(`[TLA Chat] Chat UI v${VERSION} initialization complete with drag/resize`);
 }
