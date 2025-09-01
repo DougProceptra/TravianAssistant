@@ -1,5 +1,5 @@
 # SESSION_CONTEXT.md
-*Last Updated: September 1, 2025 - v1.1.0 + WORKFLOW RULES*
+*Last Updated: September 1, 2025 - v1.5.0 + ALL VILLAGES FOCUS*
 
 ## 🚨 MANDATORY AI WORKFLOW RULES
 
@@ -27,26 +27,26 @@ See `/docs/AI_WORKFLOW.md` for complete rules.
 
 ## 🎯 MISSION CRITICAL PRIORITIES
 
-### Priority 1: Fix Real-Time Data Scraping ⚠️ CRITICAL
-**Problem:** Scrapers find data but AI receives empty/zero values
-**Solution:** Fix data pipeline from scraper → AI context
-**Success Metric:** AI can answer "What village am I in?" and "What's my production?"
+### Priority 1: Multi-Village Data Collection ✅ FIXED
+**Solution:** Always fetch ALL villages from overview (dorf3.php)
+**Success:** AI receives complete account context for strategic decisions
+**Commits:** `6d96f3a` - Prioritize multi-village data, `46401cb` - Unicode fix
 
-### Priority 2: Connect to Backend Server
+### Priority 2: Fix Production Data Scraping ⚠️ IN PROGRESS
+**Problem:** Production selectors not finding /h data
+**Solution:** Multiple selector attempts + /h text search
+**Next:** Run console commands to find actual selectors
+
+### Priority 3: Connect to Backend Server
 **Goal:** Validate complete game data structures
 **Required Data:** Buildings, troops, hero, game mechanics
 **Success Metric:** Backend has accurate, complete game state
 
-### Priority 3: Context Intelligence Integration
+### Priority 4: Context Intelligence Integration
 **Service:** https://proceptra.app.n8n.cloud/mcp/context-tools
 **Method:** context_intelligence capability
 **User ID:** Hashed email from extension options
 **Success Metric:** Every AI interaction stored and learning
-
-### Priority 4: End-to-End Testing
-**Environment:** New game server (Sept 1, 2025)
-**Focus:** Complete workflow validation
-**Success Metric:** Strategic advice based on actual game state
 
 ## 🔧 TECHNICAL SPECIFICATIONS
 
@@ -55,15 +55,21 @@ See `/docs/AI_WORKFLOW.md` for complete rules.
 - **Proxy:** travian-proxy-simple (Vercel)
 
 ### Version Management
-- **ALL COMPONENTS:** v1.1.0 (manifest, extension, agent)
+- **ALL COMPONENTS:** v1.5.0 (manifest, extension, agent)
 
-### Required Game Context
+### Required Game Context (MULTI-VILLAGE)
 ```javascript
 {
   user: hashedEmail,
-  currentVillage: { id, name, coordinates, population },
-  allVillages: [...],
-  totals: { villages, population, culturePoints, production },
+  villages: [...ALL_VILLAGES],  // CRITICAL: All villages, not just current
+  currentVillageId: "12345",     // Which one is active in browser
+  totals: {                       // Aggregated across ALL villages
+    villages: 3,
+    population: 2847,
+    resources: { wood: 15000, clay: 18000, iron: 12000, crop: 85000 },
+    production: { wood: 1200, clay: 1100, iron: 900, crop: 3500 }
+  },
+  alerts: [...],                  // Checked across ALL villages
   currentPage: "dorf1.php"
 }
 ```
@@ -76,30 +82,52 @@ See `/docs/AI_WORKFLOW.md` for complete rules.
 
 ## ✅ WHAT WORKS (DO NOT BREAK)
 - Chat interface drag/resize (v0.9.5 code)
-- Basic scraping (finds villages but doesn't pass to AI)
+- Basic resource scraping with Unicode fix
 - Proxy connection to Claude
+- Multi-village data collection from overview
 
 ## ❌ WHAT'S BROKEN
-- Data pipeline (scraper → AI context)
-- Version management (keeps resetting)
-- Game context not reaching AI
+- Production data selectors (need to find correct elements)
+- Game context completeness (troops, buildings detail)
 
 ## 🚀 NEXT SESSION START PROTOCOL
 1. **CHECK AI_WORKFLOW.md** - Follow GitHub-first rules
-2. Set all versions to 1.1.0
-3. Verify claude-sonnet-4-20250514 in proxy
-4. Fix data pipeline (Priority 1)
+2. Pull latest: `git pull`
+3. Build extension: `npm run build`
+4. Test production selectors in console
 5. **NO CODE IN CHAT** - Push all fixes to GitHub
 
 ## ⚡ CRITICAL REMINDERS
-- **DO NOT** create complex HUDs - AI chat is the interface
+- **ALWAYS** collect ALL villages data, not just current
+- **DO NOT** make single-village decisions
 - **DO NOT** break working drag/resize functionality
 - **DO NOT** add exports to content scripts
 - **DO NOT** show code in chat - push to GitHub
-- **ALWAYS** include full game context with AI queries
-- **ALWAYS** follow AI_WORKFLOW.md rules
-- **FOCUS** on strategic advice, not data display
+- **ALWAYS** include full multi-village context with AI queries
+- **FOCUS** on strategic advice across entire account
+
+## 📊 Console Commands for Debugging
+
+```javascript
+// Find production elements
+console.log('Production class:', document.querySelectorAll('.production'));
+console.log('Elements with /h:', 
+  Array.from(document.querySelectorAll('*'))
+    .filter(el => el.textContent?.includes('/h'))
+    .map(el => ({text: el.textContent, class: el.className, tag: el.tagName}))
+    .slice(0, 10)
+);
+
+// Check villages in switcher
+console.log('Villages found:', 
+  document.querySelectorAll('.villageList a[href*="newdid"]').length
+);
+
+// Test Unicode parsing
+const testNum = document.querySelector('#l1')?.textContent;
+console.log('Raw:', testNum, 'Normalized:', testNum?.normalize('NFKC'));
+```
 
 ---
-*The AI agent is the product. Everything else is just plumbing.*
+*The AI agent needs ALL villages for strategic decisions. Single-village data is tactically useless.*
 *Code belongs in GitHub, not in chat.*
