@@ -1,202 +1,193 @@
 # SESSION_CONTEXT.md
-*Last Updated: August 31, 2025 3:45 PM MT*
+*Last Updated: August 31, 2025 4:10 PM MT*
 *Server Launch: September 1, 2025 (TOMORROW!)*
 
-## 🚨 PARADIGM SHIFT: AI-First Architecture
+## 🚨 CURRENT STATUS: Data Layer Complete, AI Agent Next
 
-### What Changed
-We are NOT building calculators or static optimization tools.
-We ARE building an **AI-powered game assistant** that dynamically analyzes and advises.
+### Architecture Reference
+See `/docs/TravianAssistantV4.md` for complete architectural design and AI-first approach details.
 
 ## Project: TravianAssistant V4
 AI-powered browser assistant for Travian Legends using Claude for dynamic strategy
 
-## Architecture Overview
-```
-Chrome Extension (scrapes game) → Backend Server (serves data) → Claude AI (analyzes) → Chat HUD (in-game)
-```
+## ✅ COMPLETED TODAY
 
-## ✅ What's Complete
+### 1. Data Provider System - WORKING
+- ✅ Game data provider class created (`/packages/extension/src/ai/game-data-provider.ts`)
+- ✅ All 9 tribes data loading correctly
+- ✅ Calculation formulas implemented and tested
+- ✅ Local testing environment functional (`test-ai-agent-local.js`)
 
-### 1. Game Data Extraction - DONE
-- All 9 tribes with complete troop stats
-- Building costs and construction times
-- Hero mechanics and formulas
-- Training time calculations
+### 2. Data Verification - TESTED
+- ✅ Egyptian Slave Militia: 15W 45C 60I 30Crop, 900s training
+- ✅ Settlement costs: 9000W 15120C 19530I 14490Crop for 3 settlers
+- ✅ Training time formulas working (0.9^level reduction)
+- ✅ All tribes accessible (Roman, Teutonic, Gallic, Egyptian, Huns, Spartan, Viking)
 
-### 2. Game Data Provider - DONE
-- TypeScript class in `/packages/extension/src/ai/game-data-provider.ts`
-- Formats all game data for AI consumption
-- Provides complete game context to Claude
-- Includes formulas and mechanics
+### 3. Local AI Simulation - READY
+- ✅ Interactive CLI for testing AI responses
+- ✅ Game state simulation
+- ✅ Question processing logic
+- ✅ Dynamic calculations based on game state
 
-### 3. Chrome Extension - EXISTS (needs testing)
-- Manifest V3 structure in place
-- Content scripts for scraping
-- Background service worker
-- HUD overlay capability
+## 🔴 NEXT CRITICAL STEPS: In-Game AI Agent
 
-## 🔴 Critical Tasks for Launch
-
-### 1. Test & Optimize Extension Scraping
-- Verify complete game state capture
-- Test on actual Travian pages
-- Ensure all resources, buildings, troops scraped
-- Validate page context detection
-
-### 2. Connect Extension to Backend
-- Wire up game-data-provider.ts
-- Establish communication channel
-- Route AI requests through backend
-- Handle response streaming
-
-### 3. Implement AI Chat Interface
-- Claude system prompt with game knowledge
-- Interactive dialogue in HUD
-- Context-aware responses
-- Natural language processing
-
-### 4. Deploy Backend Server
-- Host game data files
-- Proxy Claude API calls
-- Manage conversation context
-- Store user preferences
-
-## The AI Advantage
-
-### Traditional Approach (V3)
-```javascript
-// Static calculator
-function calculateSettlementTime(tribe, resources) {
-  return fixedFormula(tribe, resources);
-}
-```
-
-### AI Approach (V4)
-```
-Player: "When should I settle?"
-
-AI: "I see you're Egyptian with 15/15/15/9 fields. Let me understand your situation:
-- Are you competing for a specific 15c?
-- What's your gold budget?
-- Any aggressive neighbors?
-
-Based on your 1200/hour total production and level 7 barracks, 
-you could settle by day 6 if you focus on...]"
-```
-
-## Key Insights
-
-### AI Asks Questions Instead of Assuming
-- Server spawn location relative to center
-- Alliance vs solo play
-- Gold spending tolerance
-- Offensive vs defensive goals
-- Risk tolerance for early aggression
-
-### AI Sees Context
-- What page the player is viewing
-- Current game state in real-time
-- Historical patterns from session
-- Server-specific conditions
-
-### AI Adapts Strategy
-- No fixed "optimal" build order
-- Responds to changing conditions
-- Learns from player preferences
-- Considers unpredictable variables
-
-## Technical Status
-
-### Working Components
-- ✅ Complete game data in JSON
-- ✅ Data provider class
-- ✅ Extension structure
-- ✅ Building/troop formulas
-
-### Needs Implementation
-- ❌ Extension-to-backend connection
-- ❌ Claude AI integration
-- ❌ Chat interface in HUD
-- ❌ Conversation context management
-
-### Needs Testing
-- ⚠️ Game state scraping accuracy
-- ⚠️ Real-time data updates
-- ⚠️ AI response quality
-- ⚠️ Performance under load
-
-## Next Session Actions
-
+### Phase 1: Chrome Extension Integration (1-2 hours)
 1. **Test Extension Scraping**
-   - Load extension in Chrome
-   - Navigate to Travian pages
-   - Verify data extraction
-   - Check console for errors
+   ```bash
+   # Load extension in Chrome
+   # Navigate to Travian game
+   # Verify data extraction in console
+   ```
 
-2. **Connect Backend Pipeline**
-   - Set up Node.js server
-   - Configure Claude API
-   - Implement WebSocket/HTTP bridge
-   - Test data flow
+2. **Connect Data Provider to Extension**
+   - Wire up game-data-provider.ts in background service
+   - Ensure content script can access provider
+   - Test data flow from page → content → background
 
-3. **Configure AI Agent**
-   - Write comprehensive system prompt
-   - Include all game mechanics
-   - Add conversation patterns
-   - Test with real scenarios
+3. **Implement State Collection**
+   - Resources, production, buildings
+   - Current page context
+   - Available actions
+   - Server time and speed
 
-4. **Package for Team**
-   - Extension installation guide
-   - Backend deployment steps
+### Phase 2: Backend AI Service (1-2 hours)
+1. **Create Simple Node Server**
+   ```javascript
+   // server/ai-service.js
+   - Express server on port 3000
+   - CORS enabled for extension
+   - Endpoint: POST /api/chat
+   - Claude API integration
+   ```
+
+2. **Claude Integration**
    - API key configuration
-   - Testing checklist
+   - System prompt with game knowledge
+   - Context injection from game state
+   - Response streaming
 
-## Success Metrics
+3. **Conversation Management**
+   - Maintain chat history
+   - Include game state in context
+   - Handle follow-up questions
 
-### Launch Day (Sept 1)
-- Extension captures game state
-- AI provides relevant advice
-- Chat interface responds
-- No critical errors
+### Phase 3: In-Game Chat Interface (1 hour)
+1. **HUD Overlay**
+   - Floating chat window
+   - Draggable/collapsible
+   - Dark theme for game compatibility
+   - Position persistence
 
-### Week 1
-- AI helps achieve competitive settlement
-- Accurate calculations on demand
-- Contextual strategy recommendations
-- Learning from interactions
+2. **Message Flow**
+   - Input field for questions
+   - Real-time response display
+   - Loading indicators
+   - Error handling
 
-## Quick Reference
+3. **Context Display**
+   - Show current game state awareness
+   - Display calculation results
+   - Highlight actionable recommendations
 
-### File Locations
-- Extension: `/packages/extension/`
-- Game Data: `/data/`
-- Data Provider: `/packages/extension/src/ai/game-data-provider.ts`
-- Documentation: `/docs/`
+## 📋 Implementation Checklist
 
-### Key Formulas
-- Training: `base_time * 0.9^(building_level - 1)`
-- Great Building: `time / 3`
-- Building: `base_time / (1 + MB_level * 0.05)`
-- Travel: `distance / (speed * server_speed)`
+### Extension Tasks
+- [ ] Verify manifest.json permissions
+- [ ] Test content script injection
+- [ ] Confirm state scraping accuracy
+- [ ] Implement message passing to background
+- [ ] Add HUD injection to page
 
-### Egyptian Quick Facts
-- Slave Militia: 15 wood, 45 clay, 60 iron, 30 crop
-- 15 min training at Barracks 1
-- 15 carry capacity
-- 7 fields/hour speed
-- Resource bonus: +25% from hero
+### Backend Tasks
+- [ ] Set up Node.js server
+- [ ] Configure Anthropic SDK
+- [ ] Create /api/chat endpoint
+- [ ] Add game data loading
+- [ ] Implement prompt engineering
 
-## Philosophy Change
+### Integration Tasks
+- [ ] Extension ↔ Backend communication
+- [ ] State serialization/deserialization
+- [ ] Response formatting for display
+- [ ] Error recovery mechanisms
+- [ ] Performance optimization
 
-**OLD**: "Build these exact things in this exact order"
-**NEW**: "Tell me your situation, and I'll help you succeed"
+## 🎯 Launch Day Goals (Sept 1)
 
-**OLD**: Static spreadsheet calculations
-**NEW**: Dynamic AI analysis
+### Minimum Viable AI Agent
+1. **Extension loads on Travian pages**
+2. **Scrapes current game state**
+3. **Sends questions to backend**
+4. **Claude provides contextual answers**
+5. **Displays responses in-game**
 
-**OLD**: Generic optimization
-**NEW**: Personalized strategy
+### Success Criteria
+- Player can ask "When should I settle?"
+- AI sees their actual resources/buildings
+- Response includes specific calculations
+- Recommendations are actionable
+- No manual data entry required
+
+## 💻 Quick Start Commands
+
+```bash
+# Test data layer locally
+node test-ai-agent-local.js
+
+# Start backend server (once created)
+node server/ai-service.js
+
+# Load extension in Chrome
+1. Open chrome://extensions
+2. Enable Developer mode
+3. Load unpacked → select /packages/extension/dist
+
+# Test full flow
+1. Open Travian game
+2. Click extension icon or use HUD
+3. Ask: "What should I do next?"
+4. Verify AI sees game state
+5. Check response relevance
+```
+
+## 🔧 Current File Structure
+
+```
+/TravianAssistant
+├── /packages/extension/
+│   ├── src/
+│   │   ├── ai/
+│   │   │   └── game-data-provider.ts ✅
+│   │   ├── background/
+│   │   │   └── index.ts (needs AI integration)
+│   │   └── content/
+│   │       └── index.ts (needs HUD injection)
+│   └── manifest.json ✅
+├── /data/
+│   ├── troops/ ✅
+│   ├── buildings/ ✅
+│   └── hero/ ✅
+├── /server/
+│   └── ai-service.js (TO CREATE)
+└── /test-ai-agent-local.js ✅
+```
+
+## 🚀 Time Estimate to Launch
+
+- **Extension Integration**: 1-2 hours
+- **Backend Service**: 1-2 hours  
+- **Chat Interface**: 1 hour
+- **Testing & Debug**: 1 hour
+- **Total**: 4-6 hours to functional AI agent
+
+## 📝 Notes
+
+- Server launches in <24 hours
+- Focus on MVP - enhance after launch
+- All game data verified and working
+- Local simulation proves concept
+- Just need to connect the pieces
 
 ---
-*The game launches tomorrow. We're not building a calculator. We're building an AI advisor that understands Travian better than any spreadsheet ever could.*
+*Ready to build the in-game AI agent. Data layer complete, calculations working, time to wire it up!*

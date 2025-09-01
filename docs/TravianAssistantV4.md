@@ -2,222 +2,222 @@
 *Last Updated: August 31, 2025*
 *Server Launch: September 1, 2025*
 
-## Paradigm Shift: From Calculators to AI Intelligence
+## Core Concept: AI Agent, Not Calculator
 
-### Core Concept
-TravianAssistant V4 is NOT a calculator tool. It's an **AI-powered game assistant** that:
-- **Observes** your current game state through the Chrome extension
-- **Understands** the complete game mechanics through our data provider
-- **Analyzes** your specific situation using Claude AI
-- **Recommends** optimal actions based on YOUR unique circumstances
-- **Adapts** to changing game conditions in real-time
-
-## Architecture
-
-```
-Game Browser → Chrome Extension → Game State Scraper
-                      ↓
-              Game Data Provider
-                      ↓
-                 Claude AI Agent
-                      ↓
-              Interactive Chat HUD
-                      ↓
-            Contextual Recommendations
-```
+TravianAssistant V4 is an **AI-powered game assistant** that provides dynamic, contextual advice based on your actual game state. No spreadsheets, no static calculators - just intelligent analysis of YOUR specific situation.
 
 ## How It Works
 
-### 1. Data Collection (Chrome Extension)
-The extension continuously scrapes:
-- Current resources and production rates
-- Building levels and construction queues
-- Troop counts and training queues
-- Available actions on current page
-- Server time and speed
-- Player's tribe and village information
-
-### 2. Context Building (Game Data Provider)
-Provides Claude with:
-- Complete game formulas and mechanics
-- All troop stats for all tribes
-- Building costs and construction times
-- Hero mechanics and bonuses
-- Combat calculations
-- Trade and merchant data
-
-### 3. AI Analysis (Claude Agent)
-Claude receives:
-- Real-time game state from extension
-- Complete game rules from data provider
-- Historical patterns from previous sessions
-- Player preferences and goals
-
-### 4. Interactive Dialogue
-Instead of static calculations, the AI:
-- **Asks clarifying questions** to understand your goals
-- **Considers variables** we can't predict (alliance politics, neighbors, server meta)
-- **Provides contextual advice** based on YOUR specific situation
-- **Explains reasoning** behind recommendations
-- **Adapts strategy** as conditions change
-
-## Game Start Intelligence
-
-### Dynamic Assessment Questions
-When starting a new game, the AI will ask:
-
-**Server Context:**
-- "Is this a new server or did you join late?"
-- "What's your spawn position relative to the gray zone?"
-- "Are you playing solo or with an alliance?"
-- "What's your gold budget for this server?"
-
-**Strategic Goals:**
-- "Are you aiming for top-10 settler or steady growth?"
-- "Offensive, defensive, or support account?"
-- "Planning to be a WWK/WWR or regular player?"
-- "Region control or raiding focus?"
-
-**Immediate Situation:**
-- "What oases are near your spawn?"
-- "Any aggressive neighbors spotted?"
-- "Did you get good adventure rewards?"
-- "Current quest progress?"
-
-### Adaptive Recommendations
-Based on answers, the AI provides:
-- Customized build order for YOUR situation
-- Resource balance specific to YOUR goals
-- Settlement timing based on YOUR competition
-- Troop composition for YOUR strategy
-
-## Key Differences from V3
-
-### ❌ What We're NOT Building:
-- Static calculators with fixed formulas
-- Pre-determined "optimal" build orders
-- Generic one-size-fits-all strategies
-- Standalone web interfaces
-- Rigid optimization paths
-
-### ✅ What We ARE Building:
-- Dynamic AI analysis of current state
-- Contextual recommendations based on situation
-- Interactive dialogue for strategy refinement
-- Adaptive planning that evolves with the game
-- Learning system that improves over time
-
-## Technical Implementation
-
-### Chrome Extension Role
-- **Scrapes** game state from browser
-- **Formats** data for AI consumption
-- **Displays** chat interface as HUD overlay
-- **Sends** queries to backend AI service
-- **Renders** AI responses in-game
-
-### Backend Server Role
-- **Hosts** game data files
-- **Manages** AI conversation context
-- **Stores** player preferences and patterns
-- **Routes** requests to Claude API
-- **Maintains** session continuity
-
-### AI Agent Configuration
-```javascript
-// System prompt for Claude
-"You are an expert Travian advisor with access to real-time game data.
-You can see the player's current resources, buildings, troops, and page context.
-You have complete knowledge of all game mechanics and formulas.
-Ask clarifying questions when needed to provide optimal advice.
-Consider the specific server conditions and player goals.
-Explain your reasoning and provide specific, actionable recommendations."
+```
+1. Chrome Extension scrapes your game state
+2. Game Data Provider supplies complete mechanics
+3. Claude AI analyzes your specific situation
+4. Interactive chat provides personalized advice
+5. Recommendations adapt to changing conditions
 ```
 
-## User Experience
+## Architecture Components
 
-### In-Game Chat Interface
-Player: "Should I build troops or upgrade fields?"
+### 1. Chrome Extension (Browser Layer)
+**Purpose**: Capture real-time game state
+- Scrapes resources, buildings, troops, queues
+- Detects current page context
+- Injects chat HUD overlay
+- Sends state to backend
 
-AI: "I see you have 15/15/15/9 fields and a level 5 barracks. Let me ask:
-1. Have you scouted your neighbors? Any threats?
-2. Are you planning to raid or play defensively?
-3. When are you aiming to settle - day 6 or later?
+**Key Files**:
+- `/packages/extension/manifest.json` - Extension configuration
+- `/packages/extension/src/content/index.ts` - Page scraping
+- `/packages/extension/src/background/index.ts` - Service worker
+- `/packages/extension/src/ai/game-data-provider.ts` - Data access ✅
 
-Based on your 312/hour crop production, you can support about 40 troops before going negative..."
+### 2. Backend Service (AI Layer)
+**Purpose**: Process questions with Claude AI
+- Receives game state from extension
+- Loads complete game mechanics data
+- Formats prompts for Claude
+- Manages conversation context
+- Streams responses back
 
-### Context-Aware Responses
-The AI sees what page you're on:
-- **On Resources Page**: "Your clay production is bottlenecking. Upgrade clay pit 14 to 15 next."
-- **On Map**: "That 15-cropper at (-23, 47) is ideal for your second village."
-- **On Reports**: "You lost 3 Slaves in that raid. The defense suggests 2 Ash Wardens."
-- **On Rally Point**: "Send your hero on the adventure - 67% chance of resources."
+**Key Files**:
+- `/server/ai-service.js` - Express server (TO CREATE)
+- Game data files in `/data/` directory ✅
 
-## Data Requirements
-
-### Complete Game Data (Already Extracted ✅)
-- All 9 tribes with troop stats
+### 3. Game Data Provider (Knowledge Layer) ✅
+**Purpose**: Supply complete game mechanics
+- All troop stats for 9 tribes
 - Building costs and times
-- Hero mechanics
 - Training formulas
 - Combat calculations
+- Hero mechanics
 
-### Real-Time Game State (Extension Scrapes)
-- Current resources
-- Building levels
-- Troop counts
-- Active queues
-- Page context
-- Available actions
+**Status**: COMPLETE AND TESTED
 
-### Player Context (Stored)
-- Tribe selection
-- Server type
-- Strategic goals
-- Historical patterns
-- Preferences
+### 4. Chat Interface (UI Layer)
+**Purpose**: Natural interaction in-game
+- Floating HUD overlay
+- Message input/output
+- Context-aware responses
+- Draggable/collapsible
+
+## The AI Difference
+
+### Traditional Tools (What We DON'T Do)
+❌ Static build orders  
+❌ Fixed optimization paths  
+❌ Generic spreadsheet formulas  
+❌ One-size-fits-all strategies  
+
+### AI-Powered Approach (What We DO)
+✅ Analyzes YOUR current game state  
+✅ Asks clarifying questions about YOUR goals  
+✅ Calculates based on YOUR specific situation  
+✅ Adapts recommendations as conditions change  
+✅ Learns from patterns across sessions  
+
+## Example Interactions
+
+### Settlement Timing
+```
+Player: "When should I settle?"
+
+AI: "I see you're Egyptian with 15/15/15/9 fields and 850 total production/hour.
+     
+     Questions to optimize my advice:
+     1. Are you competing for a specific 15-cropper?
+     2. What's your gold spending comfort level?
+     3. Any aggressive neighbors spotted?
+     
+     Based on current state: You need 48,000 total resources for settlers.
+     At current production, that's 56 hours of accumulation.
+     With Residence at level 3, you need 7 more levels (≈30 hours).
+     
+     Realistic settlement: Day 6-7 if undisturbed, Day 8-9 if defending."
+```
+
+### Troop Composition
+```
+Player: "Should I build troops or upgrade fields?"
+
+AI: "Looking at your Day 2 status with 200/hour production...
+     
+     Your neighbors:
+     - Player at (5, -3): No alliance, 89 pop (likely inactive)
+     - Player at (-2, 4): [ALLY] tag, 156 pop (potential threat)
+     
+     Recommendation: Build 10 Slave Militia first (2.5 hours of resources).
+     This enables safe scouting. After confirming inactive status,
+     you can raid for 300-500 resources per trip.
+     
+     Fields can wait until after your first successful raids."
+```
+
+## Current Implementation Status
+
+### ✅ Complete
+- Game data extraction (all 9 tribes)
+- Data provider class with calculations
+- Local testing environment
+- Training formulas and combat mechanics
+
+### 🚧 In Progress
+- Chrome extension game state scraping
+- Backend AI service setup
+- Claude API integration
+- Chat HUD interface
+
+### 📋 TODO
+- Connect extension to backend
+- Implement conversation streaming
+- Add error recovery
+- Performance optimization
+
+## Technical Specifications
+
+### Data Storage
+- **Format**: JSON files for game mechanics
+- **Location**: `/data/` directory
+- **Coverage**: All tribes, buildings, heroes
+- **Server Speeds**: Separate tables per speed (1x, 2x, 3x, 5x)
+
+### AI Configuration
+```javascript
+{
+  model: "claude-3-sonnet",
+  temperature: 0.7,
+  maxTokens: 2000,
+  systemPrompt: "Complete Travian expert with access to game state...",
+  includeGameData: true,
+  includeFormulas: true
+}
+```
+
+### Extension Permissions
+```json
+{
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["*://*.travian.com/*"],
+  "content_scripts": [{
+    "matches": ["*://*.travian.com/*"],
+    "js": ["content.js"]
+  }]
+}
+```
+
+## Quick Start Guide
+
+### 1. Test Locally
+```bash
+node test-ai-agent-local.js
+```
+
+### 2. Start Backend (once created)
+```bash
+node server/ai-service.js
+```
+
+### 3. Load Extension
+1. Open `chrome://extensions`
+2. Enable Developer mode
+3. Load unpacked → `/packages/extension/dist`
+
+### 4. Use In-Game
+1. Navigate to Travian
+2. Look for chat icon or press hotkey
+3. Ask questions naturally
+4. Get contextual advice
 
 ## Success Metrics
 
-### Launch Day (September 1)
-- Extension successfully scrapes game state
-- AI provides contextual recommendations
-- Chat interface works in-game
-- Backend serves game data
+### Launch Day (Sept 1)
+- Extension loads without errors
+- Scrapes game state accurately
+- AI provides relevant responses
+- Basic calculations work
 
 ### Week 1
-- AI helps achieve top-20 settler
-- Adaptive strategy based on server conditions
-- Learning from player patterns
-- Accurate calculations for all tribes
+- Top-20 settler achievement
+- <2 hours daily gameplay
+- Accurate strategic advice
+- Positive user feedback
 
 ### Month 1
-- Consistent top-20 population ranking
-- Efficient resource management via AI
-- Reduced play time to <2 hours/day
-- Competitive advantage through AI analysis
+- Consistent top-20 ranking
+- Advanced strategy optimization
+- Pattern learning implemented
+- Alliance coordination features
 
-## Next Development Steps
+## Philosophy
 
-1. **Test Chrome Extension** scraping completeness
-2. **Connect Extension to Backend** for data serving
-3. **Configure Claude Agent** with game knowledge
-4. **Implement Chat Interface** in extension
-5. **Test Full Flow** with real game state
+**We don't tell you what to do.**  
+We help you understand what you COULD do, based on your unique situation.
 
-## The Competitive Edge
+**We don't assume optimal conditions.**  
+We adapt to reality - aggressive neighbors, limited gold, time constraints.
 
-Traditional players use:
-- Spreadsheets with static formulas
-- Generic build order guides
-- Manual calculations
-- Trial and error
+**We don't provide static solutions.**  
+We offer dynamic analysis that evolves with your game.
 
-TravianAssistant V4 users get:
-- AI analyzing their specific situation
-- Dynamic strategy adaptation
-- Instant calculations for any scenario
-- Learning from collective patterns
-- Natural language interaction
+---
 
-**This is not a calculator. This is having a Travian expert watching over your shoulder, analyzing every decision, and providing personalized advice based on YOUR unique game state.**
+*This is not a calculator. This is your personal Travian strategist, watching every move, understanding every constraint, and optimizing for YOUR success.*
