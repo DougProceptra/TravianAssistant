@@ -45,7 +45,7 @@ build/
 out/
 *.tsbuildinfo
 
-# Package manager locks (keep package-lock.json but ignore others)
+# Package manager files
 yarn.lock
 pnpm-lock.yaml
 
@@ -89,16 +89,23 @@ yarn-debug.log*
 yarn-error.log*
 debug.log
 
-# Optional: If you want to track package-lock.json, remove these lines
-# package-lock.json
-# */package-lock.json
+# Archive folder - contains old/experimental files
+/archive/
 
-# Keep important config files
-!.gitignore
-!.replit
-!vercel.json
-!tsconfig.json
-!vite.config.ts
-!tailwind.config.ts
-!postcss.config.js
+# Test and debug files
+test-*.js
+debug-*.js
+*_extract.json
+diagnostic_*
+found_js_*.txt
+
+# Build artifacts
+tla_addon_pack.zip
+generated-icon.png
+
+# Data samples
+game-data-output.txt
+settlement-data-output.txt
+
+# Release folder
 release/
