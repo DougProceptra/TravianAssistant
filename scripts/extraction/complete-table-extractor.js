@@ -1,7 +1,4 @@
-// COMPLETE TABLE EXTRACTOR - Gets ALL columns including CP, Pop, Time
-// Run at: http://travian.kirilloid.ru/build.php?s=5&a=t
-
-console.log('🎯 COMPLETE TABLE DATA EXTRACTOR');
+ATA EXTRACTOR');
 console.log('=' .repeat(60));
 
 // ============================================
