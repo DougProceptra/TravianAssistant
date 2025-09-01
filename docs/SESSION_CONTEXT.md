@@ -1,5 +1,29 @@
 # SESSION_CONTEXT.md
-*Last Updated: September 1, 2025 - READY FOR v1.1.0*
+*Last Updated: September 1, 2025 - v1.1.0 + WORKFLOW RULES*
+
+## 🚨 MANDATORY AI WORKFLOW RULES
+
+### NEVER PUT CODE IN CHAT
+- **Rule:** Code > 5 lines → Push to GitHub
+- **Rule:** Showing existing code → Reference file/line only  
+- **Rule:** Fixes → Direct GitHub push + commit message
+- **Response Format:** "Fixed [issue] in commit [SHA]"
+
+### WORKFLOW ENFORCEMENT
+```
+1. AI identifies issue → NO code shown
+2. AI pushes fix → GitHub commit
+3. AI responds → "Pull latest: git pull"
+4. Developer pulls → Continues work
+```
+
+### Token Economy
+- ❌ BANNED: Downloading files to show, artifacts with implementations
+- ✅ REQUIRED: GitHub pushes, commit references, brief summaries
+
+See `/docs/AI_WORKFLOW.md` for complete rules.
+
+---
 
 ## 🎯 MISSION CRITICAL PRIORITIES
 
@@ -61,17 +85,21 @@
 - Game context not reaching AI
 
 ## 🚀 NEXT SESSION START PROTOCOL
-1. Set all versions to 1.1.0
-2. Verify claude-sonnet-4-20250514 in proxy
-3. Fix data pipeline (Priority 1)
-4. Follow implementation checklist
+1. **CHECK AI_WORKFLOW.md** - Follow GitHub-first rules
+2. Set all versions to 1.1.0
+3. Verify claude-sonnet-4-20250514 in proxy
+4. Fix data pipeline (Priority 1)
+5. **NO CODE IN CHAT** - Push all fixes to GitHub
 
 ## ⚡ CRITICAL REMINDERS
 - **DO NOT** create complex HUDs - AI chat is the interface
 - **DO NOT** break working drag/resize functionality
 - **DO NOT** add exports to content scripts
+- **DO NOT** show code in chat - push to GitHub
 - **ALWAYS** include full game context with AI queries
+- **ALWAYS** follow AI_WORKFLOW.md rules
 - **FOCUS** on strategic advice, not data display
 
 ---
 *The AI agent is the product. Everything else is just plumbing.*
+*Code belongs in GitHub, not in chat.*
