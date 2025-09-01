@@ -1,11 +1,11 @@
 // packages/extension/src/content/index.ts
 // Main content script entry point
-// v1.1.0 - Remove exports for Chrome extension compatibility
+// v1.1.1 - Use the RESTORED working chat UI
 
 import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
 import { createHUD } from './hud';
-import { initConversationalAI } from './conversational-ai';
+import { initConversationalAI } from './conversational-ai-restored';  // USE THE WORKING VERSION
 import { VERSION } from '../version';
 
 console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);
@@ -30,7 +30,7 @@ async function initialize() {
   hud.setVersion(VERSION);
   hud.updateRecommendations([]);
   
-  // Initialize conversational AI (chat interface)
+  // Initialize conversational AI (chat interface) - THE WORKING VERSION
   initConversationalAI();
   
   // Listen for game state requests from background
@@ -68,4 +68,3 @@ if (document.readyState === 'loading') {
 }
 
 // NO EXPORTS for Chrome extension content scripts
-// These modules are available internally but not exported
