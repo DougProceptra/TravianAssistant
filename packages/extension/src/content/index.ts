@@ -1,12 +1,12 @@
 // packages/extension/src/content/index.ts
 // Main content script entry point
-// v1.1.1 - Use the RESTORED working chat UI
+// v1.3.0 - Use WORKING chat UI that actually renders
 
 import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
 import { createHUD } from './hud';
-import { initConversationalAI } from './conversational-ai-restored';  // USE THE WORKING VERSION
-import { VERSION } from '../version';
+import { initConversationalAI } from './conversational-ai-working';  // USE THE WORKING ONE
+import { REAL_VERSION as VERSION } from '../real-version';
 
 console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);
 
@@ -30,7 +30,7 @@ async function initialize() {
   hud.setVersion(VERSION);
   hud.updateRecommendations([]);
   
-  // Initialize conversational AI (chat interface) - THE WORKING VERSION
+  // Initialize chat UI - THIS TIME IT WILL ACTUALLY RENDER
   initConversationalAI();
   
   // Listen for game state requests from background
