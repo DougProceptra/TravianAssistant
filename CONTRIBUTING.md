@@ -100,6 +100,43 @@ Before merging ANY code:
 - [ ] Are all test files in `/archive/`?
 - [ ] Is documentation updated?
 
+## 🤖 AI Assistant Session Management
+
+### During Work
+AI assistants should:
+1. Update `SESSION_CONTEXT.md` after significant changes
+2. Keep updates concise (one line with timestamp and action)
+3. Track the current focus and next actions
+
+### Session Wrap-Up Protocol
+When ending a development session, AI assistants MUST:
+
+1. **Update SESSION_CONTEXT.md** with:
+   - Current date/time
+   - What was accomplished
+   - What remains broken
+   - Next priority action
+
+2. **Display the updated SESSION_CONTEXT.md** to the user with:
+   ```markdown
+   ## Session Wrap-Up
+   
+   Here's the updated SESSION_CONTEXT.md:
+   [Display the full updated content]
+   
+   ### Summary of This Session:
+   - ✅ Completed: [what was fixed/added]
+   - 🔴 Still Broken: [what's still not working]
+   - 🎯 Next Priority: [specific next action]
+   
+   ### Questions for Confirmation:
+   1. Is this status accurate?
+   2. Should the next priority be different?
+   3. Any additional context to record?
+   ```
+
+3. **Wait for user confirmation** before finalizing
+
 ## 🚫 What NOT to Do
 
 ### Never Add
@@ -146,6 +183,7 @@ When working on this repository:
 4. **Move test files to archive immediately**
 5. **Commit messages must be specific**
 6. **Test with real Travian game, not mock data**
+7. **Follow session wrap-up protocol when ending work**
 
 ## 💡 Quick Commands
 
