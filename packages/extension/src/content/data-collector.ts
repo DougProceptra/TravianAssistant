@@ -49,11 +49,48 @@ export class TravianDataCollector {
 
   /**
    * Get current village data using window.resources.production
+   * FIXED: Access window object properly
    */
   private getCurrentVillageData(): GameState['currentVillage'] {
-    const production = (window as any).resources?.production;
-    const storage = (window as any).resources?.storage;
-    const maxStorage = (window as any).resources?.maxStorage;
+    // Try to get production data from window.resources
+    let production = undefined;
+    let storage = undefined;
+    let maxStorage = undefined;
+    
+    // Access window.resources if it exists
+    if (typeof window !== 'undefined' && (window as any).resources) {
+      const resources = (window as any).resources;
+      console.log('📦 Found window.resources:', resources);
+      
+      if (resources.production) {
+        production = {
+          wood: resources.production.l1 || 0,
+          clay: resources.production.l2 || 0,
+          iron: resources.production.l3 || 0,
+          crop: resources.production.l4 || 0,
+          freeCrop: resources.production.l5 || 0
+        };
+        console.log('✅ Got production from window.resources:', production);
+      }
+      
+      if (resources.storage) {
+        storage = {
+          wood: resources.storage.l1 || 0,
+          clay: resources.storage.l2 || 0,
+          iron: resources.storage.l3 || 0,
+          crop: resources.storage.l4 || 0
+        };
+      }
+      
+      if (resources.maxStorage) {
+        maxStorage = {
+          warehouse: resources.maxStorage.l1 || 0,
+          granary: resources.maxStorage.l4 || 0
+        };
+      }
+    } else {
+      console.warn('⚠️ window.resources not found, data may be incomplete');
+    }
     
     // Get active village name from UI
     const activeVillage = document.querySelector('#sidebarBoxVillagelist .active a');
@@ -69,23 +106,9 @@ export class TravianDataCollector {
       name: villageName,
       coordinates: { x: 0, y: 0 }, // TODO: Extract from page
       isActive: true,
-      production: production ? {
-        wood: production.l1 || 0,
-        clay: production.l2 || 0,
-        iron: production.l3 || 0,
-        crop: production.l4 || 0,
-        freeCrop: production.l5 || 0
-      } : undefined,
-      resources: storage ? {
-        wood: storage.l1 || 0,
-        clay: storage.l2 || 0,
-        iron: storage.l3 || 0,
-        crop: storage.l4 || 0
-      } : undefined,
-      capacity: maxStorage ? {
-        warehouse: maxStorage.l1 || 0,
-        granary: maxStorage.l4 || 0
-      } : undefined
+      production: production,
+      resources: storage,
+      capacity: maxStorage
     };
   }
 
@@ -177,14 +200,16 @@ export class TravianDataCollector {
    * Get current resources
    */
   private getCurrentResources(): GameState['resources'] {
-    const storage = (window as any).resources?.storage;
-    
-    return storage ? {
-      wood: storage.l1 || 0,
-      clay: storage.l2 || 0,
-      iron: storage.l3 || 0,
-      crop: storage.l4 || 0
-    } : undefined;
+    if (typeof window !== 'undefined' && (window as any).resources?.storage) {
+      const storage = (window as any).resources.storage;
+      return {
+        wood: storage.l1 || 0,
+        clay: storage.l2 || 0,
+        iron: storage.l3 || 0,
+        crop: storage.l4 || 0
+      };
+    }
+    return undefined;
   }
 
   /**
