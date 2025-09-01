@@ -78,7 +78,8 @@ TravianAssistant/
 ├── api/                   # Vercel proxy endpoint
 ├── docs/                  # Documentation
 ├── SESSION_CONTEXT.md     # Current development state
-├── TravianAssistantv4.md  # Project specification
+├── CONTRIBUTING.md        # Repository hygiene rules
+├── AI_PROMPT_TEMPLATE.md  # How to start AI sessions
 └── archive/               # Old/experimental files (not synced)
 ```
 
@@ -99,10 +100,35 @@ const villages = await overviewParser.getAllVillages();
 
 ## 📚 Documentation
 
+### Essential Reading
+- [CONTRIBUTING.md](CONTRIBUTING.md) - **READ FIRST** - Repository rules and hygiene
 - [SESSION_CONTEXT.md](SESSION_CONTEXT.md) - Current state and lessons learned
+- [AI_PROMPT_TEMPLATE.md](AI_PROMPT_TEMPLATE.md) - How to work with AI assistants
+
+### Technical Documentation
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System design
 - [docs/BUG_TRACKER.md](docs/BUG_TRACKER.md) - Known issues and fixes
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Setup instructions
 - [docs/data-structures.md](docs/data-structures.md) - Game data formats
+
+## 👨‍💻 Contributing
+
+**IMPORTANT**: Read [CONTRIBUTING.md](CONTRIBUTING.md) before making ANY changes.
+
+Key rules:
+1. **No new features** until the data pipeline bug is fixed
+2. **Test files go in `/archive/`**, never in root
+3. **Don't break the v0.9.5 draggable chat**
+4. **Commit messages must be specific**
+5. **The AI agent is the product** - no complex UI
+
+## 🤖 Working with AI Assistants
+
+When starting a session with Claude or another AI:
+1. Use the prompt template in [AI_PROMPT_TEMPLATE.md](AI_PROMPT_TEMPLATE.md)
+2. Ensure the AI reads [CONTRIBUTING.md](CONTRIBUTING.md) first
+3. Have it check [SESSION_CONTEXT.md](SESSION_CONTEXT.md) for current state
+4. Focus ONLY on the data pipeline bug until it's fixed
 
 ## ⚠️ Important Notes
 
@@ -110,12 +136,13 @@ const villages = await overviewParser.getAllVillages();
 2. **DO NOT** break the v0.9.5 draggable chat - it works
 3. **DO** fix the data pipeline bug first before any new features
 4. **DO** test with actual game data
+5. **DO** follow repository hygiene rules in [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## 🔧 Development
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup instructions.
 
-Primary focus: Fix the data pipeline bug without breaking the working chat UI.
+**Primary focus**: Fix the data pipeline bug without breaking the working chat UI.
 
 ---
 
