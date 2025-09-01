@@ -6,7 +6,7 @@ import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
 import { createHUD } from './hud';
 import { initConversationalAI } from './conversational-ai-working';  // USE THE WORKING ONE
-import { REAL_VERSION as VERSION } from '../real-version';
+import { VERSION } from '../version';  // FIX: Use correct import path
 
 console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);
 
