@@ -1,30 +1,26 @@
 {
   "name": "@tla/extension",
+  "version": "1.3.0",
+  "description": "TravianAssistant Chrome Extension",
   "private": true,
-  "version": "1.0.5",
-  "type": "module",
   "scripts": {
+    "dev": "vite build --watch --mode development",
     "build": "node ./scripts/version-manager.cjs sync && vite build --config vite.config.ts",
-    "build:bump": "node ./scripts/version-manager.cjs bump && vite build --config vite.config.ts",
-    "build-nobump": "vite build --config vite.config.ts",
-    "dev": "node ./scripts/version-manager.cjs sync && vite build --watch --config vite.config.ts",
-    "watch": "vite build --watch --config vite.config.ts",
-    "version:get": "node ./scripts/version-manager.cjs get",
-    "version:set": "node ./scripts/version-manager.cjs set",
-    "version:bump": "node ./scripts/version-manager.cjs bump",
-    "version:bump:minor": "node ./scripts/version-manager.cjs bump minor",
-    "version:bump:major": "node ./scripts/version-manager.cjs bump major",
-    "version:validate": "node ./scripts/version-manager.cjs validate",
-    "version:sync": "node ./scripts/version-manager.cjs sync",
-    "clean": "rimraf dist",
-    "test": "node ./scripts/version-manager.cjs validate && node -e \"import('./src/tests/formula-tests.js').then(m => m.TestScenarios.runAll())\""
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "version:patch": "npm version patch && node ./scripts/version-manager.cjs sync",
+    "version:minor": "npm version minor && node ./scripts/version-manager.cjs sync",
+    "version:major": "npm version major && node ./scripts/version-manager.cjs sync"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.254",
-    "rimraf": "^5.0.5",
-    "typescript": "^5.9.2",
-    "vite": "^5.4.19",
-    "vite-plugin-static-copy": "^1.0.6",
-    "webpack-cli": "^6.0.1"
+    "@types/node": "^20.11.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.4.2",
+    "vite-plugin-static-copy": "^1.0.5",
+    "vitest": "^1.2.1"
   }
 }
