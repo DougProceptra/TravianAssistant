@@ -1,41 +1,55 @@
-import { defineConfig } from "vite";
-import { viteStaticCopy } from "vite-plugin-static-copy";
-import path from "path";
+import { defineConfig } from 'vite';
+import { resolve } from 'path';
+import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
-  root: path.resolve(__dirname),
   build: {
-    outDir: "dist",
+    outDir: 'dist',
     emptyOutDir: true,
-    lib: {
-      entry: {
-        content: path.resolve(__dirname, "src/content/index.ts"),
-        background: path.resolve(__dirname, "src/background.ts"),
-        options: path.resolve(__dirname, "src/options/index.ts"),
-        popup: path.resolve(__dirname, "src/popup.ts")
-      },
-      formats: ["es"],
-      name: "tla"
-    },
     rollupOptions: {
+      input: {
+        content: resolve(__dirname, 'src/content/index.ts'),
+        background: resolve(__dirname, 'src/background.ts'),
+        popup: resolve(__dirname, 'src/popup/popup.ts'),
+        options: resolve(__dirname, 'src/options/options.ts')
+      },
       output: {
-        entryFileNames: (chunk) => {
-          if (chunk.name === "content") return "content.js";
-          if (chunk.name === "background") return "background.js";
-          if (chunk.name === "options") return "options.js";
-          if (chunk.name === "popup") return "popup.js";
-          return "[name].js";
-        }
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]',
+        // CRITICAL: Use IIFE format for content scripts, not ES modules
+        format: 'iife'
       }
-    }
+    },
+    // Disable module preload polyfill
+    modulePreload: false,
+    // Target older browsers for compatibility
+    target: 'chrome91'
   },
   plugins: [
     viteStaticCopy({
       targets: [
-        { src: "manifest.json", dest: "." },
-        { src: "public/*.png", dest: "." },
-        { src: "public/*.css", dest: "." },
-        { src: "public/*.html", dest: "." }
+        {
+          src: 'manifest.json',
+          dest: '.'
+        },
+        {
+          src: 'src/popup/popup.html',
+          dest: '.'
+        },
+        {
+          src: 'src/options.html',
+          dest: '.'
+        },
+        {
+          src: 'src/content/styles.css',
+          dest: '.',
+          rename: 'content.css'
+        },
+        {
+          src: 'icons/*.png',
+          dest: '.'
+        }
       ]
     })
   ]
