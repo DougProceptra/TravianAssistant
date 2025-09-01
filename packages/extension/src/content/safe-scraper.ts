@@ -1,6 +1,7 @@
 /**
  * Safe Scraper - Combines overview parser, AJAX interceptor, and current page data
  * NO NAVIGATION - only safe data collection methods
+ * Version 1.4.0 - With Unicode fix and proper initialization
  */
 
 import { overviewParser, type OverviewState, type VillageOverviewData } from './overview-parser';
@@ -67,7 +68,7 @@ export class SafeScraper {
   }
 
   /**
-   * Initialize the safe scraper
+   * Initialize the safe scraper - PUBLIC METHOD for index.ts
    */
   public async initialize(): Promise<void> {
     if (this.isInitialized) {
@@ -194,7 +195,7 @@ export class SafeScraper {
                 document.querySelector('#villageNameField')?.textContent?.trim() || 
                 'Unknown';
     
-    // Get resources from stockBar
+    // Get resources from stockBar - WITH UNICODE FIX
     data.resources = {
       wood: this.parseNumber('#l1'),
       clay: this.parseNumber('#l2'),
@@ -202,9 +203,39 @@ export class SafeScraper {
       crop: this.parseNumber('#l4')
     };
     
-    // Get production if visible
-    const productionElements = document.querySelectorAll('.production');
-    if (productionElements.length >= 4) {
+    // Get production - try multiple selectors
+    const productionSelectors = [
+      '.production',  // Original selector
+      '.stockBarTable .res .num',  // Resource bar production
+      '.resources .production',  // Alternative location
+      '[class*="production"]'  // Any class containing production
+    ];
+    
+    let productionElements: NodeListOf<Element> | null = null;
+    for (const selector of productionSelectors) {
+      productionElements = document.querySelectorAll(selector);
+      if (productionElements.length >= 4) {
+        console.log(`[TLA Safe Scraper] Found production with selector: ${selector}`);
+        break;
+      }
+    }
+    
+    // If still no production, look for /h text
+    if (!productionElements || productionElements.length < 4) {
+      const elementsWithPerHour = Array.from(document.querySelectorAll('*')).filter(el => 
+        el.textContent?.includes('/h') || el.textContent?.includes('per hour')
+      );
+      
+      if (elementsWithPerHour.length >= 4) {
+        console.log('[TLA Safe Scraper] Found production from /h elements');
+        data.production = {
+          wood: this.parseNumber(elementsWithPerHour[0]),
+          clay: this.parseNumber(elementsWithPerHour[1]),
+          iron: this.parseNumber(elementsWithPerHour[2]),
+          crop: this.parseNumber(elementsWithPerHour[3])
+        };
+      }
+    } else if (productionElements.length >= 4) {
       data.production = {
         wood: this.parseNumber(productionElements[0]),
         clay: this.parseNumber(productionElements[1]),
@@ -236,7 +267,37 @@ export class SafeScraper {
       }));
     }
     
+    console.log('[TLA Safe Scraper] Current page data:', data);
     return data;
+  }
+
+  /**
+   * FIXED: Parse number with Unicode handling
+   * Travian uses special Unicode characters in numbers that break parseInt
+   */
+  private parseNumber(selector: string | Element | null): number {
+    if (!selector) return 0;
+    
+    const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
+    if (!element) return 0;
+    
+    const text = element.textContent || '0';
+    
+    // CRITICAL FIX: Normalize Unicode characters before parsing
+    // This handles the special Unicode commas and spaces Travian uses
+    const normalized = text.normalize('NFKC');
+    
+    // Remove all non-digit characters after normalization
+    const digitsOnly = normalized.replace(/[^\d]/g, '');
+    
+    const result = parseInt(digitsOnly) || 0;
+    
+    // Debug logging to verify fix
+    if (result > 0 && result !== parseInt(text.replace(/[^\d]/g, ''))) {
+      console.log(`[TLA Parse Unicode Fix] "${text}" -> ${result}`);
+    }
+    
+    return result;
   }
 
   /**
@@ -536,16 +597,6 @@ export class SafeScraper {
   /**
    * Helper functions
    */
-  
-  private parseNumber(selector: string | Element | null): number {
-    if (!selector) return 0;
-    
-    const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
-    if (!element) return 0;
-    
-    const text = element.textContent || '0';
-    return parseInt(text.replace(/[^\d-]/g, '')) || 0;
-  }
   
   private getCurrentVillageId(): string {
     const urlParams = new URLSearchParams(window.location.search);
