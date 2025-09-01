@@ -1,11 +1,11 @@
 // packages/extension/src/content/index.ts
 // Main content script entry point
-// v0.7.0
+// v1.0.5 - FIXED function calls
 
 import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
 import { createHUD } from './hud';
-import { initConversationalAI } from './conversational-ai-fixed';
+import { initConversationalAI } from './conversational-ai';
 import { VERSION } from '../version';
 
 console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);
@@ -14,13 +14,16 @@ console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);
 async function initialize() {
   console.log(`[TLA Content] Initializing v${VERSION}...`);
   
-  // Start safe scraping
-  const gameState = await safeScraper.scrapeCurrentState();
+  // Initialize safe scraper first
+  await safeScraper.initialize();
+  
+  // Start safe scraping - FIXED: use getGameState not scrapeCurrentState
+  const gameState = await safeScraper.getGameState();
   console.log('[TLA Content] Initial scrape complete:', gameState);
   
   // Initialize overview parser
-  const villages = await overviewParser.getAllCachedVillages();
-  console.log(`[TLA Content] Found ${villages.size} villages`);
+  const villages = overviewParser.getAllCachedVillages();
+  console.log(`[TLA Content] Found ${villages.length} villages`);
   
   // Create HUD with version display
   const hud = createHUD();
@@ -33,7 +36,7 @@ async function initialize() {
   // Listen for game state requests from background
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'REQUEST_GAME_STATE') {
-      safeScraper.scrapeCurrentState().then(state => {
+      safeScraper.getGameState().then(state => {
         sendResponse(state);
       });
       return true; // Async response
@@ -42,7 +45,7 @@ async function initialize() {
   
   // Periodic scraping
   setInterval(async () => {
-    const state = await safeScraper.scrapeCurrentState();
+    const state = await safeScraper.getGameState();
     console.log('[TLA Content] Periodic scrape:', state);
     
     // Send to background for processing if significant changes
