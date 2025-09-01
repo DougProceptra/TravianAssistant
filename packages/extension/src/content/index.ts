@@ -102,15 +102,15 @@ async function initialize() {
     }
   }, 60000); // Every minute
   
-  // Add helper button to navigate to statistics page
+  // Add helper button to navigate to statistics page - MOVED TO LEFT SIDE
   if (!window.location.pathname.includes('/statistics/')) {
     const statsButton = document.createElement('button');
     statsButton.textContent = '📊 Update All Villages';
     statsButton.style.cssText = `
       position: fixed;
       bottom: 20px;
-      right: 20px;
-      z-index: 10000;
+      left: 20px;
+      z-index: 9999;
       padding: 10px;
       background: #4CAF50;
       color: white;
@@ -118,6 +118,7 @@ async function initialize() {
       border-radius: 5px;
       cursor: pointer;
       font-size: 14px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     `;
     statsButton.onclick = () => {
       window.location.href = '/statistics/general';
