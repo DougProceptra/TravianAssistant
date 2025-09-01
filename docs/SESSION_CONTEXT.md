@@ -1,5 +1,5 @@
 # SESSION_CONTEXT.md
-*Last Updated: September 1, 2025 - v1.3.3 RESTORED*
+*Last Updated: September 1, 2025 - v1.3.3 Evening Session*
 
 ## 🚨 MANDATORY AI WORKFLOW RULES
 
@@ -25,121 +25,144 @@ See `/docs/AI_WORKFLOW.md` for complete rules.
 
 ---
 
-## 🎯 CURRENT STATE (September 1, 2025)
+## 🎯 CURRENT STATE (September 1, 2025 - Evening)
 
-### ✅ FIXED THIS SESSION
-- **Version Regression**: Restored v1.3.3 from incorrect v1.3.0
-- **Drag/Resize**: Fully functional via header drag and corner resize
-- **Multi-Village Detection**: All 9 villages correctly identified
-- **Found Production Source**: `window.resources.production` has real data
+### ✅ FIXED TODAY
+- **Production Data Source**: Now using `window.resources.production` for current village
+  - Commit `b88ce48` - Gets real values (2625/5565/3500/3063) instead of 0
+  - Works for CURRENT village only
+- **Version**: Still on v1.3.3 (stable)
+- **Drag/Resize**: Still functional
 
-### ❌ STILL BROKEN
-1. **Production Data**: Scraper using DOM selectors instead of `window.resources.production`
-2. **Overview Parser**: Only getting village names, missing production columns
-3. **Response Formatting**: Line breaks not preserved in chat responses
-4. **Troop Data**: Not collected (needs rally point scraping)
+### ❌ CRITICAL ISSUE: Multi-Village Production Not Working
+**THE PROBLEM**: AI only sees current village production, not ALL 9 villages
+- Individual village shows -2590 crop/hour → AI panics
+- Account total is actually +178,621 crop/hour → No crisis!
+- **Root Cause**: Overview parser is parsing wrong tab on `/dorf3.php`
 
-### 🎉 CRITICAL DISCOVERY
-**NO CROP CRISIS** - Account produces 178,621 crop/hour across all villages!
-Individual villages showing negative crop are misleading without total view.
+### 🔍 KEY DISCOVERY: Overview Page Structure
+The `/dorf3.php` page has TABS:
+1. **Overview** tab - Shows attacks/building/troops/merchants (currently being parsed)
+2. **Resources** tab - Shows production for ALL villages (what we need!)
+3. **Culture points** tab
+4. **Troops** tab
 
-## 📊 DATA ARCHITECTURE DISCOVERED
+**Current Bug**: Parser is reading Overview tab data as if it's Resources
+- That's why villages show as "000", "001", "002" with 0 production
+- Need to detect active tab and parse Resources tab specifically
 
-### JavaScript Game Objects
+## 📊 DATA ARCHITECTURE CONFIRMED
+
+### Current Village Data (WORKING)
 ```javascript
-// PRODUCTION DATA SOURCE FOUND!
-window.resources = {
-  production: {
-    l1: 6500,  // Wood/hour
-    l2: 6500,  // Clay/hour  
-    l3: 6500,  // Iron/hour
-    l4: -2590, // Crop/hour (can be negative per village)
-    l5: 5294   // Free crop/hour (after consumption)
-  },
-  storage: {l1: 125790, l2: 20586, l3: 26762, l4: 240000},
-  maxStorage: {...}
+window.resources.production = {
+  l1: 2625,  // Wood/hour (real data!)
+  l2: 5565,  // Clay/hour
+  l3: 3500,  // Iron/hour
+  l4: 3063,  // Crop/hour
+  l5: 4256   // Free crop/hour
 }
-
-// 61 properties including Village, RallyPoint, Hero, etc.
-Travian.Game = {...}
 ```
 
-### Data Collection Points
-1. **Current Village**: `window.resources` (real-time, accurate)
-2. **All Villages**: `/dorf3.php` Resources tab (must be on correct tab)
-3. **Troops**: Rally point or troops overview tab
-4. **Statistics**: `/village/statistics` (NOT production data)
+### All Villages Data (BROKEN)
+- Located at `/dorf3.php` → Resources tab
+- Parser needs to:
+  1. Navigate to `/dorf3.php`
+  2. Detect which tab is active
+  3. Click or wait for Resources tab
+  4. Parse the table with columns: Village | Wood | Clay | Iron | Crop
+  5. Sum ALL villages before sending to AI
 
-## 🔧 NEXT STEPS (Priority Order)
+## 🔧 NEXT SESSION PRIORITIES
 
-### 1. Fix Production Data Collection (CRITICAL)
+### Priority 1: Fix Overview Parser
+**File**: `/packages/extension/src/content/overview-parser.ts`
+- Detect active tab before parsing
+- Only parse when Resources tab is active
+- Parse correct columns for production data
+- Test with actual `/dorf3.php?tab=resources` or similar
+
+### Priority 2: Ensure Total Production Calculation
+**Critical**: AI must ALWAYS receive totals, never individual villages
 ```javascript
-// Replace DOM scraping with:
-const production = {
-  wood: window.resources?.production?.l1 || 0,
-  clay: window.resources?.production?.l2 || 0,
-  iron: window.resources?.production?.l3 || 0,
-  crop: window.resources?.production?.l4 || 0,
-  freeCrop: window.resources?.production?.l5 || 0
-};
+// Bad (current):
+village002: { crop: -2590 } // AI sees crisis!
+
+// Good (needed):
+totalProduction: { 
+  wood: 45000,
+  clay: 48000,
+  iron: 41000,
+  crop: 178621  // Sum of ALL 9 villages!
+}
 ```
 
-### 2. Fix Overview Parser
-- Detect active tab (Resources vs Troops vs Culture)
-- Parse only when on Resources tab
-- Extract production values from correct columns
+### Priority 3: Fix Response Formatting
+- Line breaks still not preserved in chat
+- Responses show as wall of text
 
-### 3. Fix Response Formatting
-- Preserve line breaks in chat responses
-- Use `<pre>` or proper white-space CSS
+## ❌ KNOWN ISSUES
+1. **Overview Parser**: Parsing wrong tab (Overview instead of Resources)
+2. **Multi-Village**: Not summing production across villages
+3. **Chat Formatting**: No line breaks in responses
+4. **Troop Data**: Not collected yet
 
-### 4. Add Troop Collection
-- Check for `#troops` table
-- Parse when on rally point
-- Store in game state
+## ✅ WHAT'S WORKING
+1. **Current village production** via `window.resources.production`
+2. **Drag/resize** functionality
+3. **9 villages detected** (just wrong data)
+4. **Chat UI** connected to AI
 
-### 5. Implement Account Totals
-- Sum production across all villages
-- Show real net crop (178k/hour not -2590!)
-- Calculate resource overflow timing
+## 🎮 GAME STATE FACTS
+- **9 villages** total in account
+- **Village 002** (current): 2625/5565/3500/3063 production
+- **Total account**: ~178k crop/hour (healthy!)
+- **Server**: lusobr.x2.lusobrasileiro.travian.com
 
-## ❌ MISTAKES THIS SESSION
-1. **Version Regression**: Accidentally went from 1.3.3 to 1.3.0
-2. **Wrong Crisis Advice**: AI said "crop crisis" based on bad data (0/h)
-3. **Wrong Selectors**: Looking for DOM "production" class vs JS objects
-4. **Page Confusion**: Thought statistics page was overview resources
+## 💡 INSIGHTS FROM TODAY
 
-## ✅ COMMITS THIS SESSION
-- `1ef5b7d` - Restore v1.3.3 with working drag/resize functionality
-- `913af30` - Fix: Correct import path and improve logging for multi-village
-- `435b942` - Fix: Correct import path for VERSION
-- `1e2e433` - Restore version to 1.3.3 - fix regression
+### Why ResourceBar+ Works
+- Likely reads game's internal JavaScript objects directly
+- Doesn't rely on DOM parsing
+- Might intercept AJAX calls for village data
 
-## 📋 QUESTIONS FOR NEXT SESSION
-1. Should we examine ResourceBar+ to see how it gets data?
-2. Use AJAX interceptor to capture game API calls?
-3. Detailed troop tracking per village or just totals?
-4. Auto-navigate to Resources tab when fetching overview?
+### The Tab Problem
+- `/dorf3.php` defaults to Overview tab
+- Resources tab has the data we need
+- Need to either:
+  - Wait for user to click Resources tab
+  - Programmatically click it
+  - Detect URL parameters like `?tab=resources`
+
+### Testing Approach
+1. Navigate to `/dorf3.php`
+2. Click Resources tab manually
+3. Run test script to verify table structure
+4. Update parser to match actual structure
 
 ## ⚡ CRITICAL REMINDERS
-- **ALWAYS** use `window.resources.production` for current village
-- **VERIFY** which overview tab before parsing
-- **SUM** production across all villages for accurate totals
-- **DO NOT** break drag/resize functionality
-- **DO NOT** trust individual village crop if negative
-- **PUSH** code to GitHub, not in chat
+- **ALWAYS** sum production across ALL villages
+- **NEVER** send individual village data to AI
+- **VERIFY** active tab before parsing overview
+- **TEST** with Resources tab active
+- **DO NOT** break working features (drag/resize, current village data)
 
 ## 🚀 SESSION START PROTOCOL
 1. Pull latest: `git pull`
 2. Build: `npm run build`
-3. Test in browser console:
+3. Test current village data:
 ```javascript
-// Verify production data source
-console.log('Production from resources:', window.resources?.production);
-console.log('Current village only!');
+console.log('Current village:', window.resources?.production);
 ```
-4. Navigate to `/dorf3.php` Resources tab for all villages
-5. **NO CODE IN CHAT** - Push all fixes to GitHub
+4. Navigate to `/dorf3.php` → Click Resources tab
+5. Test overview parsing
+6. **NO CODE IN CHAT** - Push all fixes to GitHub
+
+## 📝 COMMIT HISTORY TODAY
+- `b88ce48` - Fix: Use window.resources.production for accurate data collection
+- `d8232bd` - Create NEXT_STEPS.md - Clear guide for next session
+- `47fbf9e` - Update SESSION_CONTEXT with Sept 1 session findings
+- `1ef5b7d` - Restore v1.3.3 with working drag/resize functionality
 
 ---
-*Account produces 178k crop/hour - no crisis! Bad data = bad advice.*
+*Remember: The account is HEALTHY with 178k crop/hour. The problem is we're not summing across all villages!*
