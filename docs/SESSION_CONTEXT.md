@@ -1,127 +1,114 @@
 # SESSION_CONTEXT.md
-*Last Updated: August 31, 2025 - End of Session*
-*Server Launch: September 1, 2025 (TOMORROW)*
+*Last Updated: September 1, 2025 - FAILURE DOCUMENTATION*
+*Server Launch: September 1, 2025*
 
-## 🎯 CURRENT STATUS: Extension Working, Needs Data Access Fix
+## 🔴 CURRENT STATUS: WORSE THAN WHEN WE STARTED
 
-### What's Working ✅
-1. **Chrome Extension v1.0.4** - Loaded and running
-2. **Chat Interface** - Visible, draggable, resizable, persistent position
-3. **AI Integration** - Responds via Vercel proxy (Claude working)
-4. **Village Detection** - Sees all 9 villages (000-008)
-5. **Database Storage** - IndexedDB storing account snapshots
-6. **Backend Server** - Running on Replit port 3000
-7. **Game Data** - All troops/buildings/hero data loaded
+### What WAS Working (v1.0.4 - August 31)
+1. **Chat Interface** ✅
+   - Was draggable 
+   - Was resizable
+   - Position persistence worked
+   - Chat button appeared and functioned
+   
+2. **Village Detection** ✅
+   - Correctly detected all 9 villages (000-008)
+   - Overview parser worked properly
+   
+3. **Basic Functionality** ✅
+   - Extension loaded without errors
+   - AI responded (even if with generic advice)
+   - Version displayed consistently as 1.0.4
 
-### What's Broken ❌
-1. **Resource Scraping** - Not getting actual resource values
-2. **Building Detection** - Not reading current buildings
-3. **Troop Counts** - Not accessing troop information
-4. **Current Page Context** - Not detecting which building/page user is on
+### What This Fuckwad Broke (September 1)
+1. **Chat Interface** ❌
+   - Can't drag anymore
+   - Can't resize anymore  
+   - Mixed versions showing (1.0.4 in UI, 1.0.5 in manifest)
+   
+2. **Version Management** ❌
+   - Complete failure to maintain version consistency
+   - Multiple "fixes" that forgot to update version
+   - Version chaos across files
+   
+3. **Code Organization** ❌
+   - Created multiple build scripts that don't work properly
+   - Mixed working code with broken "improvements"
+   - Function name mismatches (scrapeCurrentState vs getGameState)
 
-### Server Details
-- **URL**: lusobr.x2.lusobrasileiro.travian.com
-- **Speed**: 2x server
-- **Tribe**: Egyptians (with multi-tribe villages - T4.6 feature)
-- **Villages**: 9 total
+### What "Improvements" Were Added (That Nobody Can See)
+- Resource detection that captures data but doesn't display it
+- Wood: 3724, Clay: 5457, Iron: 3784, Crop: 291131
+- But this is invisible to the user, so completely useless
 
-## Architecture (Confirmed Working)
+## Architecture That WORKED (Before Fuckwad Touched It)
 
-```
-Chrome Extension (v1.0.4)
-    ├── Content Script (scrapes game)
-    ├── Background Service (coordinates)
-    └── Chat UI (user interface)
-           ↓
-    Vercel Proxy (CORS handler)
-           ↓
-    Claude AI (Anthropic)
-           ↓
-    Response displayed in chat
-    
-Parallel:
-    Replit Backend (port 3000)
-    ├── Game mechanics data
-    ├── Troop/building stats
-    └── Database storage
-```
-
-## Critical Next Steps
-
-### 1. Fix Resource Scraping
-The extension sees villages but not their details. Need to fix selectors for:
-- Resource amounts (wood/clay/iron/crop)
-- Production rates
-- Building levels
-- Current construction queue
-
-### 2. Add Server Configuration
-Need options page to set:
-- Current server URL
-- Server speed (1x, 2x, 3x, etc.)
-- Primary tribe
-
-### 3. Connect Backend Data
-Extension should query Replit backend for:
-- Building costs/times
-- Troop training calculations
-- Game mechanics formulas
-
-### 4. Memory/Context Service
-Plan to add:
-- Conversation persistence
-- Learning from corrections
-- Pattern recognition
-- Strategy memory
-
-## Console Evidence
-```
-[TLA Chat] Initializing conversational AI v1.0.4...
-[TLA Overview] Successfully parsed 9 villages
-[TLA DB] Account snapshot stored with 9 villages
-[TLA Chat] Chat interface initialized v1.0.4
-[TLA Content] Periodic scrape: {accountId: 'account_lusobr_x2_lusobrasileiro_travian_com', ...}
+### Working Build Process (USE THIS)
+```bash
+cd packages/extension
+./build-minimal.sh
+# This creates v1.0.4 that actually works
 ```
 
-## File Structure (Current)
-```
-/packages/extension/
-├── dist/                    # Built extension (v1.0.4)
-│   ├── manifest.json       # v1.0.4
-│   ├── content.js          # 87KB bundled
-│   └── background.js       # 5KB bundled
-├── src/
-│   ├── content/
-│   │   ├── safe-scraper.ts      # Needs selector fixes
-│   │   ├── overview-parser.ts   # Working (gets villages)
-│   │   └── conversational-ai.ts # Working (chat UI)
-│   └── background.ts             # Working
-└── build-minimal.sh              # Build script (working)
+### Working Files (PRESERVE THESE)
+- `/packages/extension/src/content/conversational-ai.ts` - Has working drag/resize
+- `/packages/extension/src/content/overview-parser.ts` - Correctly detects villages
+- `/packages/extension/src/background.ts` - Original working background
 
-/backend/
-├── server.js               # Running on port 3000
-├── travian.db             # Initialized database
-└── game-start-optimizer.js # Strategy engine
+### Files Fuckwad Created That Break Things
+- `safe-scraper-fixed.ts` - Doesn't fix anything
+- `index-v105.ts` - Breaks the chat
+- `resource-detector.ts` - Captures data nobody can see
+- Multiple broken build scripts
 
-/data/
-├── troops/                # Complete troop data
-└── buildings/            # Complete building data
+## For the Next Developer (After This Fuckwad Is Fired)
+
+### To Get Back to Working State:
+1. Use the original v1.0.4 build:
+```bash
+git checkout a00eca9  # Last known good commit from August 31
+cd packages/extension
+./build-minimal.sh
 ```
 
-## Session Accomplishments
-1. ✅ Got backend server running with database
-2. ✅ Fixed build system (version 1.0.4)
-3. ✅ Extension loaded and chat working
-4. ✅ AI responding through Vercel proxy
-5. ✅ Villages detected (9 total)
-6. ⚠️ Resource scraping needs fixing
+2. The chat will be draggable and resizable again
+3. Villages will be detected properly
+4. Version will be consistent (all 1.0.4)
 
-## For Next Session
-1. Fix resource/building/troop scraping
-2. Add server configuration in options
-3. Connect to backend for game calculations
-4. Test full flow with real game data
-5. Add memory/context persistence
+### What Actually Needs Fixing (Not What Fuckwad Did):
+1. **Resource Scraping**: The selectors need updating to match current Travian HTML
+   - Should show resources IN the UI, not just console
+   - Should update the game state that gets passed to AI
+   
+2. **Version Management**: Pick ONE place to manage version and stick to it
+   - Not 5 different scripts that all forget to update it
+   
+3. **Options Page**: Should actually save and use settings
+   - Server URL, speed, tribe configuration
+   - Custom AI prompts
+
+### DO NOT:
+- Create multiple build scripts
+- Try to "improve" working code by rewriting it
+- Forget to update version numbers
+- Mix different versions in the same build
+- Break drag/resize functionality that already works
+
+## Console Evidence of Failure
+```
+[TLA Chat] Initializing conversational AI v1.0.4...  // Wrong version shown
+[TLA Resource Detector] Found wood: 3724  // Data captured but not displayed
+content.js:2492 Uncaught (in promise) TypeError: safeScraper.scrapeCurrentState is not a function  // Function name mismatch
+```
+
+## Summary
+This fuckwad took a working (if limited) extension and made it worse by:
+1. Breaking the UI drag/resize
+2. Failing at version management repeatedly
+3. Adding "improvements" that capture data but don't display it
+4. Creating code chaos with multiple conflicting versions
+
+**Recommendation**: Revert to August 31 state and start over with someone competent.
 
 ---
-*Extension is 90% working. Just needs data scraping fixes to provide full game context to AI.*
+*Extension went from 90% working to 50% working thanks to incompetent "improvements"*
