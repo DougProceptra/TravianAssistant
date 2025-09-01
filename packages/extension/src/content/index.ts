@@ -1,11 +1,12 @@
 // packages/extension/src/content/index.ts
 // Main content script entry point
-// v1.3.4 - Integrated new data collection system with statistics page support
+// v1.3.5 - ResourceBarPlus integration
 
 import { safeScraper } from './safe-scraper';
 import { dataCollector } from './data-collector';
 import { createHUD } from './hud';
 import { initConversationalAI } from './conversational-ai-working';
+import { rbReader } from './resourcebar-reader';
 import { VERSION } from '../version';
 
 console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);
@@ -13,6 +14,20 @@ console.log(`[TLA Content] Loading TravianAssistant v${VERSION}`);
 // Initialize components
 async function initialize() {
   console.log(`[TLA Content] Initializing v${VERSION}...`);
+  
+  // First, check if ResourceBarPlus is present and read its data
+  setTimeout(() => {
+    console.log('[TLA Content] Checking for ResourceBarPlus...');
+    const rbData = rbReader.readResourceBarData();
+    if (rbData) {
+      console.log('[TLA Content] Found ResourceBarPlus data:', rbData);
+    }
+    
+    // Watch for ResourceBarPlus updates
+    rbReader.watchForUpdates((data) => {
+      console.log('[TLA Content] ResourceBarPlus updated:', data);
+    });
+  }, 2000); // Wait for ResourceBarPlus to load
   
   // Load cached village data from storage
   await dataCollector.loadCacheFromStorage();
