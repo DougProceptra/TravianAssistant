@@ -1,5 +1,5 @@
 // TravianAssistant Background Service Worker
-// v1.1.0 - Fixed game state data pipeline
+// v1.1.0 - Fixed message handling and error reporting
 
 console.log('[TLA Background] Service worker starting v1.1.0...');
 
@@ -14,18 +14,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch(request.type) {
     case 'PING':
       sendResponse({ success: true, message: 'Background service is alive!' });
-      return true;
+      return false; // Sync response
       
     case 'SYNC_GAME_STATE':
       // Store game state for later use
       if (request.gameState) {
         chrome.storage.local.set({ lastGameState: request.gameState }, () => {
-          sendResponse({ success: true, message: 'Game state synced' });
+          if (chrome.runtime.lastError) {
+            console.error('[TLA Background] Storage error:', chrome.runtime.lastError);
+            sendResponse({ success: false, error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse({ success: true, message: 'Game state synced' });
+          }
         });
       } else {
         sendResponse({ success: false, error: 'No game state provided' });
       }
-      return true;
+      return true; // Async response
       
     case 'ANALYZE_GAME_STATE':
       handleGameAnalysis(request.gameState, sendResponse);
@@ -37,9 +42,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
     case 'SET_USER_EMAIL':
       chrome.storage.sync.set({ userEmail: request.email }, () => {
-        sendResponse({ success: true });
+        if (chrome.runtime.lastError) {
+          console.error('[TLA Background] Email storage error:', chrome.runtime.lastError);
+          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        } else {
+          console.log('[TLA Background] Email saved:', request.email);
+          sendResponse({ success: true });
+        }
       });
-      return true;
+      return true; // Async response
       
     default:
       console.log('[TLA Background] Unknown message type:', request.type);
@@ -65,7 +76,9 @@ async function handleGameAnalysis(gameState, sendResponse) {
     });
     
     if (!response.ok) {
-      throw new Error(`Proxy returned ${response.status}: ${await response.text()}`);
+      const errorText = await response.text();
+      console.error('[TLA Background] Proxy error:', response.status, errorText);
+      throw new Error(`Proxy returned ${response.status}: ${errorText}`);
     }
     
     const data = await response.json();
@@ -76,6 +89,7 @@ async function handleGameAnalysis(gameState, sendResponse) {
         analysis: data.content[0].text 
       });
     } else {
+      console.error('[TLA Background] Invalid response format:', data);
       throw new Error('Invalid response format from AI');
     }
   } catch (error) {
@@ -89,11 +103,12 @@ async function handleGameAnalysis(gameState, sendResponse) {
 
 async function handleChatMessage(message, gameState, sendResponse) {
   try {
-    console.log('[TLA Background] Processing chat message...');
+    console.log('[TLA Background] Processing chat message:', message);
     console.log('[TLA Background] Game state received:', gameState);
     
     // Build a more intelligent prompt with actual game data
     const prompt = buildChatPrompt(message, gameState);
+    console.log('[TLA Background] Sending prompt to AI...');
     
     const response = await fetch(PROXY_URL, {
       method: 'POST',
@@ -109,10 +124,13 @@ async function handleChatMessage(message, gameState, sendResponse) {
     });
     
     if (!response.ok) {
-      throw new Error(`Proxy returned ${response.status}: ${await response.text()}`);
+      const errorText = await response.text();
+      console.error('[TLA Background] Proxy error:', response.status, errorText);
+      throw new Error(`Proxy returned ${response.status}: ${errorText}`);
     }
     
     const data = await response.json();
+    console.log('[TLA Background] AI response received:', data);
     
     if (data.content && data.content[0] && data.content[0].text) {
       sendResponse({ 
@@ -120,6 +138,7 @@ async function handleChatMessage(message, gameState, sendResponse) {
         response: data.content[0].text 
       });
     } else {
+      console.error('[TLA Background] Invalid response format:', data);
       throw new Error('Invalid response format from AI');
     }
   } catch (error) {
@@ -199,5 +218,10 @@ Be concise but detailed. Use the actual numbers from their game state in your re
 
   return prompt;
 }
+
+// Add error listener
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('[TLA Background] Extension installed/updated v1.1.0');
+});
 
 console.log('[TLA Background] Service worker ready v1.1.0');

@@ -1,6 +1,6 @@
 // packages/extension/src/content/conversational-ai.ts
 // Chat interface for natural conversation with AI
-// v0.7.0 - Fixed email detection
+// v1.1.0 - Fixed position persistence and email initialization
 
 import { safeScraper } from './safe-scraper';
 import { overviewParser } from './overview-parser';
@@ -9,13 +9,21 @@ import { VERSION } from '../version';
 export function initConversationalAI() {
   console.log(`[TLA Chat] Initializing conversational AI v${VERSION}...`);
   
+  // Load saved position
+  const savedPosition = localStorage.getItem('tla_chat_position');
+  const position = savedPosition ? JSON.parse(savedPosition) : { bottom: 90, right: 20 };
+  
   // Create chat button
   const chatButton = createChatButton();
   document.body.appendChild(chatButton);
   
   // Create chat interface (hidden initially)
-  const chatInterface = createChatInterface();
+  const chatInterface = createChatInterface(position);
   document.body.appendChild(chatInterface);
+  
+  // Make chat draggable and resizable
+  makeResizable(chatInterface);
+  makeDraggable(chatInterface);
   
   // Toggle chat on button click
   chatButton.addEventListener('click', () => {
@@ -81,7 +89,7 @@ function createChatButton(): HTMLElement {
   return button;
 }
 
-function createChatInterface(): HTMLElement {
+function createChatInterface(position: {bottom: number, right: number}): HTMLElement {
   const chat = document.createElement('div');
   chat.id = 'tla-chat-interface';
   chat.innerHTML = `
@@ -91,7 +99,7 @@ function createChatInterface(): HTMLElement {
       <button class="tla-chat-close">×</button>
     </div>
     <div class="tla-chat-messages" id="tla-chat-messages">
-      <div class="tla-chat-welcome">
+      <div class="tla-chat-welcome" id="tla-chat-welcome">
         Welcome! I'm your strategic advisor. Ask me anything about your Travian game.
         <br><br>
         <strong>First time?</strong> Type your email to get started.
@@ -109,11 +117,11 @@ function createChatInterface(): HTMLElement {
     </div>
   `;
   
-  // Style the chat interface
+  // Style the chat interface with saved position
   chat.style.cssText = `
     position: fixed;
-    bottom: 90px;
-    right: 20px;
+    bottom: ${position.bottom}px;
+    right: ${position.right}px;
     width: 380px;
     height: 500px;
     background: rgba(20, 20, 20, 0.95);
@@ -123,6 +131,10 @@ function createChatInterface(): HTMLElement {
     flex-direction: column;
     z-index: 9998;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    resize: both;
+    overflow: auto;
+    min-width: 300px;
+    min-height: 400px;
   `;
   
   // Add styles
@@ -136,6 +148,7 @@ function createChatInterface(): HTMLElement {
       justify-content: space-between;
       align-items: center;
       color: white;
+      cursor: move;
     }
     
     .tla-chat-title {
@@ -304,6 +317,8 @@ function createChatInterface(): HTMLElement {
     const message = input.value.trim();
     if (!message) return;
     
+    console.log('[TLA Chat] Sending message:', message);
+    
     // Check if it's an email
     if (isEmail(message)) {
       await handleEmailInitialization(message);
@@ -324,6 +339,7 @@ function createChatInterface(): HTMLElement {
     try {
       // Get current game state
       const gameState = await safeScraper.getGameState();
+      console.log('[TLA Chat] Sending game state to AI:', gameState);
       
       // Send to AI
       const response = await chrome.runtime.sendMessage({
@@ -331,6 +347,8 @@ function createChatInterface(): HTMLElement {
         message: message,
         gameState: gameState
       });
+      
+      console.log('[TLA Chat] Received response:', response);
       
       // Remove loading and show response
       removeMessage(loadingId);
@@ -404,6 +422,17 @@ async function handleEmailInitialization(email: string) {
     removeMessage(loadingId);
     
     if (response.success) {
+      // Update welcome message to show initialized
+      const welcome = document.querySelector('#tla-chat-welcome');
+      if (welcome) {
+        welcome.innerHTML = `
+          <strong>Profile Initialized!</strong><br>
+          Email: ${email}<br><br>
+          I'll learn your playing style over time to give you personalized advice.
+          How can I help you dominate this server?
+        `;
+      }
+      
       addMessage(
         `Great! I've initialized your profile. I'll learn your playing style over time to give you personalized advice. How can I help you dominate this server?`,
         'ai'
@@ -414,6 +443,9 @@ async function handleEmailInitialization(email: string) {
       if (suggestions) {
         suggestions.style.display = 'block';
       }
+      
+      // Save initialized state
+      localStorage.setItem('tla_user_email', email);
     } else {
       addMessage(`Failed to initialize: ${response.error}`, 'ai');
     }
@@ -426,9 +458,44 @@ async function handleEmailInitialization(email: string) {
 
 async function checkUserInitialization() {
   try {
+    // Check localStorage first
+    const localEmail = localStorage.getItem('tla_user_email');
+    if (localEmail) {
+      // User already initialized, show in welcome
+      const welcome = document.querySelector('#tla-chat-welcome');
+      if (welcome) {
+        welcome.innerHTML = `
+          <strong>Welcome back!</strong><br>
+          Profile: ${localEmail}<br><br>
+          How can I help you with your Travian strategy today?
+        `;
+      }
+      
+      // Show suggestions
+      const suggestions = document.querySelector('#tla-chat-suggestions') as HTMLElement;
+      if (suggestions) {
+        suggestions.style.display = 'block';
+      }
+      return;
+    }
+    
+    // Also check chrome storage
     const stored = await chrome.storage.sync.get(['userEmail']);
     if (stored.userEmail) {
-      // User already initialized, show suggestions
+      // Save to localStorage for faster access
+      localStorage.setItem('tla_user_email', stored.userEmail);
+      
+      // Update welcome
+      const welcome = document.querySelector('#tla-chat-welcome');
+      if (welcome) {
+        welcome.innerHTML = `
+          <strong>Welcome back!</strong><br>
+          Profile: ${stored.userEmail}<br><br>
+          How can I help you with your Travian strategy today?
+        `;
+      }
+      
+      // Show suggestions
       const suggestions = document.querySelector('#tla-chat-suggestions') as HTMLElement;
       if (suggestions) {
         suggestions.style.display = 'block';
@@ -436,5 +503,75 @@ async function checkUserInitialization() {
     }
   } catch (error) {
     console.error('[TLA Chat] Failed to check initialization:', error);
+  }
+}
+
+function makeDraggable(element: HTMLElement) {
+  const header = element.querySelector('.tla-chat-header') as HTMLElement;
+  if (!header) return;
+  
+  let isDragging = false;
+  let startX: number;
+  let startY: number;
+  let startRight: number;
+  let startBottom: number;
+  
+  header.addEventListener('mousedown', (e) => {
+    if ((e.target as HTMLElement).classList.contains('tla-chat-close')) return;
+    
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startRight = parseInt(element.style.right);
+    startBottom = parseInt(element.style.bottom);
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+  
+  function onMouseMove(e: MouseEvent) {
+    if (!isDragging) return;
+    
+    const deltaX = startX - e.clientX;
+    const deltaY = e.clientY - startY;
+    
+    const newRight = Math.max(0, startRight + deltaX);
+    const newBottom = Math.max(0, startBottom + deltaY);
+    
+    element.style.right = newRight + 'px';
+    element.style.bottom = newBottom + 'px';
+    
+    // Save position
+    localStorage.setItem('tla_chat_position', JSON.stringify({
+      bottom: newBottom,
+      right: newRight
+    }));
+  }
+  
+  function onMouseUp() {
+    isDragging = false;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  }
+}
+
+function makeResizable(element: HTMLElement) {
+  // Browser's native resize handles this with resize: both in CSS
+  // Just save size on resize
+  const resizeObserver = new ResizeObserver(() => {
+    localStorage.setItem('tla_chat_size', JSON.stringify({
+      width: element.offsetWidth,
+      height: element.offsetHeight
+    }));
+  });
+  
+  resizeObserver.observe(element);
+  
+  // Load saved size
+  const savedSize = localStorage.getItem('tla_chat_size');
+  if (savedSize) {
+    const size = JSON.parse(savedSize);
+    element.style.width = size.width + 'px';
+    element.style.height = size.height + 'px';
   }
 }
