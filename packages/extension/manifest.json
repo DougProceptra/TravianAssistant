@@ -1,65 +1,56 @@
 {
   "manifest_version": 3,
-  "name": "TravianAssistant V3",
-  "version": "1.0.5",
-  "description": "AI-powered strategic advisor for Travian Legends with Kirilloid-accurate formulas and server speed support",
+  "name": "TravianAssistant",
+  "version": "1.1.0",
+  "description": "AI-powered strategic advisor for Travian Legends",
+  
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting"
+    "activeTab"
   ],
+  
   "host_permissions": [
     "*://*.travian.com/*",
-    "https://travian-proxy-simple.vercel.app/*",
-    "https://travian-proxy.vercel.app/*",
-    "https://TravianAssistant.dougdostal.replit.dev/*",
-    "wss://TravianAssistant.dougdostal.replit.dev/*"
+    "https://travian-proxy-simple.vercel.app/*"
   ],
+  
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "src/background.js",
     "type": "module"
   },
+  
   "content_scripts": [
     {
-      "matches": [
-        "*://*.travian.com/*"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "css": [
-        "content.css"
-      ],
+      "matches": ["*://*.travian.com/*"],
+      "js": ["src/content/index.js"],
+      "css": ["src/content/styles.css"],
       "run_at": "document_idle"
     }
   ],
+  
   "action": {
-    "default_popup": "popup.html",
+    "default_popup": "src/popup/popup.html",
     "default_icon": {
-      "16": "icon16.png",
-      "48": "icon48.png",
-      "128": "icon128.png"
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     }
   },
-  "options_ui": {
-    "page": "options/options.html",
-    "open_in_tab": true
-  },
+  
+  "options_page": "src/options.html",
+  
   "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
+  
   "web_accessible_resources": [
     {
-      "resources": [
-        "content.css",
-        "options/*",
-        "*.png"
-      ],
-      "matches": [
-        "*://*.travian.com/*"
-      ]
+      "resources": ["src/content/inject.js"],
+      "matches": ["*://*.travian.com/*"]
     }
   ]
 }
