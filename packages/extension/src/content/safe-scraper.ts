@@ -1,7 +1,7 @@
 /**
  * Safe Scraper - Combines overview parser, AJAX interceptor, and current page data
  * PRIORITY: Always collect ALL villages data for strategic decisions
- * Version 1.5.0 - Multi-village focus with Unicode fix
+ * Version 1.5.1 - Using window.resources.production for accurate data
  */
 
 import { overviewParser, type OverviewState, type VillageOverviewData } from './overview-parser';
@@ -297,45 +297,54 @@ export class SafeScraper {
       crop: this.parseNumber('#l4')
     };
     
-    // Get production - try multiple selectors
-    const productionSelectors = [
-      '.production',  // Original selector
-      '.stockBarTable .res .num',  // Resource bar production
-      '.resources .production',  // Alternative location
-      '[class*="production"]'  // Any class containing production
-    ];
-    
-    let productionElements: NodeListOf<Element> | null = null;
-    for (const selector of productionSelectors) {
-      productionElements = document.querySelectorAll(selector);
-      if (productionElements.length >= 4) {
-        console.log(`[TLA Safe Scraper] Found production with selector: ${selector}`);
-        break;
-      }
-    }
-    
-    // If still no production, look for /h text
-    if (!productionElements || productionElements.length < 4) {
-      const elementsWithPerHour = Array.from(document.querySelectorAll('*')).filter(el => 
-        el.textContent?.includes('/h') || el.textContent?.includes('per hour')
-      );
-      
-      if (elementsWithPerHour.length >= 4) {
-        console.log('[TLA Safe Scraper] Found production from /h elements');
-        data.production = {
-          wood: this.parseNumber(elementsWithPerHour[0]),
-          clay: this.parseNumber(elementsWithPerHour[1]),
-          iron: this.parseNumber(elementsWithPerHour[2]),
-          crop: this.parseNumber(elementsWithPerHour[3])
-        };
-      }
-    } else if (productionElements.length >= 4) {
+    // FIXED: Get production from window.resources.production object
+    // This is the REAL production data, not DOM elements
+    const gameResources = (window as any).resources;
+    if (gameResources?.production) {
+      console.log('[TLA Safe Scraper] Using window.resources.production for real data:', gameResources.production);
       data.production = {
-        wood: this.parseNumber(productionElements[0]),
-        clay: this.parseNumber(productionElements[1]),
-        iron: this.parseNumber(productionElements[2]),
-        crop: this.parseNumber(productionElements[3])
+        wood: gameResources.production.l1 || 0,
+        clay: gameResources.production.l2 || 0,
+        iron: gameResources.production.l3 || 0,
+        crop: gameResources.production.l4 || 0  // Can be negative, that's OK
       };
+      
+      // Also get free crop if available
+      if (gameResources.production.l5 !== undefined) {
+        (data as any).freeCrop = gameResources.production.l5;
+        console.log('[TLA Safe Scraper] Free crop (after consumption):', gameResources.production.l5);
+      }
+    } else {
+      // Fallback to DOM scraping if window.resources not available
+      console.warn('[TLA Safe Scraper] window.resources.production not found, falling back to DOM');
+      
+      // Try to find production values in DOM (less reliable)
+      const productionSelectors = [
+        '.production',
+        '.stockBarTable .res .num',
+        '.resources .production'
+      ];
+      
+      let productionElements: NodeListOf<Element> | null = null;
+      for (const selector of productionSelectors) {
+        productionElements = document.querySelectorAll(selector);
+        if (productionElements.length >= 4) {
+          console.log(`[TLA Safe Scraper] Found production with selector: ${selector}`);
+          break;
+        }
+      }
+      
+      if (productionElements && productionElements.length >= 4) {
+        data.production = {
+          wood: this.parseNumber(productionElements[0]),
+          clay: this.parseNumber(productionElements[1]),
+          iron: this.parseNumber(productionElements[2]),
+          crop: this.parseNumber(productionElements[3])
+        };
+      } else {
+        console.error('[TLA Safe Scraper] Could not find production data');
+        data.production = { wood: 0, clay: 0, iron: 0, crop: 0 };
+      }
     }
     
     // Get warehouse/granary info
@@ -391,12 +400,12 @@ export class SafeScraper {
     const normalized = text.normalize('NFKC');
     
     // Remove all non-digit characters after normalization
-    const digitsOnly = normalized.replace(/[^\d]/g, '');
+    const digitsOnly = normalized.replace(/[^\d-]/g, '');  // Keep minus sign for negative values
     
     const result = parseInt(digitsOnly) || 0;
     
     // Debug logging to verify fix
-    if (result > 0 && result !== parseInt(text.replace(/[^\d]/g, ''))) {
+    if (result > 0 && result !== parseInt(text.replace(/[^\d-]/g, ''))) {
       console.log(`[TLA Parse Unicode Fix] "${text}" -> ${result}`);
     }
     
