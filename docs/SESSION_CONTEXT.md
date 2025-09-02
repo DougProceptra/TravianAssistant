@@ -1,229 +1,235 @@
 # SESSION_CONTEXT.md
-*Last Updated: September 2, 2025 - v2.0.0 - TravianRapidSettle Pivot*
+*Last Updated: September 2, 2025 - v2.1.0 - Working HUD with Position Memory*
 
-## 🚨 CRITICAL PROJECT PIVOT - READ FIRST
+## 🎉 CURRENT STATUS: HUD WORKING!
 
-### We Have Changed Direction!
-**OLD APPROACH (v1.x)**: Multi-village data collection, total account production
-**NEW APPROACH (v2.x)**: Single village focus, fastest settlement race, AI-driven strategy
+### What's Working Now
+- ✅ **HUD displays correctly** on Travian pages (dorf1.php, etc.)
+- ✅ **Position memory works** - HUD stays where dragged after page refresh
+- ✅ **Resource scraping works** - Shows correct lumber, clay, iron, crop from #l1-#l4
+- ✅ **Population display works** - Correctly reads from .population element
+- ✅ **Dragging works** - Can move HUD around screen
+- ✅ **Minimize works** - Can collapse/expand HUD
 
-### Why The Pivot?
-1. **Technical Reality**: Cannot get all villages' production from one page
-2. **Statistics Page**: Contains no production data (only rankings)
-3. **window.resources**: Works but only for current village
-4. **Strategic Focus**: Early game (first 7 days) is most critical
+### What Needs Fixing
+- ⚠️ **Backend sync shows "Offline"** - URL configuration issue
+- ⚠️ **Backend URL duplicated** in popup (shows twice)
 
 ---
 
-## 📋 NEW PROJECT: TravianRapidSettle
+## 📋 PROJECT ARCHITECTURE
 
-### Core Concept
-- **Goal**: Fastest possible second village (day 6 target)
-- **Method**: RBP-style data persistence + AI strategic reasoning
-- **Focus**: Single village optimization during critical first week
-
-### Architecture
+### Current Implementation (v2.1.0)
 ```
-Page Context → Content Script → AI → Recommendations
-     ↓              ↓            ↓         ↓
-window.resources  localStorage  Claude   HUD Display
+Chrome Extension (Working)
+├── manifest.json - Fixed URL patterns for *.travian.com/*.php
+├── content.js - Position memory version (4598 bytes)
+├── popup.html/js - Configuration UI
+└── styles.css - HUD styling
+
+Replit Backend (Running)
+├── server.js - Express server on port 3000
+├── Database - SQLite with Egyptian troops/buildings
+└── URLs:
+    ├── Backend: https://workspace.dougdostal.repl.co
+    ├── Admin: https://workspace.dougdostal.repl.co/admin.html
+    └── Health: https://workspace.dougdostal.repl.co/health
 ```
 
-### Key Files Created This Session
-1. **`/content/settlement-data-provider.ts`** - Clean data collection, no strategy
-2. **`/docs/TravianRapidSettlev1.md`** - Complete technical design
-3. **Test scripts in `/scripts/`** - For validating data access methods
+---
 
-### What Works
-- ✅ window.resources accessible via script injection
-- ✅ Hero data scrapeable from page
-- ✅ Building/queue data available
-- ✅ localStorage persistence (RBP-style)
-- ✅ CSP allows textContent script injection
+## 🔧 CRITICAL FILES & LOCATIONS
 
-### What Doesn't Work
-- ❌ Getting other villages' production without navigation
-- ❌ Statistics page for production data
-- ❌ Direct window access from content script
+### Extension Files (in packages/extension/dist/)
+- **content.js** - Main HUD logic with position memory (4598 bytes)
+  - First line: `// TravianAssistant V2 - Position Memory Edition`
+  - Console message: `[TLA] Settlement Race with Position Memory Active!`
+  - Saves position to localStorage as 'TLA_POS'
+
+### Backend Files
+- **server.js** - Main server at root
+- **Database** - ./db/travian.db
+- **Init script** - scripts/init-v3-database.js
+
+### Replit Environment
+- **REPL_SLUG**: workspace
+- **REPL_OWNER**: dougdostal
+- **Public URL**: https://workspace.dougdostal.repl.co
 
 ---
 
-## 🎯 CURRENT STATE (September 2, 2025)
+## 🐛 KNOWN ISSUES & FIXES
 
-### Completed Today
-1. **Data Access Solution**
-   - Created context bridge for window.resources
-   - Validated with test harness
-   - All tests pass
+### Issue 1: Backend Shows "Offline"
+**Problem**: HUD shows "❌ Offline" instead of "✅ Synced"
+**Cause**: Backend URL was duplicated in popup field
+**Fix**:
+1. Click extension icon
+2. Clear Backend URL field
+3. Enter exactly: `https://workspace.dougdostal.repl.co`
+4. Save and refresh
 
-2. **Strategic Pivot**
-   - Abandoned multi-village requirement
-   - Focused on settlement race
-   - Designed clean data provider
-
-3. **Documentation**
-   - Created TravianRapidSettlev1.md
-   - Updated this SESSION_CONTEXT.md
-   - Documented all findings
-
-### Ready for Implementation
-- Settlement data provider tested and ready
-- Game constants defined
-- AI integration points identified
-- HUD design specified
+### Issue 2: Extension Not Updating
+**Problem**: Old content.js still loading after update
+**Solution**: 
+1. Completely remove old extension from Chrome
+2. Clear localStorage on Travian site
+3. Load fresh dist folder
 
 ---
 
-## 💡 KEY TECHNICAL DISCOVERIES
+## 📊 DATA SCRAPING (WORKING)
 
-### The window.resources Solution
+### Resource Selectors (Confirmed Working)
 ```javascript
-// THIS WORKS - Inject script to access page context
-const script = document.createElement('script');
-script.textContent = `
-  window.postMessage({
-    type: 'TLA_DATA',
-    data: window.resources
-  }, '*');
-`;
-document.head.appendChild(script);
-
-// Listen in content script
-window.addEventListener('message', (e) => {
-  if (e.data.type === 'TLA_DATA') {
-    // Got the data!
-  }
-});
+lumber: document.querySelector('#l1')?.textContent  // ✅ Works
+clay: document.querySelector('#l2')?.textContent    // ✅ Works  
+iron: document.querySelector('#l3')?.textContent    // ✅ Works
+crop: document.querySelector('#l4')?.textContent    // ✅ Works
+population: document.querySelector('.population')?.textContent // ✅ Works
 ```
 
-### RBP Storage Pattern
-- Store snapshot on every page load
-- Accumulate data over time
-- Display aggregated information
-- No real-time multi-village data
+### Hero Data (Partially Working)
+```javascript
+adventures: document.querySelector('.adventure .content')?.textContent // Works on some pages
+```
 
 ---
 
-## 🚀 NEXT SESSION INSTRUCTIONS
+## 🚀 HOW TO CONTINUE NEXT SESSION
 
-### DO THIS FIRST
-1. Read `/docs/TravianRapidSettlev1.md` completely
-2. Understand the pivot - we're NOT doing multi-village anymore
-3. Focus on settlement race optimization
+### 1. Check Replit Backend
+```bash
+# In Replit
+npm start
+# Should show: Server running on 0.0.0.0:3000
+```
 
-### Implementation Priority
-1. Test `settlement-data-provider.ts` on live game
-2. Create AI prompt template
-3. Build simple HUD
-4. Test on fresh server (if available)
+### 2. Verify Extension Version
+```javascript
+// In browser console on Travian page
+console.log(localStorage.getItem('TLA_POS')); // Should show saved position
+```
 
-### DO NOT
-- Try to get all villages' production
-- Waste time on statistics page
-- Build complex multi-village systems
-- Add prescriptive strategy to data provider
+### 3. Fix Backend Connection
+- Ensure Backend URL is exactly: `https://workspace.dougdostal.repl.co`
+- No duplicates, no trailing slashes
+- Test health endpoint directly
 
----
-
-## 📊 TEST RESULTS SUMMARY
-
-### What We Tested
-- `test-harness.js`: All 5 tests passed
-- `data-audit-tool.js`: Found window.resources
-- `network-monitor.js`: Captured AJAX patterns
-- `dom-mutation-tracker.js`: Tracked updates
-
-### Key Finding
-**window.resources exists and is accessible** - Just needed proper context bridge
+### 4. Next Features to Add
+1. **AI Chat Interface** - Was planned but not implemented
+2. **CP Tracking** - Culture points for settlement race
+3. **Building Queue** - Track construction progress
+4. **Quest Tracking** - Monitor active quests
+5. **Hero Oasis Strategy** - 40 resources per animal level
 
 ---
 
-## 🎮 GAME CONSTANTS
+## 💡 KEY DISCOVERIES THIS SESSION
 
-### Settlement Requirements
-- 500 CP for second village
-- 3 settlers at 5000/4000/5000/3000 each
-- Residence level 10
-- Academy level 1
+### 1. URL Pattern Fix
+- Travian uses `dorf1.php`, `dorf2.php`, NOT `game.php`
+- Manifest must have: `"*://*.travian.com/*.php*"`
 
-### Oasis Rewards
-- 40 resources per animal level killed
-- Hero strength = (level × 100) + points + equipment
+### 2. Position Memory Implementation
+```javascript
+// Save position
+localStorage.setItem('TLA_POS', JSON.stringify(position));
 
-### CP Generation Priority
-1. Embassy: 24 CP/day
-2. Marketplace: 20 CP/day
-3. Main Building: 5 CP/level
-4. Cranny: 2 CP/level (cheap)
+// Load position
+JSON.parse(localStorage.getItem('TLA_POS') || '{"top":10,"right":10}');
+```
+
+### 3. Backend URL Issue
+- Must be HTTPS not HTTP
+- Replit provides: `https://workspace.dougdostal.repl.co`
+- Common error: `ERR_NAME_NOT_RESOLVED` means missing https://
+
+### 4. File Creation Issues
+- Shell heredocs have issues with special characters
+- Use Node.js for file creation in Replit:
+```javascript
+const fs = require('fs');
+fs.writeFileSync('path/to/file', content);
+```
+
+---
+
+## 📝 USER PREFERENCES
+
+- **Email**: dostal.doug@gmail.com (used for account ID)
+- **Server**: New Travian server for testing
+- **Tribe**: Egyptians
+- **Goal**: Fastest second village (Day 6 target)
+- **HUD Position**: User prefers it stays where dragged
+- **Backend**: Multi-player support needed (3-5 players)
+
+---
+
+## 🎯 IMMEDIATE PRIORITIES
+
+1. **Fix backend sync** - Shows offline despite server running
+2. **Add AI chat** - Was requested but not implemented
+3. **Improve recommendations** - Add phase-based strategy
+4. **Add CP tracking** - Essential for settlement race
+
+---
+
+## 📂 PROJECT STRUCTURE
+```
+TravianAssistant/
+├── packages/
+│   └── extension/
+│       ├── dist/           # Chrome extension files
+│       │   ├── content.js  # HUD with position memory (4598 bytes)
+│       │   ├── manifest.json
+│       │   ├── popup.html
+│       │   └── popup.js
+│       └── src/            # Source files (TypeScript)
+├── server.js               # Replit backend
+├── scripts/
+│   └── init-v3-database.js # Database initialization
+├── db/
+│   └── travian.db         # SQLite database
+└── docs/
+    ├── SESSION_CONTEXT.md  # This file
+    └── TRAVIAN_ASSISTANT_V3_COMPLETE.md
+```
+
+---
+
+## 🔄 COMMAND HISTORY (For Quick Reference)
+
+### Update Extension
+```bash
+# In Replit
+node << 'EOF'
+const fs = require('fs');
+const content = '// ... content here ...';
+fs.writeFileSync('packages/extension/dist/content.js', content);
+EOF
+```
+
+### Start Backend
+```bash
+npm start
+```
+
+### Check Backend Health
+```bash
+curl https://workspace.dougdostal.repl.co/health
+```
 
 ---
 
 ## ⚠️ CRITICAL REMINDERS
 
-1. **v1.3.5 extension still works** - Don't break it yet
-2. **New approach is separate** - Test before integrating
-3. **AI makes decisions** - Data provider just provides data
-4. **Focus on early game** - Days 0-7 only
-5. **Hero is critical** - Adventures + oasis clearing
+1. **HUD Position Memory Works** - Don't break it!
+2. **Backend URL Must Be HTTPS** - Not HTTP
+3. **Extension Must Be Completely Removed** before reinstalling
+4. **localStorage Persists** even after extension removal
+5. **Replit Server Must Be Running** for sync to work
 
 ---
 
-## 📝 COMMIT HISTORY (This Session - Sept 2)
-- `a7cc38e2` - Create TravianRapidSettlev1.md
-- `c360409d` - Create clean settlement-data-provider.ts
-- `f05b75ac` - Enhanced with hero/oasis (v2 - too prescriptive)
-- `814b49c2` - Initial settlement optimizer
-- `d712c1c6` - Create test harness
-- Multiple diagnostic tools created
-
----
-
-## 🔄 VERSION TRANSITION
-
-### Old Version (1.3.5)
-- Multi-village focus
-- Complex data collection
-- Statistics page dependency
-- Still running, don't break
-
-### New Version (2.0.0)
-- Single village focus
-- Settlement race optimization
-- AI-driven decisions
-- Clean data provider
-
----
-
-## 📝 PREVIOUS SESSION (Sept 1) - For Reference
-- v1.3.4 implementation (now obsolete approach)
-- Statistics page integration attempt
-- ResourceBarPlus investigation
-- Multi-village data collection efforts
-
----
-
-## 🚨 MANDATORY AI WORKFLOW RULES
-
-### NEVER PUT CODE IN CHAT
-- **Rule:** Code > 5 lines → Push to GitHub
-- **Rule:** Showing existing code → Reference file/line only  
-- **Rule:** Fixes → Direct GitHub push + commit message
-- **Response Format:** "Fixed [issue] in commit [SHA]"
-
-### WORKFLOW ENFORCEMENT
-```
-1. AI identifies issue → NO code shown
-2. AI pushes fix → GitHub commit
-3. AI responds → "Pull latest: git pull"
-4. Developer pulls → Continues work
-```
-
-### Token Economy
-- ❌ BANNED: Downloading files to show, artifacts with implementations
-- ✅ REQUIRED: GitHub pushes, commit references, brief summaries
-
-See `/docs/AI_WORKFLOW.md` for complete rules.
-
----
-
-*The pivot is complete. Focus is now on fastest settlement with AI assistance, not multi-village data collection.*
+*This session achieved working HUD with position memory and resource tracking. Backend sync needs fixing but all frontend features are operational.*
