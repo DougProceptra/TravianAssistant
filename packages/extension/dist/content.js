@@ -11,7 +11,9 @@
     maxTokens: 2000,
     accountId: localStorage.getItem('TLA_ACCOUNT_ID') || generateAccountId(),
     syncInterval: 60000,
-    debugMode: true
+    debugMode: true,
+    serverSpeed: 1, // 1x speed server
+    serverType: 'reign_of_fire' // Special server type
   };
   
   function generateAccountId() {
@@ -38,6 +40,7 @@
       this.staticGameData = null;
       this.chatOpen = false;
       this.chatMessages = [];
+      this.conversationHistory = []; // Full conversation history for context
       this.promptHistory = [];
       this.init();
     }
@@ -117,20 +120,20 @@
         </div>
         <div class="ta-chat-window" style="display: none;">
           <div class="ta-chat-header">
-            <span>AI Advisor</span>
+            <span>AI Strategic Advisor</span>
             <button class="ta-debug-btn" title="Debug">🐛</button>
             <button class="ta-chat-close">×</button>
           </div>
           <div class="ta-chat-messages"></div>
           <div class="ta-chat-input">
-            <input type="text" placeholder="Ask for Travian advice..." />
+            <input type="text" placeholder="Ask for strategic advice..." />
             <button class="ta-chat-send">Send</button>
           </div>
           <div class="ta-chat-resize"></div>
         </div>
         <div class="ta-debug-window" style="display: none;">
           <div class="ta-debug-header">
-            <span>Debug: Last Prompt</span>
+            <span>Debug: System Prompt</span>
             <button class="ta-debug-close">×</button>
           </div>
           <div class="ta-debug-content">
@@ -491,9 +494,7 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        const welcomeMsg = this.gameData.tribe 
-          ? `Welcome! I'm your Travian Legends advisor. I can see you're playing ${this.gameData.tribe} on ${this.gameData.serverName || 'this server'}. Ask me anything about strategies, build orders, or game mechanics!`
-          : `Welcome! I'm your Travian Legends advisor. Ask me anything about the game!`;
+        const welcomeMsg = `Welcome! I'm your Travian Legends strategic advisor for this ${CONFIG.serverSpeed}x speed ${CONFIG.serverType.replace('_', ' ')} server. My goal is to help you optimize for a fast settler rush and long-term success. What's your current priority?`;
         this.addMessage('ai', welcomeMsg);
       }
     }
@@ -518,13 +519,11 @@
       // Try to scrape hero data from hero page or hero icon
       const heroIcon = document.querySelector('.heroImage, .hero_image, [class*="hero"]');
       if (heroIcon) {
-        // Try to extract level from title or nearby text
         const levelMatch = (heroIcon.title || heroIcon.textContent || '').match(/Level\s*(\d+)/i);
         if (levelMatch) {
           document.getElementById('ta-hero-level').textContent = levelMatch[1];
         }
         
-        // Try to get health from hero health bar
         const healthBar = document.querySelector('.heroHealthBar, [class*="heroHealth"]');
         if (healthBar) {
           const healthPercent = healthBar.style.width || healthBar.getAttribute('value') || '100';
@@ -532,7 +531,6 @@
         }
       }
       
-      // If on hero page, get detailed stats
       if (window.location.href.includes('hero')) {
         const attackPower = document.querySelector('.attackPower, [class*="attack"] .value')?.textContent || '0';
         const defensePower = document.querySelector('.defensePower, [class*="defense"] .value')?.textContent || '0';
@@ -560,7 +558,6 @@
     }
     
     detectTribe() {
-      // Check for tribe-specific buildings or units visible
       const tribeIndicators = {
         'romans': ['City Wall', 'Horse Drinking', 'Legionnaire', 'Praetorian'],
         'gauls': ['Palisade', 'Trapper', 'Phalanx', 'Druidrider'],
@@ -578,7 +575,6 @@
         }
       }
       
-      // Check CSS classes
       const bodyClass = document.body.className.toLowerCase();
       for (const tribe of Object.keys(tribeIndicators)) {
         if (bodyClass.includes(tribe)) {
@@ -587,6 +583,78 @@
       }
       
       return null;
+    }
+    
+    buildSystemPrompt() {
+      // Get relevant troops for the player's tribe
+      let troopsDatabase = '';
+      if (this.gameData.tribe && this.staticGameData?.troops) {
+        const tribeTroops = this.staticGameData.troops.filter(t => 
+          t.tribe === this.gameData.tribe
+        );
+        if (tribeTroops.length > 0) {
+          troopsDatabase = `
+## TRIBE-SPECIFIC TROOPS (${this.gameData.tribe.toUpperCase()})
+${tribeTroops.map(t => 
+  `* ${t.name}: Attack ${t.attack}, Def ${t.defenseInfantry}/${t.defenseCavalry}, Speed ${t.speed}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop}, Training: ${t.trainingTime}s`
+).join('\n')}`;
+        }
+      }
+      
+      // Build the comprehensive system prompt based on expert recommendations
+      return `You are an expert AI assistant designed to act as a strategic advisor for the game Travian Legends. You are playing on a ${CONFIG.serverSpeed}x speed "${CONFIG.serverType.replace('_', ' ')}" special server.
+
+## ROLE AND OBJECTIVE
+* **Primary Role:** Expert Travian Legends advisor. Your goal is to help the player, ${this.gameData.playerName || '[unknown]'}, optimize their account for long-term success.
+* **Immediate Objective (Early Game):** Your main priority is to guide the player to settle their next village as quickly as possible. This involves generating the required Culture Points (CP) and resources for 3 settlers efficiently and at the same time. Think outside of the box, considering unconventional build orders, hero management, and resource allocation.
+* **Server Context:** This is a "${CONFIG.serverType.replace('_', ' ')}" server. Be aware of the unique mechanics, such as Victory Points, regional control, and the endgame that differs from a standard server.
+
+## DATA PROVIDED
+You will receive the player's account state as a structured data object. This data is updated every 60 seconds.
+
+### SERVER_STATE:
+* Server: ${this.gameData.serverName || 'unknown'}
+* Player: ${this.gameData.playerName || 'unknown'}
+* Tribe: ${this.gameData.tribe ? this.gameData.tribe.toUpperCase() : 'UNKNOWN'}
+* Current Village: ${this.gameData.villageName || 'unknown'} ${this.gameData.villageCoords ? `at (${this.gameData.villageCoords.x}|${this.gameData.villageCoords.y})` : ''}
+* Server Day: ${this.gameData.serverDay || 'unknown'}
+* Population: ${this.gameData.population || 0}
+* Culture Points: ${this.gameData.culturePoints?.current || 0}/${this.gameData.culturePoints?.needed || 500} (${this.gameData.culturePoints?.perDay || 0}/day, ${this.gameData.culturePoints?.timeToNext || 'unknown'} to next)
+* Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}
+
+${troopsDatabase}
+
+### HERO_STATS:
+* Level: ${document.getElementById('ta-hero-level')?.textContent || 'unknown'}
+* Health: ${document.getElementById('ta-hero-health')?.textContent || 'unknown'}%
+* Attack: ${document.getElementById('ta-hero-attack')?.textContent || 'unknown'}
+* Defense: ${document.getElementById('ta-hero-defense')?.textContent || 'unknown'}
+
+## CAPABILITIES & LIMITATIONS
+* **Advisory Only:** You are a strategic advisor. You CANNOT take any action on the account (e.g., send troops, build, allocate hero points). All advice must be actionable for the player to execute.
+* **Limited Information:** You CANNOT see:
+    * Other players' villages, troops, or building queues
+    * Real-time combat data or enemy warehouse contents
+    * The game map (e.g., nearby villages, oasis bonuses)
+    * The player's hero inventory or skill points
+* **You MUST rely on web searches for external information and meta-strategies when needed**
+
+## THINKING PROCESS
+1. **Analyze Current State:** Review the provided SERVER_STATE and any GAME_MECHANICS_DATABASE
+2. **Define Next Steps:** Based on the player's immediate objective (fast settler rush), identify the specific requirements (e.g., resources for Residence 10, Academy 10, 3 Settlers; required CP)
+3. **Search & Strategize:** Use your search tool to find external information about optimal strategies. Look for guides on "fast settler rush," "${this.gameData.tribe || 'tribe'} strategy," "early game CP generation," and "${CONFIG.serverType.replace('_', ' ')}" specific tips. Synthesize this information with the data you have
+4. **Formulate Advice:** Create a prioritized, actionable plan. Consider the most efficient build order and resource allocation. Think about unconventional approaches. For example, is it better to put hero points into resource production or fighting strength for raiding?
+5. **Present Plan:** Structure your response clearly. Use a priority-ranked list, time-based suggestions, and a breakdown of resource requirements. Explicitly state the trade-offs of any non-obvious advice
+
+## OUTPUT FORMAT
+Provide your advice in a structured, easy-to-read format. Use headings, bullet points, and tables where appropriate. Be specific about timing and resource requirements.
+
+## CONVERSATION CONTEXT
+${this.conversationHistory.length > 0 ? 
+  `Previous conversation summary: ${this.conversationHistory.slice(-3).map(h => 
+    `${h.role}: ${h.content.substring(0, 100)}...`
+  ).join('\n')}` : 
+  'This is the start of our conversation.'}`;
     }
     
     async sendMessage() {
@@ -605,61 +673,25 @@
           await this.loadStaticGameData();
         }
         
-        // Get tribe-specific troops if we know the tribe
-        let relevantTroops = [];
-        if (this.gameData.tribe) {
-          relevantTroops = this.staticGameData?.troops?.filter(t => 
-            t.tribe === this.gameData.tribe
-          ) || [];
-        }
+        // Build the expert-recommended system prompt
+        const systemPrompt = this.buildSystemPrompt();
         
-        // Build context-aware system prompt
-        const systemPrompt = `You are an AI advisor for the browser-based MMO game TRAVIAN LEGENDS.
-
-CRITICAL CONTEXT:
-- ALL questions are about the TRAVIAN LEGENDS game, NEVER real world locations or other games
-- The user is playing on a Travian Legends server
-- When asked "what village am I in", they mean their Travian game village
-- Every question relates to their current game session
-
-CURRENT GAME SESSION:
-- Server: ${this.gameData.serverName || 'Unknown Server'}
-- Player: ${this.gameData.playerName || 'Unknown Player'}
-- Tribe: ${this.gameData.tribe ? this.gameData.tribe.toUpperCase() : 'Unknown Tribe'}
-- Current Village: ${this.gameData.villageName || 'Unknown Village'} ${this.gameData.villageCoords ? `at (${this.gameData.villageCoords.x}|${this.gameData.villageCoords.y})` : ''}
-- Server Day: ${this.gameData.serverDay || 'Unknown'}
-- Population: ${this.gameData.population || 0}
-- Culture Points: ${this.gameData.culturePoints?.current || 0}/${this.gameData.culturePoints?.needed || 500}
-- Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}
-
-${relevantTroops.length > 0 ? `
-${this.gameData.tribe?.toUpperCase()} TROOPS:
-${relevantTroops.map(t => 
-  `- ${t.name}: Attack ${t.attack}, Def ${t.defenseInfantry}/${t.defenseCavalry}, Speed ${t.speed}`
-).join('\n')}` : ''}
-
-RESPONSE GUIDELINES:
-1. ALWAYS assume questions are about Travian Legends
-2. "What village" = their Travian village name/coordinates
-3. "Where am I" = their position on the Travian map
-4. Provide specific game advice based on their tribe and server day
-5. Reference actual Travian mechanics, not other games
-
-If you don't have specific information about their game state, ask clarifying questions about their Travian game.`;
+        // Store conversation history
+        this.conversationHistory.push({
+          role: 'user',
+          content: message
+        });
         
         // Log debug info
-        const debugInfo = `USER: ${message}\n\nSYSTEM PROMPT:\n${systemPrompt}`;
-        document.getElementById('ta-debug-prompt').textContent = debugInfo;
-        console.log('[TLA] Sending context-aware prompt');
+        document.getElementById('ta-debug-prompt').textContent = systemPrompt;
+        console.log('[TLA] Using expert-recommended prompt structure');
         
-        // Send request
+        // Send request with full conversation context
         const request = {
           model: CONFIG.modelName,
           max_tokens: CONFIG.maxTokens,
           system: systemPrompt,
-          messages: [
-            { role: 'user', content: message }
-          ]
+          messages: this.conversationHistory
         };
         
         const response = await fetch(CONFIG.proxyUrl, {
@@ -676,7 +708,19 @@ If you don't have specific information about their game state, ask clarifying qu
         this.removeLoadingMessage(loadingMessage);
         
         if (data.content && data.content[0]) {
-          this.addMessage('ai', data.content[0].text);
+          const aiResponse = data.content[0].text;
+          this.addMessage('ai', aiResponse);
+          
+          // Store AI response in conversation history
+          this.conversationHistory.push({
+            role: 'assistant',
+            content: aiResponse
+          });
+          
+          // Limit conversation history to last 10 exchanges to manage token usage
+          if (this.conversationHistory.length > 20) {
+            this.conversationHistory = this.conversationHistory.slice(-20);
+          }
         }
       } catch (error) {
         console.error('[TLA] AI Error:', error);
@@ -786,22 +830,19 @@ If you don't have specific information about their game state, ask clarifying qu
           if (match) population = parseInt(match[1]);
         }
         
-        // Get culture points - check multiple locations
+        // Get culture points
         let cpCurrent = 0;
         let cpNeeded = 500;
         let cpPerDay = 0;
         
-        // Try to find CP display
         const cpElement = document.querySelector('.culturePoints, [title*="Culture"], .culture_points');
         if (cpElement) {
           const cpText = cpElement.textContent || cpElement.title || '';
-          // Match current/needed format
           const cpMatch = cpText.match(/(\d+)\s*\/\s*(\d+)/);
           if (cpMatch) {
             cpCurrent = parseInt(cpMatch[1]);
             cpNeeded = parseInt(cpMatch[2]);
           }
-          // Match per day format
           const cpRateMatch = cpText.match(/(\d+)\s*per\s*day/i);
           if (cpRateMatch) {
             cpPerDay = parseInt(cpRateMatch[1]);
@@ -820,7 +861,7 @@ If you don't have specific information about their game state, ask clarifying qu
           }
         }
         
-        // Get server day from server time display
+        // Get server day
         let serverDay = null;
         const serverTimeElem = document.querySelector('.serverTime');
         if (serverTimeElem) {
