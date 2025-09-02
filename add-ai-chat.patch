@@ -1,0 +1,56 @@
+// ADD THIS TO YOUR EXISTING server.js (around line 30, after requires)
+// Just these two additions to enable AI chat:
+
+// 1. Add this require at the top with other requires:
+const fetch = require('node-fetch');
+
+// 2. Add this endpoint anywhere in your routes section:
+
+// AI Chat Proxy - Add this to your existing server.js
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const { messages, accountId, gameState } = req.body;
+    
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ 
+        error: 'AI service not configured. Set ANTHROPIC_API_KEY in environment.' 
+      });
+    }
+
+    // Add game context to the message
+    const systemPrompt = `You are an expert Travian Legends advisor focused on rapid settlement.
+Key context: ${JSON.stringify(gameState, null, 2)}
+Provide specific, actionable advice.`;
+
+    // Call Anthropic API
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-sonnet-20240229',
+        max_tokens: 2000,
+        messages: messages,
+        system: systemPrompt
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Anthropic API error:', error);
+      return res.status(response.status).json({ error: 'AI service error' });
+    }
+
+    const data = await response.json();
+    res.json(data);
+    
+  } catch (error) {
+    console.error('❌ AI chat error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// That's it! Just these two additions to enable AI chat in your existing server
