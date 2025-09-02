@@ -14,6 +14,7 @@ const fs = require('fs');
 // Initialize Express
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0'; // Listen on all interfaces for Replit
 
 // Middleware
 app.use(cors());
@@ -239,8 +240,106 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Root endpoint
+// Root endpoint - show a nice landing page
 app.get('/', (req, res) => {
+  const stats = {
+    villages: db.prepare('SELECT COUNT(*) as count FROM villages').get().count,
+    userVillages: db.prepare('SELECT COUNT(*) as count FROM user_villages').get().count,
+    buildings: db.prepare('SELECT COUNT(*) as count FROM buildings').get().count,
+    troops: db.prepare('SELECT COUNT(*) as count FROM troops').get().count,
+    recommendations: db.prepare('SELECT COUNT(*) as count FROM recommendations').get().count
+  };
+  
+  // Send an HTML response for better visibility in Replit preview
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>TravianAssistant Backend</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          max-width: 800px;
+          margin: 50px auto;
+          padding: 20px;
+          background: #f5f5f5;
+        }
+        h1 { color: #333; }
+        .status { 
+          background: #4CAF50; 
+          color: white; 
+          padding: 10px; 
+          border-radius: 5px; 
+          display: inline-block;
+        }
+        .stats {
+          background: white;
+          padding: 20px;
+          border-radius: 5px;
+          margin: 20px 0;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .endpoint {
+          background: #f0f0f0;
+          padding: 5px 10px;
+          margin: 5px 0;
+          border-radius: 3px;
+          font-family: monospace;
+        }
+        .instructions {
+          background: #fff3cd;
+          border: 1px solid #ffc107;
+          padding: 15px;
+          border-radius: 5px;
+          margin-top: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>🏰 TravianAssistant Backend Server</h1>
+      <div class="status">✅ Server is running!</div>
+      
+      <div class="stats">
+        <h2>📊 Database Statistics</h2>
+        <ul>
+          <li>Villages (from map.sql): ${stats.villages}</li>
+          <li>User Villages (scraped): ${stats.userVillages}</li>
+          <li>Buildings loaded: ${stats.buildings}</li>
+          <li>Troops loaded: ${stats.troops}</li>
+          <li>AI Recommendations: ${stats.recommendations}</li>
+        </ul>
+      </div>
+      
+      <div class="stats">
+        <h2>🔌 API Endpoints</h2>
+        <div class="endpoint">GET /health</div>
+        <div class="endpoint">GET /api/game-data</div>
+        <div class="endpoint">POST /api/map</div>
+        <div class="endpoint">POST /api/village</div>
+        <div class="endpoint">GET /api/villages/:accountId</div>
+        <div class="endpoint">POST /api/recommendation</div>
+        <div class="endpoint">GET /api/recommendations</div>
+      </div>
+      
+      <div class="instructions">
+        <h3>📝 Next Steps:</h3>
+        <ol>
+          <li>Copy this Replit URL: <strong>${process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'Check your Replit URL above'}</strong></li>
+          <li>Update the Chrome extension's BACKEND_URL</li>
+          <li>Visit a Travian page to start collecting data</li>
+        </ol>
+      </div>
+      
+      <div style="margin-top: 30px; color: #666;">
+        <small>Version 3.0.0 | Uptime: ${Math.round(process.uptime())} seconds</small>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+// JSON API endpoint for compatibility
+app.get('/api/status', (req, res) => {
   const stats = {
     villages: db.prepare('SELECT COUNT(*) as count FROM villages').get().count,
     userVillages: db.prepare('SELECT COUNT(*) as count FROM user_villages').get().count,
@@ -476,11 +575,19 @@ app.get('/api/recommendations', (req, res) => {
   }
 });
 
-// WebSocket for real-time updates (if needed later)
-const server = app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🌐 Access at: http://localhost:${PORT}`);
-  console.log(`📱 For external access, use your Replit URL`);
+// Start server - bind to 0.0.0.0 for Replit
+const server = app.listen(PORT, HOST, () => {
+  console.log(`✅ Server running on ${HOST}:${PORT}`);
+  console.log(`🌐 Local access: http://localhost:${PORT}`);
+  
+  // Try to detect Replit URL
+  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+    console.log(`📱 Replit URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+  } else if (process.env.REPLIT_URL) {
+    console.log(`📱 Replit URL: ${process.env.REPLIT_URL}`);
+  } else {
+    console.log(`📱 For external access, check your Replit preview window`);
+  }
   
   // Initialize database and load game data
   initializeDatabase();
