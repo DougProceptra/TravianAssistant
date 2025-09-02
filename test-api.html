@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TravianAssistant API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #764ba2;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TravianAssistant API Test</h1>
+    <p>Test the Vercel proxy to diagnose 400 errors</p>
+    
+    <h2>Test 1: Minimal Valid Request</h2>
+    <button onclick="testMinimal()">Test Minimal Request</button>
+    
+    <h2>Test 2: Simple Message</h2>
+    <button onclick="testSimple()">Test Simple Message</button>
+    
+    <h2>Test 3: With System Prompt</h2>
+    <button onclick="testWithSystem()">Test With System</button>
+    
+    <h2>Test 4: Custom Request</h2>
+    <textarea id="customRequest" placeholder='Enter JSON request, e.g.:
+{
+  "messages": [
+    {"role": "user", "content": "Hello"}
+  ],
+  "model": "claude-sonnet-4-20250514",
+  "max_tokens": 100
+}'></textarea>
+    <button onclick="testCustom()">Test Custom Request</button>
+    
+    <h2>Results:</h2>
+    <div id="result" class="result"></div>
+    
+    <script>
+        const PROXY_URL = 'https://travian-proxy-simple.vercel.app/api/proxy';
+        
+        function showResult(text, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = text;
+            resultDiv.className = `result ${isError ? 'error' : 'success'}`;
+        }
+        
+        async function makeRequest(payload) {
+            showResult('Sending request...');
+            console.log('Request payload:', JSON.stringify(payload, null, 2));
+            
+            try {
+                const response = await fetch(PROXY_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                const responseText = await response.text();
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                console.log('Response body:', responseText);
+                
+                if (!response.ok) {
+                    showResult(`Error ${response.status}:\n${responseText}`, true);
+                    return;
+                }
+                
+                try {
+                    const data = JSON.parse(responseText);
+                    showResult(`Success!\n\nResponse:\n${JSON.stringify(data, null, 2)}`);
+                } catch (e) {
+                    showResult(`Success but invalid JSON:\n${responseText}`);
+                }
+            } catch (error) {
+                showResult(`Network Error:\n${error.message}`, true);
+                console.error('Full error:', error);
+            }
+        }
+        
+        function testMinimal() {
+            makeRequest({
+                messages: [
+                    { role: "user", content: "Hi" }
+                ],
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 50
+            });
+        }
+        
+        function testSimple() {
+            makeRequest({
+                messages: [
+                    { role: "user", content: "What is 2+2?" }
+                ],
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 100
+            });
+        }
+        
+        function testWithSystem() {
+            makeRequest({
+                messages: [
+                    { role: "system", content: "You are a helpful assistant." },
+                    { role: "user", content: "What is 2+2?" }
+                ],
+                model: "claude-sonnet-4-20250514",
+                max_tokens: 100
+            });
+        }
+        
+        function testCustom() {
+            const customText = document.getElementById('customRequest').value;
+            if (!customText) {
+                showResult('Please enter a JSON request', true);
+                return;
+            }
+            
+            try {
+                const payload = JSON.parse(customText);
+                makeRequest(payload);
+            } catch (e) {
+                showResult(`Invalid JSON: ${e.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>
