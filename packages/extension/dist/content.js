@@ -9,7 +9,8 @@
     proxyUrl: 'https://travian-proxy-simple.vercel.app/api/proxy',
     modelName: 'claude-sonnet-4-20250514',
     maxTokens: 2000,
-    accountId: localStorage.getItem('TLA_ACCOUNT_ID') || generateAccountId()
+    accountId: localStorage.getItem('TLA_ACCOUNT_ID') || generateAccountId(),
+    syncInterval: 60000 // Changed from 30 seconds to 60 seconds
   };
   
   function generateAccountId() {
@@ -22,16 +23,19 @@
     constructor() {
       this.syncStatus = 'connecting';
       this.gameData = {};
+      this.staticGameData = null; // Cache for troops/buildings data from backend
       this.chatOpen = false;
       this.chatMessages = [];
       this.init();
     }
     
-    init() {
+    async init() {
       this.createHUD();
       this.initDragAndDrop();
       this.startDataCollection();
       this.loadPosition();
+      // Load static game data from backend on initialization
+      await this.loadStaticGameData();
     }
     
     createHUD() {
@@ -70,6 +74,10 @@
             <div class="metric">
               <label>Crop:</label>
               <span id="ta-crop">-</span>
+            </div>
+            <div class="metric">
+              <label>Server Day:</label>
+              <span id="ta-server-day">-</span>
             </div>
           </div>
         </div>
@@ -231,6 +239,7 @@
           padding: 8px 12px;
           border-radius: 8px;
           max-width: 80%;
+          white-space: pre-wrap;
         }
         
         .user-message {
@@ -354,8 +363,142 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        this.addMessage('ai', 'Hello! I\'m your Travian AI advisor. Ask me about strategies, build orders, or any game mechanics!');
+        this.addMessage('ai', 'Hello! I\'m your Travian AI advisor. I have access to complete game data including all troops, buildings, and mechanics for all tribes. Ask me about strategies, build orders, or any game mechanics!');
       }
+    }
+    
+    // Load static game data (troops, buildings, quests) from backend
+    async loadStaticGameData() {
+      try {
+        const response = await fetch(`${CONFIG.backendUrl}/api/game-data`);
+        if (response.ok) {
+          this.staticGameData = await response.json();
+          console.log('[TLA] Loaded game data:', {
+            buildings: this.staticGameData.buildings?.length || 0,
+            troops: this.staticGameData.troops?.length || 0,
+            quests: this.staticGameData.quests?.length || 0
+          });
+        }
+      } catch (error) {
+        console.error('[TLA] Failed to load game data:', error);
+      }
+    }
+    
+    // Enhanced scraping functions
+    scrapeBuildings() {
+      const buildings = [];
+      
+      // Check if we're on village view (dorf2.php)
+      if (window.location.href.includes('dorf2.php')) {
+        document.querySelectorAll('.buildingSlot').forEach(slot => {
+          const level = slot.querySelector('.level')?.textContent?.replace(/[^\d]/g, '');
+          const name = slot.querySelector('.name')?.textContent;
+          if (name && level) {
+            buildings.push({ name, level: parseInt(level) });
+          }
+        });
+      }
+      
+      // Check building queue
+      const queue = [];
+      document.querySelectorAll('.buildingList li').forEach(item => {
+        const name = item.querySelector('.name')?.textContent;
+        const timeLeft = item.querySelector('.timer')?.textContent;
+        if (name) {
+          queue.push({ name, timeLeft });
+        }
+      });
+      
+      return { buildings, queue };
+    }
+    
+    scrapeTroops() {
+      const troops = {};
+      
+      // Try to find troop counts in various places
+      // Barracks/Stable training view
+      document.querySelectorAll('.troop_details').forEach(detail => {
+        const name = detail.querySelector('.desc')?.textContent;
+        const count = detail.querySelector('.value')?.textContent;
+        if (name && count) {
+          troops[name] = parseInt(count) || 0;
+        }
+      });
+      
+      // Rally point overview
+      document.querySelectorAll('.units tr').forEach(row => {
+        const unitClass = row.className;
+        const count = row.querySelector('td.num')?.textContent;
+        if (unitClass && count) {
+          troops[unitClass] = parseInt(count) || 0;
+        }
+      });
+      
+      return troops;
+    }
+    
+    scrapeQuests() {
+      const quests = [];
+      
+      // Quest list
+      document.querySelectorAll('.quest').forEach(quest => {
+        const title = quest.querySelector('.questTitle')?.textContent;
+        const status = quest.querySelector('.questStatus')?.textContent;
+        const reward = quest.querySelector('.reward')?.textContent;
+        if (title) {
+          quests.push({ title, status, reward });
+        }
+      });
+      
+      return quests;
+    }
+    
+    calculateServerDay() {
+      // Try to find server age from page
+      const serverInfo = document.querySelector('.serverTime');
+      if (serverInfo) {
+        const match = serverInfo.textContent.match(/Day (\d+)/);
+        if (match) {
+          return parseInt(match[1]);
+        }
+      }
+      
+      // Fallback: calculate from stored start date if available
+      const serverStart = localStorage.getItem('TLA_SERVER_START');
+      if (serverStart) {
+        const days = Math.floor((Date.now() - new Date(serverStart)) / (1000 * 60 * 60 * 24));
+        return days;
+      }
+      
+      return null;
+    }
+    
+    determinePhase() {
+      const serverDay = this.calculateServerDay();
+      if (!serverDay) return 'unknown';
+      
+      if (serverDay < 10) return 'early_game';
+      if (serverDay < 50) return 'mid_game';
+      if (serverDay < 100) return 'late_game';
+      return 'end_game';
+    }
+    
+    detectTribe() {
+      // Check for tribe-specific elements or classes
+      const tribeClasses = ['romans', 'gauls', 'teutons', 'egyptians', 'huns', 'spartans'];
+      for (const tribe of tribeClasses) {
+        if (document.body.className.includes(tribe)) {
+          return tribe;
+        }
+      }
+      
+      // Check for tribe-specific buildings
+      if (document.querySelector('.waterworks')) return 'egyptians';
+      if (document.querySelector('.brewery')) return 'teutons';
+      if (document.querySelector('.trapper')) return 'gauls';
+      if (document.querySelector('.horseDrinkingTrough')) return 'romans';
+      
+      return 'unknown';
     }
     
     async sendMessage() {
@@ -366,26 +509,88 @@
       this.addMessage('user', message);
       input.value = '';
       
-      // Prepare messages for AI
-      const messages = [
-        ...this.chatMessages.map(m => ({
-          role: m.type === 'user' ? 'user' : 'assistant',
-          content: m.text
-        })),
-        { role: 'user', content: message }
-      ];
+      // Show loading indicator
+      this.addMessage('ai', '...');
       
       try {
+        // First, fetch latest game data from backend if not loaded
+        if (!this.staticGameData) {
+          await this.loadStaticGameData();
+        }
+        
+        // Fetch user's historical village data
+        const villageHistory = await this.fetchVillageHistory();
+        
+        // Build comprehensive game state
+        const gameState = {
+          // Current scraped data
+          resources: this.gameData.resources,
+          population: this.gameData.population,
+          buildings: this.scrapeBuildings(),
+          troops: this.scrapeTroops(),
+          quests: this.scrapeQuests(),
+          
+          // Calculated metrics
+          serverDay: this.calculateServerDay(),
+          gamePhase: this.determinePhase(),
+          playerTribe: this.detectTribe(),
+          
+          // Static game data from backend
+          availableBuildings: this.staticGameData?.buildings || [],
+          availableTroops: this.staticGameData?.troops || [],
+          questDatabase: this.staticGameData?.quests || [],
+          
+          // Historical data
+          villageHistory: villageHistory,
+          
+          // Context
+          currentUrl: window.location.href,
+          timestamp: new Date().toISOString()
+        };
+        
+        // Build system prompt with Travian context
+        const systemPrompt = `You are an expert Travian Legends advisor with complete knowledge of all game mechanics.
+
+Available Game Data:
+- Buildings: ${this.staticGameData?.buildings?.length || 0} types loaded
+- Troops: ${this.staticGameData?.troops?.length || 0} units for all tribes (Romans, Gauls, Teutons, Egyptians, Huns, Spartans, Natars, Nature)
+- Quests: ${this.staticGameData?.quests?.length || 0} quest templates
+
+Player Context:
+- Tribe: ${gameState.playerTribe}
+- Server Day: ${gameState.serverDay || 'Unknown'}
+- Game Phase: ${gameState.gamePhase}
+- Population: ${gameState.population}
+
+Use the provided game data to give accurate, specific advice. Reference actual troop stats, building costs, and optimal strategies for the player's current situation.`;
+        
+        // Prepare messages for AI
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...this.chatMessages.filter(m => m.type !== 'ai' || m.text !== '...').map(m => ({
+            role: m.type === 'user' ? 'user' : 'assistant',
+            content: m.text
+          })),
+          { role: 'user', content: `${message}\n\nGame State: ${JSON.stringify(gameState, null, 2)}` }
+        ];
+        
         const response = await fetch(CONFIG.proxyUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             messages: messages,
             model: CONFIG.modelName,
-            max_tokens: CONFIG.maxTokens,
-            gameState: this.gameData
+            max_tokens: CONFIG.maxTokens
           })
         });
+        
+        // Remove loading message
+        const messagesDiv = document.querySelector('.ta-chat-messages');
+        const lastMessage = messagesDiv.lastElementChild;
+        if (lastMessage && lastMessage.textContent === '...') {
+          lastMessage.remove();
+          this.chatMessages.pop();
+        }
         
         const data = await response.json();
         if (data.content && data.content[0]) {
@@ -393,8 +598,27 @@
         }
       } catch (error) {
         console.error('[TLA] AI Error:', error);
+        // Remove loading message
+        const messagesDiv = document.querySelector('.ta-chat-messages');
+        const lastMessage = messagesDiv.lastElementChild;
+        if (lastMessage && lastMessage.textContent === '...') {
+          lastMessage.remove();
+          this.chatMessages.pop();
+        }
         this.addMessage('ai', 'Sorry, I couldn\'t connect to the AI service. Please try again.');
       }
+    }
+    
+    async fetchVillageHistory() {
+      try {
+        const response = await fetch(`${CONFIG.backendUrl}/api/villages/${CONFIG.accountId}`);
+        if (response.ok) {
+          return await response.json();
+        }
+      } catch (error) {
+        console.error('[TLA] Failed to fetch village history:', error);
+      }
+      return null;
     }
     
     addMessage(type, text) {
@@ -439,7 +663,7 @@
     
     startDataCollection() {
       this.collectData();
-      setInterval(() => this.collectData(), 30000); // Every 30 seconds
+      setInterval(() => this.collectData(), CONFIG.syncInterval); // Now 60 seconds
     }
     
     collectData() {
@@ -463,9 +687,22 @@
         const population = parseInt(popElement?.textContent || 0);
         document.getElementById('ta-pop').textContent = population;
         
+        // Get server day
+        const serverDay = this.calculateServerDay();
+        if (serverDay !== null) {
+          document.getElementById('ta-server-day').textContent = serverDay;
+        }
+        
+        // Enhanced game data with all scraped info
         this.gameData = {
           resources,
           population,
+          serverDay,
+          gamePhase: this.determinePhase(),
+          tribe: this.detectTribe(),
+          buildings: this.scrapeBuildings(),
+          troops: this.scrapeTroops(),
+          quests: this.scrapeQuests(),
           timestamp: new Date().toISOString()
         };
         
