@@ -8,11 +8,12 @@ packages = ["tree", "lsof"]
 
 [deployment]
 run = ["node", "server.js"]
+deploymentTarget = "cloudrun"
 
 [[ports]]
 localPort = 3000
 externalPort = 80
 
-[[ports]]
-localPort = 3000
-externalPort = 3000
+[env]
+NODE_ENV = "production"
+DB_PATH = "./db/travian.db"

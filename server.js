@@ -22,12 +22,27 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(__dirname)); // Serve static files from root directory
 
 // Initialize SQLite database
-const DB_PATH = process.env.DB_PATH || './travian.db';
+const DB_PATH = process.env.DB_PATH || './db/travian.db';
+
+// Ensure db directory exists
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
 console.log('🚀 TravianAssistant Backend Starting...');
 console.log(`📁 Database: ${DB_PATH}`);
+
+// Detect Replit environment
+if (process.env.REPL_SLUG) {
+  console.log(`🌐 Replit Environment Detected`);
+  console.log(`   REPL_SLUG: ${process.env.REPL_SLUG}`);
+  console.log(`   REPL_OWNER: ${process.env.REPL_OWNER}`);
+  console.log(`   Public URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+}
 
 // Create tables if they don't exist
 function initializeDatabase() {
@@ -122,6 +137,19 @@ function initializeDatabase() {
       requirements TEXT,
       rewards TEXT,
       order_index INTEGER
+    );
+    
+    -- Settlement tracking for V2 focus
+    CREATE TABLE IF NOT EXISTS settlement_tracking (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id TEXT NOT NULL,
+      cp_current INTEGER DEFAULT 0,
+      cp_production INTEGER DEFAULT 0,
+      settlers_count INTEGER DEFAULT 0,
+      resources_hourly TEXT,
+      estimated_settlement_time TIMESTAMP,
+      phase TEXT DEFAULT 'FOUNDATION',
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
   
@@ -254,6 +282,11 @@ app.get('/', (req, res) => {
   // Get unique player count
   const players = db.prepare('SELECT DISTINCT account_id FROM user_villages').all();
   
+  // Determine backend URL
+  const backendUrl = process.env.REPL_SLUG 
+    ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+    : `http://localhost:${PORT}`;
+  
   // Send an HTML response for better visibility in Replit preview
   res.send(`
     <!DOCTYPE html>
@@ -309,6 +342,15 @@ app.get('/', (req, res) => {
         .admin-link:hover {
           background: #1976D2;
         }
+        .url-box {
+          background: #e8f5e9;
+          border: 2px solid #4CAF50;
+          padding: 10px;
+          border-radius: 5px;
+          font-family: monospace;
+          font-size: 14px;
+          word-break: break-all;
+        }
       </style>
     </head>
     <body>
@@ -341,10 +383,14 @@ app.get('/', (req, res) => {
       </div>
       
       <div class="instructions">
+        <h3>🎮 Chrome Extension Configuration</h3>
+        <p>Set your backend URL in the extension to:</p>
+        <div class="url-box">${backendUrl}</div>
+        
         <h3>📝 For Players:</h3>
         <ol>
-          <li>Install the Chrome extension</li>
-          <li>Set backend URL to: <strong>https://travianassistant.dougdostal.repl.co</strong></li>
+          <li>Install the Chrome extension from /packages/extension/dist</li>
+          <li>Configure with the backend URL above</li>
           <li>Enter your email when prompted (will be hashed for privacy)</li>
           <li>Visit Travian pages to start data collection</li>
         </ol>
@@ -352,10 +398,13 @@ app.get('/', (req, res) => {
         <h3>👥 Multi-Player Support:</h3>
         <p>Each player's data is stored separately using their hashed email as ID.</p>
         <p>3-5 players can use this same backend simultaneously.</p>
+        
+        <h3>🚀 Testing New Server:</h3>
+        <p>Perfect for testing early game strategies with the Settlement Race Optimizer!</p>
       </div>
       
       <div style="margin-top: 30px; color: #666;">
-        <small>Version 3.0.0 | Uptime: ${Math.round(process.uptime())} seconds</small>
+        <small>Version 3.0.0 | Uptime: ${Math.round(process.uptime())} seconds | Database: ${DB_PATH}</small>
       </div>
     </body>
     </html>
@@ -629,8 +678,11 @@ app.get('/api/recommendations', (req, res) => {
 const server = app.listen(PORT, HOST, () => {
   console.log(`✅ Server running on ${HOST}:${PORT}`);
   console.log(`🌐 Local access: http://localhost:${PORT}`);
-  console.log(`📱 Replit URL: https://travianassistant.dougdostal.repl.co`);
-  console.log(`👥 Admin Dashboard: https://travianassistant.dougdostal.repl.co/admin.html`);
+  
+  if (process.env.REPL_SLUG) {
+    console.log(`📱 Replit URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+    console.log(`👥 Admin Dashboard: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/admin.html`);
+  }
   
   // Initialize database and load game data
   initializeDatabase();

@@ -1,173 +1,146 @@
 # TravianAssistant Session Context
-*Last Updated: September 1, 2025*
+*Last Updated: September 2, 2025*
 
-## CRITICAL WINS - DO NOT LOSE
+## Project Status: Backend Complete, Extension Needs Connection
 
-### 1. Chat UI is FINALLY WORKING ✅
-- **Version 1.3.0** properly displays in console
-- Chat button appears in bottom-right corner
-- Chat interface opens when clicked
-- Successfully connects to Claude via background script
-- Game state is being collected and sent with messages
-- File: `src/content/conversational-ai-working.ts` has the working code
+### ✅ What's Working
+1. **Backend Server (server.js)**
+   - Running on Replit at port 3000
+   - SQLite database with full schema
+   - Game data loaded (8 buildings, 4 troops, 5 quests)
+   - Multi-player support via hashed email IDs
+   - Admin dashboard at `/admin.html`
+   - All API endpoints functional
 
-### 2. Version Management FIXED ✅
-- `scripts/version-manager.cjs` now reads FROM package.json (single source of truth)
-- No more hardcoded 1.1.0 override
-- Version properly tracks at 1.3.0
-- Future bumps: `npm run version:patch/minor/major`
+2. **Database Structure**
+   - `villages` - World map data from map.sql
+   - `user_villages` - Player-specific village data
+   - `buildings`, `troops`, `quests` - Game mechanics data
+   - `recommendations` - AI strategic advice storage
+   - Each player identified by hashed email for privacy
 
-### 3. Build Process Working ✅
-- Direct esbuild works when vite fails
-- Command: `npx esbuild src/content/index.ts --bundle --outfile=dist/content.js --format=iife`
-- Produces 66KB content.js with working code
+3. **API Endpoints Ready**
+   - `GET /health` - Server health check
+   - `GET /api/all-players` - List all player IDs
+   - `POST /api/village` - Save scraped village data
+   - `GET /api/villages/:accountId` - Get player's villages
+   - `GET /api/game-data` - Get game mechanics data
+   - `POST /api/recommendation` - Save AI recommendations
+   - `GET /api/recommendations` - Get recommendations
 
-## REMAINING ISSUES
+### ⚠️ Current Issues
 
-### 1. Chat UI Polish Needed
-- **Unformatted responses**: AI responses show as plain text, need HTML formatting
-  - Fix: Replace newlines with `<br>` tags in response
-- **No drag/resize**: Chat window is fixed position
-  - Need to add makeDraggable() function back
-  - Original code had working drag/resize in v0.9.5
+1. **Replit URL Access Problem**
+   - Server runs locally but external URL not working
+   - Tried: `travianassistant.dougdostal.repl.co` (doesn't resolve)
+   - Need to determine correct Replit public URL format
+   - May need to use Deploy button for stable URL
 
-### 2. Incomplete Data Collection
-- Safe scraper only gets overview data
-- Missing: production rates, troop counts, building queues
-- These require navigating to village detail pages
-- Current approach ("safe scraping") deliberately avoids navigation
+2. **Chrome Extension Needs Update**
+   - Extension exists in `/packages/extension/`
+   - Has enhanced scraper (`enhanced-data-scraper.ts`)
+   - Content script (`scraper-connector.ts`) ready but needs:
+     - Correct `BACKEND_URL` to be set
+     - Build and reload in Chrome
+   - AI chat connected via Vercel proxy (working)
 
-### 3. Proxy/API Communication
-- Using Vercel proxy at https://travian-proxy-simple.vercel.app/api/proxy
-- Sometimes responses fail or timeout
-- No error handling for failed API calls
+### 📋 Next Session Priority Tasks
 
-## FILE STRUCTURE - CURRENT STATE
+1. **Fix Replit URL Access**
+   ```bash
+   # Check environment variables
+   env | grep REPL
+   # Try Deploy button for stable URL
+   # Or investigate new Replit URL format (.replit.app)
+   ```
+
+2. **Update Chrome Extension**
+   ```javascript
+   // In scraper-connector.ts, update:
+   const BACKEND_URL = 'https://[CORRECT-REPLIT-URL]';
+   ```
+
+3. **Test Data Flow**
+   - Install extension in Chrome
+   - Set user email (gets hashed)
+   - Visit Travian page
+   - Verify data reaches backend
+   - Check admin dashboard
+
+### 🏗️ Architecture Summary
 
 ```
-packages/extension/
-├── src/
-│   ├── content/
-│   │   ├── index.ts                    # Main entry, imports working chat
-│   │   ├── conversational-ai-working.ts # WORKING CHAT UI v1.3.0
-│   │   ├── conversational-ai.ts        # Broken version (don't use)
-│   │   ├── conversational-ai-restored.ts # Old attempt (don't use)
-│   │   ├── safe-scraper.ts            # Data collection (limited)
-│   │   ├── overview-parser.ts         # Parses village list
-│   │   └── hud.ts                     # HUD overlay (working)
-│   ├── background.ts                   # Handles API calls to Claude
-│   └── version.ts                      # Version file (managed)
-├── scripts/
-│   └── version-manager.cjs            # FIXED - reads from package.json
-├── package.json                        # Version 1.3.0 - single source of truth
-└── dist/                              # Built files
-    ├── content.js                     # 66KB with working chat
-    ├── background.js                  # 8KB proxy handler
-    └── manifest.json                  # v1.3.0
+Chrome Extension (each player)
+    ↓ (scrapes game data)
+Enhanced Scraper 
+    ↓ (sends to backend)
+Replit Backend (shared)
+    ↓ (stores in SQLite)
+Database (multi-player)
+    ↓
+Admin Dashboard (monitor all players)
 ```
 
-## NEXT SESSION PRIORITIES
+### 👥 Multi-Player Design
+- 3-5 players supported simultaneously
+- Each player has unique hashed email ID
+- Data completely isolated per player
+- Admin dashboard shows all players
+- AI recommendations per player
 
-### 1. Fix Response Formatting
-```javascript
-// In conversational-ai-working.ts, line ~140
-// Change:
-${response.response || 'I received your message...'}
-// To:
-${response.response?.replace(/\n/g, '<br>') || 'I received your message...'}
+### 🔧 Technical Details
+
+**Replit Setup:**
+- `.replit` configured with `run = "npm start"`
+- Ports: 3000 internal, maps to 80/3000 external
+- Has workflow instructions in Agent panel
+
+**File Locations:**
+- Backend: `/server.js`
+- Game Data: `/data/game-data.json`
+- Admin Dashboard: `/admin.html`
+- Extension: `/packages/extension/`
+- Scraper: `/packages/extension/src/scrapers/enhanced-data-scraper.ts`
+- Content Script: `/packages/extension/src/content/scraper-connector.ts`
+
+**Environment:**
+- Node.js 20
+- SQLite via better-sqlite3
+- Express server with CORS enabled
+- Static file serving enabled
+
+### 🎯 Success Criteria for Next Session
+1. Get working public URL for Replit backend
+2. Update extension with correct backend URL
+3. Successfully scrape and store data from Travian
+4. View player data in admin dashboard
+5. Have at least one player's village data flowing
+
+### 💡 Remember
+- Don't manually start server with `npm start` 
+- Use Replit's Run button or Deploy feature
+- The server works perfectly locally, just need public URL
+- All game data and API endpoints are ready
+- Multi-player system fully implemented
+
+### 🐛 Debugging Commands
+```bash
+# Check what's running
+lsof -i :3000
+lsof -i :3002
+
+# Kill stuck processes
+pkill -9 node
+
+# Check Replit environment
+env | grep REPL
+
+# Test server locally
+curl http://localhost:3000/health
+
+# Start server (if Run button fails)
+PORT=3000 node server.js
 ```
 
-### 2. Add Drag/Resize
-```javascript
-// Add after chatInterface creation in conversational-ai-working.ts
-function makeDraggable(element: HTMLElement) {
-  const header = element.querySelector('div[style*="cursor: move"]') as HTMLElement;
-  if (!header) return;
-  
-  let isDragging = false;
-  let currentX: number;
-  let currentY: number;
-  let initialX: number;
-  let initialY: number;
-  
-  header.addEventListener('mousedown', (e) => {
-    initialX = e.clientX - element.offsetLeft;
-    initialY = e.clientY - element.offsetTop;
-    isDragging = true;
-  });
-  
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    currentX = e.clientX - initialX;
-    currentY = e.clientY - initialY;
-    element.style.left = currentX + 'px';
-    element.style.top = currentY + 'px';
-    element.style.right = 'auto';
-    element.style.bottom = 'auto';
-  });
-  
-  document.addEventListener('mouseup', () => {
-    isDragging = false;
-  });
-}
-
-// Call it:
-makeDraggable(chatInterface);
-```
-
-### 3. Consider Data Collection Enhancement
-- Current "safe scraper" avoids navigation (ToS compliant)
-- Could enhance by parsing more data from current page
-- Or accept limited data as trade-off for compliance
-
-## LESSONS LEARNED
-
-### What Went Wrong
-1. **Version manager override**: Was hardcoded to 1.1.0, breaking version tracking
-2. **Multiple file versions**: Had conversational-ai.ts, -restored.ts, -working.ts causing confusion
-3. **Build system complexity**: Vite config issues wasted hours
-4. **No systematic debugging**: Changed code without checking console errors
-
-### What Worked
-1. **Direct DOM manipulation**: Using createElement and appendChild instead of HTML strings
-2. **Bypassing vite**: Direct esbuild when vite fails
-3. **Git reset --hard**: When local changes conflict, nuclear option works
-4. **Real version file**: Creating separate version tracking outside version manager
-
-## DEPLOYMENT CHECKLIST
-
-1. Pull latest: `git pull`
-2. Build: `npx esbuild src/content/index.ts --bundle --outfile=dist/content.js --format=iife`
-3. Build background: `npx esbuild src/background.ts --bundle --outfile=dist/background.js --format=iife`
-4. Copy manifest: `cp manifest.json dist/`
-5. Reload extension in Chrome
-6. Test on Travian page
-7. Check console for v1.3.0 messages
-8. Click chat button bottom-right
-
-## CRITICAL REMINDERS
-
-- **DO NOT** touch conversational-ai.ts or conversational-ai-restored.ts - use conversational-ai-working.ts
-- **DO NOT** try to fix vite config - use direct esbuild
-- **DO NOT** change version manager - it finally works
-- **ALWAYS** check browser console for actual errors before making changes
-- **ALWAYS** preserve working code before making "improvements"
-
-## SUCCESS METRICS
-
-✅ Version tracking works (1.3.0)
-✅ Chat button appears
-✅ Chat interface opens
-✅ Messages send to Claude
-✅ Game state collected
-✅ Responses received (though unformatted)
-
-❌ Response formatting (HTML)
-❌ Drag/resize functionality  
-❌ Complete game data collection
-❌ Error handling for API failures
-
----
-
-*Next session: Focus on polish - fix formatting and drag/resize. The core functionality is WORKING.*
+### 📝 For Doug
+The backend is complete and working. The only blocker is getting Replit's public URL working. Once that's resolved (likely through Deploy button or finding correct URL format), the entire system is ready for multi-player use. Each player just needs to install the extension and point it to your backend URL.
