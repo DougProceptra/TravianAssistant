@@ -47,7 +47,7 @@ cat > dist/manifest.json << EOF
   },
   "content_scripts": [
     {
-      "matches": ["*://*.travian.com/game.php*"],
+      "matches": ["*://*.travian.com/*.php*", "*://*.travian.com/"],
       "js": ["content.js"],
       "css": ["styles.css"],
       "run_at": "document_end"
