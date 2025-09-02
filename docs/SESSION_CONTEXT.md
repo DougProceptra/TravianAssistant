@@ -1,289 +1,194 @@
-# SESSION_CONTEXT.md
-*Last Updated: September 2, 2025 - v3.0.0 - AI Integration Complete*
+# TravianAssistant Session Context
+*Last Updated: September 2, 2025 - End of Session*
 
-## 🎉 CURRENT STATUS: AI CHAT INTEGRATED!
+## Project Status: Functional but AI Lacks Context
 
-### What's New (v3.0.0)
-- ✅ **Enhanced backend with AI proxy** - server-enhanced.js
-- ✅ **HUD-Backend connector** - Real-time sync working
-- ✅ **AI Chat Integration** - Claude integration via backend proxy
-- ✅ **Comprehensive game mechanics** - All 6 tribes supported
-- ✅ **Settlement tracking** - CP calculations and predictions
-- ✅ **Auto-deployment script** - deploy-ai.sh for quick setup
+### ✅ What's Working
+1. **Backend Server (Replit)**: `https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev`
+   - SQLite database operational
+   - Game data endpoints functional  
+   - Health check working
+   - NO AI endpoint (removed due to node-fetch issues in Node v20)
+   - Secrets: `TLA_ANTHROPIC_API_KEY` configured
 
-### Critical Setup Steps
-1. **Set ANTHROPIC_API_KEY in Replit Secrets**
-2. **Run: `bash deploy-ai.sh`**
-3. **Load extension from packages/extension/dist/**
-4. **Visit Travian and enter email when prompted**
+2. **Vercel Proxy**: `https://travian-proxy-simple.vercel.app/api/proxy`
+   - Successfully proxies to Claude API
+   - **Model**: `claude-sonnet-4-20250514` (Claude 4 Sonnet)
+   - **Max tokens**: 2000
+   - CORS headers properly configured
+   - Endpoint is `/api/proxy` NOT `/api/anthropic`
 
----
+3. **Chrome Extension**:
+   - HUD displays on Travian pages
+   - Position memory persists across refreshes
+   - Draggable and minimizable
+   - **AI chat button in top bar** (💬)
+   - **Resizable chat window** (drag from bottom-right)
+   - Basic data collection (resources, population)
+   - Syncs to backend every 30 seconds
 
-## 🤖 AI INTEGRATION ARCHITECTURE
+### ❌ What's NOT Working
+1. **AI Context**: Chat works but doesn't receive meaningful game state
+2. **Data Integration**: Game data collected but not properly passed to AI
+3. **Backend Integration**: Data saves but AI doesn't access it
 
-### Backend Enhanced (server-enhanced.js)
+## Architecture
+
+### System Flow
 ```
-Features Added:
-├── /api/ai/chat - AI proxy endpoint for Claude
-├── /api/game-state/:accountId - Real-time metrics
-├── /api/settlement/update - Settlement tracking
-├── Comprehensive game mechanics database
-├── All 6 tribes with bonuses
-├── Building CP calculations
-├── Quest system data
-└── AI conversation history
-```
-
-### HUD Connector (hud-connector.js)
-```
-Features:
-├── Auto-sync every 30 seconds
-├── Real-time game state scraping
-├── AI chat interface in HUD
-├── Settlement metrics display
-├── Draggable interface
-└── Backend connection status
+Travian Page
+    ├── content.js scrapes data
+    ├── Sends to Replit Backend (storage only)
+    └── AI Chat → Vercel Proxy → Claude 4 API
+        (Missing: game context in AI calls)
 ```
 
-### Key Metrics Displayed
-- **Days to Settle** - Calculated estimate
-- **Limiting Factor** - CP or Settlers
-- **CP per Day** - Current production
-- **Resource Balance** - Production optimization
-- **Game Phase** - Foundation/Growth/Expansion/Settlement
+### Critical URLs
+- **Replit Backend**: `https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev`
+- **Vercel Proxy**: `https://travian-proxy-simple.vercel.app/api/proxy`
+- **Game**: `https://ts20.x1.international.travian.com`
 
----
+### File Structure
+```
+TravianAssistant/
+├── server.js                           # Replit backend (NO AI endpoint)
+├── packages/extension/dist/
+│   ├── content.js                      # HUD with AI chat
+│   ├── manifest.json                   # Extension config
+│   └── [other extension files]
+└── [separate repo] travian-proxy-simple/
+    └── api/proxy.js                    # Vercel proxy to Claude
+```
 
-## 📋 IMPLEMENTATION DETAILS
+## Session Issues & Resolutions
 
-### AI Context System
-The AI receives comprehensive game context:
-- Current resources and production rates
-- Building levels and CP generation
-- Hero status and adventures
-- Quest progress
-- Settlement tracking
-- Historical patterns from previous sessions
+### 1. Backend URL Change
+- **Issue**: Replit changed URL from workspace.dougdostal.repl.co
+- **Fixed**: Updated hardcoded URL in content.js line 5
+- **Current**: `https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev`
 
-### Settlement Optimization Logic
-- **CP Requirements**: 500 for village #2
-- **CP Sources**: 
-  - Embassy: 24 CP/day
-  - Marketplace: 20 CP/day
-  - Academy: 14 CP/day
-  - Town Hall: 14 CP/day
-  - Main Building: 5 CP/level
-- **Egyptian Focus**: Waterworks +100% oasis bonus
-- **Hero Strategy**: 40 resources per animal level in oasis
+### 2. Node-fetch Broken
+- **Issue**: `const fetch = require('node-fetch')` returns "fetch is not a function"
+- **Cause**: Node v20 has built-in fetch, conflicts with module
+- **Resolution**: Removed AI endpoint from backend entirely, use Vercel proxy only
 
----
+### 3. Vercel Proxy Endpoint
+- **Issue**: Tried `/api/anthropic`, got 404
+- **Fix**: Correct endpoint is `/api/proxy`
+- **Working**: `https://travian-proxy-simple.vercel.app/api/proxy`
 
-## 🔧 CURRENT CONFIGURATION
+### 4. Model Name
+- **Issue**: Various wrong model names tried
+- **Correct**: `claude-sonnet-4-20250514` (Claude 4 Sonnet)
+- **Token Limit**: 2000
 
-### Backend
-- **URL**: https://workspace.dougdostal.repl.co
-- **Port**: 3002
-- **Database**: SQLite with WAL mode
-- **AI Model**: Claude 3 Sonnet via Anthropic API
+### 5. Git Sync Hell
+- **Issue**: Editing in both GitHub and Replit causes conflicts
+- **Solution**: ONLY edit in GitHub, pull to Replit
+- **Recovery**: `git merge --abort && git pull --rebase origin main`
 
-### Extension
-- **Version**: 3.0.0
-- **Manifest**: V3
-- **Content Script**: Injected on *.travian.com/*.php*
-- **Storage**: localStorage for config, Chrome storage for persistence
+## Next Session TODO
 
----
+### Priority 1: Pass Game Context to AI
+Currently the AI gets empty gameState. Need to fix in content.js:
 
-## 🚀 HOW TO USE
+```javascript
+// In sendMessage() function around line 220
+const gameState = {
+  resources: this.gameData.resources,
+  population: this.gameData.population,
+  buildings: this.scrapeBuildings(),  // TODO: implement
+  troops: this.scrapeTroops(),         // TODO: implement  
+  quests: this.scrapeQuests(),         // TODO: implement
+  serverDay: this.calculateServerDay(), // TODO: implement
+  phase: this.determinePhase()         // TODO: implement
+};
+```
 
-### Quick Start (In Replit)
+### Priority 2: Enhanced Scraping
+Current scraping is minimal. Need functions to collect:
+- Building levels from dorf2.php
+- Troop counts from barracks/stable
+- Quest status from quest list
+- Hero stats and adventures
+- Construction queue
+- Research status
+
+### Priority 3: Backend Data Access
+AI should query backend for historical data:
+- Previous recommendations
+- Growth trends
+- Optimal patterns learned
+
+## Testing Commands
+
+### Test Backend Health
 ```bash
-# 1. Set environment variable
-# Go to Secrets tab, add:
-# ANTHROPIC_API_KEY = sk-ant-...
-
-# 2. Run deployment
-bash deploy-ai.sh
-
-# 3. Extension is ready in packages/extension/dist/
+curl https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev/health
 ```
 
-### Testing the AI
-1. **Basic Questions**:
-   - "When can I settle my next village?"
-   - "What should I build next?"
-   - "How can I optimize my resource production?"
-
-2. **Strategic Questions**:
-   - "Should I focus on CP or resources?"
-   - "What's the best quest order?"
-   - "How should I use my hero?"
-
-3. **Tribe-Specific**:
-   - "What's the Egyptian oasis strategy?"
-   - "How do Romans benefit from simultaneous construction?"
-   - "What are Teuton troop advantages?"
-
----
-
-## 📊 DATA FLOW
-
-```
-Game Page → Scraper → HUD Connector → Backend → AI Proxy → Claude
-    ↑                                      ↓
-    └──────── AI Recommendations ←────────┘
+### Test AI Proxy (Claude 4)
+```bash
+curl -X POST https://travian-proxy-simple.vercel.app/api/proxy \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"test"}],"model":"claude-sonnet-4-20250514","max_tokens":2000}'
 ```
 
-1. **Scraper** extracts game state every 30s
-2. **Connector** sends to backend with account ID
-3. **Backend** enriches with game mechanics
-4. **AI Proxy** adds context and queries Claude
-5. **Response** displayed in HUD chat
+## Development Workflow
+
+### ⚠️ CRITICAL: GitHub → Replit Only
+1. Edit files in GitHub
+2. In Replit: `git pull origin main`
+3. Restart server: Stop → Run button
+4. Reload extension: chrome://extensions → Refresh
+5. Test on Travian page
+
+### NEVER:
+- Edit directly in Replit then try to sync
+- Create files in GitHub while Replit has changes
+- Try to fix node-fetch (it's permanently broken)
+- Put AI endpoints on Replit backend
+- Use wrong model names or endpoints
+
+## Environment Variables
+
+### Replit Secrets (NOT .env)
+- `TLA_ANTHROPIC_API_KEY`: Your Anthropic API key
+
+### Vercel Environment  
+- `ANTHROPIC_API_KEY`: Same key, set in Vercel dashboard
+
+## Session Wasted Time Log
+- 2+ hours on node-fetch that can't work in Node v20
+- 1+ hour on wrong Vercel endpoint paths
+- 1+ hour on Git merge conflicts from dual editing
+- 30+ minutes on wrong model names
+- **Total waste**: ~5 hours on preventable issues
+
+## User Requirements
+- AI chat button in HUD top bar ✅
+- Resizable chat window ✅
+- Game context in AI responses ❌ (TODO)
+- No patience for repeated mistakes
+- Direct solutions only
 
 ---
 
-## 🐛 TROUBLESHOOTING
+## For Next Session
 
-### Issue: AI Chat Says "Unavailable"
-**Solution**: Check ANTHROPIC_API_KEY is set in Replit Secrets
+You're picking up a project where:
+1. Everything technically works
+2. But the AI has no game context
+3. User is frustrated by wasted time
 
-### Issue: HUD Not Appearing
-**Solution**: 
-1. Check console for errors (F12)
-2. Verify you're on a Travian page (*.travian.com/*.php)
-3. Reload extension in Chrome
+**START HERE**: 
+1. Pull latest from GitHub
+2. Test the existing chat
+3. Implement game context passing
+4. Don't touch anything that's working
 
-### Issue: Backend Connection Failed
-**Solution**:
-1. Verify backend is running: `node server-enhanced.js`
-2. Check URL in localStorage: `localStorage.getItem('TLA_BACKEND_URL')`
-3. For Replit: Ensure Webview is showing "Server Running"
-
-### Issue: No Data Syncing
-**Solution**:
-1. Enter email when prompted (creates account ID)
-2. Check Network tab for API calls
-3. Verify backend database has tables: `/admin.html`
-
----
-
-## 📝 KNOWN LIMITATIONS
-
-1. **AI Response Time**: ~2-3 seconds due to Claude API
-2. **Sync Frequency**: 30 seconds (can be adjusted in code)
-3. **Building Detection**: Best on dorf2.php (village view)
-4. **CP Detection**: Requires culture points element visible
-5. **Multi-Village**: Currently optimized for single village
-
----
-
-## 🎯 NEXT IMPROVEMENTS
-
-### Priority 1: Enhanced Scraping
-- [ ] Detect building queue status
-- [ ] Track troop training progress
-- [ ] Monitor adventure availability
-- [ ] Parse merchant activity
-
-### Priority 2: AI Enhancements
-- [ ] Pattern learning from successful settlements
-- [ ] Alliance coordination suggestions
-- [ ] Farm list optimization
-- [ ] Combat simulator integration
-
-### Priority 3: UI/UX
-- [ ] Persistent chat history
-- [ ] Export recommendations
-- [ ] Visual settlement timeline
-- [ ] Resource projection graphs
-
----
-
-## 💡 KEY INSIGHTS
-
-### Settlement Race Strategy
-1. **Days 0-2**: Foundation
-   - All resources to level 1
-   - Complete tutorial quests
-   - Hero on adventures only
-
-2. **Days 3-4**: Acceleration
-   - One resource type to level 5
-   - Build Main Building to 3
-   - Start Marketplace
-
-3. **Days 5-6**: CP Rush
-   - Embassy → Academy → Town Hall
-   - Complete building quests
-   - NPC for balance
-
-4. **Day 7**: Settlement
-   - Train settlers (or chief)
-   - Scout second village location
-   - Settle with 750+ resources each
-
-### Egyptian Optimization
-- **Oasis Priority**: Clear with hero for 40 res/animal
-- **Waterworks**: Build after day 3 for +100% bonus
-- **Resource Focus**: Crop is less critical early
-- **Building Order**: Embassy before Academy (more CP)
-
----
-
-## 🔄 DEVELOPMENT WORKFLOW
-
-### For Updates
-1. Edit files in GitHub/Replit
-2. Run `bash deploy-ai.sh` to rebuild
-3. Reload extension in Chrome
-4. Test on Travian page
-
-### For Debugging
-- Backend logs: Check Replit console
-- Extension logs: Chrome DevTools (F12)
-- Network traffic: Network tab for API calls
-- Database state: Visit `/admin.html`
-
----
-
-## 📚 FILE REFERENCE
-
-### Core Files
-- `server-enhanced.js` - AI-enabled backend
-- `packages/extension/src/content/hud-connector.js` - HUD integration
-- `deploy-ai.sh` - Automated deployment
-- `docs/TRAVIAN_ASSISTANT_V3_COMPLETE.md` - Original spec
-
-### Configuration Files
-- `.env` or Replit Secrets - ANTHROPIC_API_KEY
-- `packages/extension/dist/manifest.json` - Extension config
-- `db/travian.db` - SQLite database
-
----
-
-## ✅ SESSION ACHIEVEMENTS
-
-1. **Created enhanced backend** with AI proxy and game mechanics
-2. **Built HUD connector** with real-time sync and chat
-3. **Integrated Claude AI** for strategic advice
-4. **Added settlement tracking** with predictions
-5. **Supported all 6 tribes** with specific mechanics
-6. **Created deployment automation** for easy setup
-
----
-
-## 🚦 READY STATE
-
-The system is now ready for testing with:
-- ✅ Backend running with AI proxy
-- ✅ Extension with HUD and chat
-- ✅ Real-time data synchronization
-- ✅ AI context and recommendations
-- ✅ Multi-tribe support
-- ✅ Settlement optimization focus
-
-**Next Step**: Set ANTHROPIC_API_KEY and run `bash deploy-ai.sh`
-
----
-
-*End of Session - v3.0.0 Complete*
+**Remember**: 
+- The proxy URL is `/api/proxy` not `/api/anthropic`
+- The model is `claude-sonnet-4-20250514`
+- Edit in GitHub, pull to Replit
+- Node-fetch is broken, don't try to fix it
