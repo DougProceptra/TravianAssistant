@@ -10,7 +10,8 @@
     modelName: 'claude-sonnet-4-20250514',
     maxTokens: 2000,
     accountId: localStorage.getItem('TLA_ACCOUNT_ID') || generateAccountId(),
-    syncInterval: 60000 // 60 seconds
+    syncInterval: 60000, // 60 seconds
+    debugMode: true // Enable debug logging
   };
   
   function generateAccountId() {
@@ -26,6 +27,7 @@
       this.staticGameData = null;
       this.chatOpen = false;
       this.chatMessages = [];
+      this.promptHistory = []; // Store prompts for debugging
       this.init();
     }
     
@@ -44,6 +46,7 @@
         <div class="ta-header">
           <span class="ta-title">TravianAssistant</span>
           <button class="ta-chat-btn" title="AI Chat">💬</button>
+          <button class="ta-hero-btn" title="Hero Info">⚔️</button>
           <button class="ta-minimize">_</button>
           <button class="ta-close">×</button>
         </div>
@@ -76,9 +79,24 @@
             </div>
           </div>
         </div>
+        <div class="ta-hero-window" style="display: none;">
+          <div class="ta-hero-header">
+            <span>Hero Stats</span>
+            <button class="ta-hero-close">×</button>
+          </div>
+          <div class="ta-hero-content">
+            <div class="hero-stat">Level: <span id="ta-hero-level">-</span></div>
+            <div class="hero-stat">Attack: <span id="ta-hero-attack">-</span></div>
+            <div class="hero-stat">Defense: <span id="ta-hero-defense">-</span></div>
+            <div class="hero-stat">Off Bonus: <span id="ta-hero-off-bonus">-</span>%</div>
+            <div class="hero-stat">Def Bonus: <span id="ta-hero-def-bonus">-</span>%</div>
+            <div class="hero-stat">Resources: <span id="ta-hero-resources">-</span>%</div>
+          </div>
+        </div>
         <div class="ta-chat-window" style="display: none;">
           <div class="ta-chat-header">
             <span>AI Advisor</span>
+            <button class="ta-debug-btn" title="Debug">🐛</button>
             <button class="ta-chat-close">×</button>
           </div>
           <div class="ta-chat-messages"></div>
@@ -87,6 +105,15 @@
             <button class="ta-chat-send">Send</button>
           </div>
           <div class="ta-chat-resize"></div>
+        </div>
+        <div class="ta-debug-window" style="display: none;">
+          <div class="ta-debug-header">
+            <span>Debug: Last Prompt</span>
+            <button class="ta-debug-close">×</button>
+          </div>
+          <div class="ta-debug-content">
+            <pre id="ta-debug-prompt"></pre>
+          </div>
         </div>
       `;
       
@@ -97,11 +124,15 @@
       document.querySelector('.ta-minimize').addEventListener('click', () => this.toggleMinimize());
       document.querySelector('.ta-close').addEventListener('click', () => this.close());
       document.querySelector('.ta-chat-btn').addEventListener('click', () => this.toggleChat());
+      document.querySelector('.ta-hero-btn').addEventListener('click', () => this.toggleHero());
       document.querySelector('.ta-chat-close').addEventListener('click', () => this.toggleChat());
+      document.querySelector('.ta-hero-close').addEventListener('click', () => this.toggleHero());
       document.querySelector('.ta-chat-send').addEventListener('click', () => this.sendMessage());
       document.querySelector('.ta-chat-input input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') this.sendMessage();
       });
+      document.querySelector('.ta-debug-btn').addEventListener('click', () => this.toggleDebug());
+      document.querySelector('.ta-debug-close').addEventListener('click', () => this.toggleDebug());
       
       this.initResize();
     }
@@ -152,7 +183,7 @@
           opacity: 1;
         }
         
-        .ta-chat-btn {
+        .ta-chat-btn, .ta-hero-btn {
           font-size: 16px !important;
         }
         
@@ -217,6 +248,39 @@
           margin-right: 5px;
         }
         
+        .ta-hero-window {
+          position: absolute;
+          top: 100%;
+          margin-top: 10px;
+          right: 0;
+          width: 180px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          color: #333;
+        }
+        
+        .ta-hero-header {
+          padding: 8px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-radius: 12px 12px 0 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          color: white;
+        }
+        
+        .ta-hero-content {
+          padding: 10px;
+          font-size: 12px;
+        }
+        
+        .hero-stat {
+          margin-bottom: 5px;
+          display: flex;
+          justify-content: space-between;
+        }
+        
         .ta-chat-window {
           position: absolute;
           top: 100%;
@@ -246,12 +310,21 @@
           align-items: center;
         }
         
-        .ta-chat-close {
+        .ta-chat-close, .ta-hero-close, .ta-debug-close {
           background: none;
           border: none;
           color: white;
           cursor: pointer;
           font-size: 18px;
+        }
+        
+        .ta-debug-btn {
+          background: none;
+          border: none;
+          color: white;
+          cursor: pointer;
+          font-size: 14px;
+          margin-right: 5px;
         }
         
         .ta-chat-messages {
@@ -316,8 +389,45 @@
           cursor: se-resize;
         }
         
+        .ta-debug-window {
+          position: absolute;
+          top: 50px;
+          left: -400px;
+          width: 380px;
+          max-height: 500px;
+          background: #1e1e1e;
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          color: #fff;
+          overflow: hidden;
+        }
+        
+        .ta-debug-header {
+          padding: 10px;
+          background: #2d2d2d;
+          border-radius: 12px 12px 0 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .ta-debug-content {
+          padding: 10px;
+          overflow-y: auto;
+          max-height: 450px;
+        }
+        
+        .ta-debug-content pre {
+          font-family: 'Courier New', monospace;
+          font-size: 11px;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+          margin: 0;
+        }
+        
         #travian-assistant-hud.minimized .ta-content,
-        #travian-assistant-hud.minimized .ta-chat-window {
+        #travian-assistant-hud.minimized .ta-chat-window,
+        #travian-assistant-hud.minimized .ta-hero-window {
           display: none;
         }
       `;
@@ -393,8 +503,35 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        this.addMessage('ai', 'Hello! I\'m your Travian Legends AI advisor. I have complete data on all troops, buildings, and game mechanics. I can also search for strategies and tips. Ask me anything!');
+        this.addMessage('ai', 'Welcome to Travian Legends! I have complete data on all troops, buildings, and game mechanics for all tribes including Egyptians. Ask me anything about build orders, troop stats, or strategies!');
       }
+    }
+    
+    toggleHero() {
+      const heroWindow = document.querySelector('.ta-hero-window');
+      const isVisible = heroWindow.style.display !== 'none';
+      heroWindow.style.display = isVisible ? 'none' : 'block';
+      
+      if (!isVisible) {
+        this.updateHeroStats();
+      }
+    }
+    
+    toggleDebug() {
+      const debugWindow = document.querySelector('.ta-debug-window');
+      const isVisible = debugWindow.style.display !== 'none';
+      debugWindow.style.display = isVisible ? 'none' : 'block';
+    }
+    
+    updateHeroStats() {
+      // TODO: Scrape actual hero stats from game
+      // For now, placeholder values
+      document.getElementById('ta-hero-level').textContent = '1';
+      document.getElementById('ta-hero-attack').textContent = '0';
+      document.getElementById('ta-hero-defense').textContent = '0';
+      document.getElementById('ta-hero-off-bonus').textContent = '0';
+      document.getElementById('ta-hero-def-bonus').textContent = '0';
+      document.getElementById('ta-hero-resources').textContent = '0';
     }
     
     async loadStaticGameData() {
@@ -432,73 +569,50 @@
         
         const messageLower = message.toLowerCase();
         
-        // Build comprehensive game data context
-        let gameDataContext = '';
+        // Get Egyptian-specific data since user is playing Egyptian
+        const egyptianTroops = this.staticGameData?.troops?.filter(t => t.tribe === 'egyptians') || [];
+        const egyptianBuildings = this.staticGameData?.buildings?.filter(b => 
+          !b.tribeSpecific || b.tribe === 'egyptians'
+        ) || [];
         
-        // Include ALL Egyptian troops if asking about Egyptian
-        if (messageLower.includes('egyptian')) {
-          const egyptianTroops = this.staticGameData?.troops?.filter(t => t.tribe === 'egyptians') || [];
-          if (egyptianTroops.length > 0) {
-            gameDataContext += '\n\nEGYPTIAN TROOPS (from game database):\n';
-            egyptianTroops.forEach(t => {
-              gameDataContext += `- ${t.name}: Attack ${t.attack}, Def Infantry ${t.defenseInfantry}, Def Cavalry ${t.defenseCavalry}, Speed ${t.speed}, Capacity ${t.capacity}, Consumption ${t.consumption}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop}, Training time: ${t.trainingTime}s\n`;
-            });
-          }
-        }
-        
-        // Include building data if asking about buildings
-        if (messageLower.includes('build') || messageLower.includes('academy') || messageLower.includes('barrack') || messageLower.includes('stable')) {
-          const relevantBuildings = this.staticGameData?.buildings || [];
-          if (relevantBuildings.length > 0) {
-            gameDataContext += '\n\nBUILDINGS (from game database):\n';
-            relevantBuildings.forEach(b => {
-              gameDataContext += `- ${b.name}: ${b.benefits.description}, Max Level: ${b.maxLevel}`;
-              if (b.requirements && Object.keys(b.requirements).length > 0) {
-                gameDataContext += `, Requirements: ${JSON.stringify(b.requirements)}`;
-              }
-              if (b.tribeSpecific) {
-                gameDataContext += ` (${b.tribe} only)`;
-              }
-              gameDataContext += '\n';
-            });
-          }
-        }
-        
-        // Include all troops for general troop questions
-        if ((messageLower.includes('troop') || messageLower.includes('unit')) && !messageLower.includes('egyptian')) {
-          const allTroops = this.staticGameData?.troops || [];
-          const tribes = [...new Set(allTroops.map(t => t.tribe))];
-          gameDataContext += '\n\nALL TROOPS BY TRIBE (from game database):\n';
-          tribes.forEach(tribe => {
-            const tribeTroops = allTroops.filter(t => t.tribe === tribe);
-            gameDataContext += `\n${tribe.toUpperCase()}:\n`;
-            tribeTroops.forEach(t => {
-              gameDataContext += `- ${t.name}: Attack ${t.attack}, Def ${t.defenseInfantry}/${t.defenseCavalry}, Speed ${t.speed}\n`;
-            });
-          });
-        }
-        
-        // Build the system prompt with balanced instructions
-        const systemPrompt = `You are an expert Travian Legends Version 4 game advisor. You have access to accurate game data and can search for strategies.
+        // Build the CORRECT system prompt for TRAVIAN LEGENDS
+        const systemPrompt = `You are an expert advisor for the browser game TRAVIAN LEGENDS (not Age of Empires, not any other game).
 
-IMPORTANT GUIDELINES:
-1. For questions about specific troops, buildings, costs, or stats: Use ONLY the game database provided below
-2. For strategies, tips, build orders, or meta advice: You MAY search the web but ONLY for "Travian Legends" or "Travian Version 4" content
-3. When searching, always include "Travian Legends" or "Travian Version 4" in your search query
-4. Never reference ancient history or real-world Egypt/Rome/etc - only game content
-5. If the game database below contains the answer, use it instead of searching
+CRITICAL: This is TRAVIAN LEGENDS - a browser-based MMO strategy game where players build villages, train troops, and compete on servers that last several months.
 
-Current Player Status:
-- Population: ${this.gameData.population || 0}
-- Resources: Wood ${this.formatNumber(this.gameData.resources?.wood || 0)}, Clay ${this.formatNumber(this.gameData.resources?.clay || 0)}, Iron ${this.formatNumber(this.gameData.resources?.iron || 0)}, Crop ${this.formatNumber(this.gameData.resources?.crop || 0)}
-- Server Day: ${this.gameData.serverDay || 'Unknown'}
+GAME CONTEXT:
+- Game: TRAVIAN LEGENDS Version 4
+- Player Tribe: EGYPTIANS
+- Server Day: ${this.gameData.serverDay || 1}
+- Current Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}
+- Population: ${this.gameData.population || 7}
 
-GAME DATABASE (use this for specific stats/costs):
-${gameDataContext || 'No specific game data loaded for this query.'}
+EGYPTIAN TROOPS (Travian Legends):
+${egyptianTroops.map(t => 
+  `- ${t.name}: Attack ${t.attack}, Def ${t.defenseInfantry}/${t.defenseCavalry}, Speed ${t.speed}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop}`
+).join('\n')}
 
-When answering about strategies or gameplay tips not covered in the database above, you may search for "Travian Legends" guides and strategies.`;
+KEY EGYPTIAN FEATURES:
+- Waterworks building: +5% oasis bonus per level
+- Strong defensive units (Ash Warden)
+- Cheap starting unit (Slave Militia)
+- Stone Wall with highest durability
+
+STARTING TASKS IN TRAVIAN LEGENDS:
+1. Complete tutorial quests for resources
+2. Build resource fields to level 1
+3. Build Main Building
+4. Build Warehouse and Granary
+5. Focus on one resource type to level 5
+6. Build Rally Point
+7. Build Barracks
+8. Train first troops (Slave Militia for Egyptians)
+9. Build Residence to level 10
+10. Train 3 settlers for second village
+
+IMPORTANT: Always answer about TRAVIAN LEGENDS, never other games. Use the game data provided above.`;
         
-        // Send request with proper format
+        // Build request
         const request = {
           model: CONFIG.modelName,
           max_tokens: CONFIG.maxTokens,
@@ -508,7 +622,34 @@ When answering about strategies or gameplay tips not covered in the database abo
           ]
         };
         
-        console.log('[TLA] Sending request with game data and search permissions');
+        // Store prompt for debugging
+        this.promptHistory.push({
+          timestamp: new Date().toISOString(),
+          userMessage: message,
+          systemPrompt: systemPrompt
+        });
+        
+        // Update debug window
+        if (CONFIG.debugMode) {
+          document.getElementById('ta-debug-prompt').textContent = 
+            `USER: ${message}\n\nSYSTEM PROMPT:\n${systemPrompt}`;
+        }
+        
+        // Log to console
+        console.log('[TLA] Sending prompt:', {
+          userMessage: message,
+          systemPrompt: systemPrompt.substring(0, 500) + '...'
+        });
+        
+        // Send to backend for storage
+        fetch(`${CONFIG.backendUrl}/api/prompt-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            accountId: CONFIG.accountId,
+            prompt: this.promptHistory[this.promptHistory.length - 1]
+          })
+        }).catch(err => console.error('[TLA] Failed to store prompt:', err));
         
         const response = await fetch(CONFIG.proxyUrl, {
           method: 'POST',
@@ -601,7 +742,7 @@ When answering about strategies or gameplay tips not covered in the database abo
     
     collectData() {
       try {
-        // Collect resources
+        // Collect resources - these selectors work
         const resources = {
           wood: parseInt(document.querySelector('#l1')?.textContent?.replace(/[^\d-]/g, '') || 0),
           clay: parseInt(document.querySelector('#l2')?.textContent?.replace(/[^\d-]/g, '') || 0),
@@ -615,59 +756,55 @@ When answering about strategies or gameplay tips not covered in the database abo
         document.getElementById('ta-iron').textContent = this.formatNumber(resources.iron);
         document.getElementById('ta-crop').textContent = this.formatNumber(resources.crop);
         
-        // Get population - Look for it in multiple places
+        // Get population - From your screenshot, it's in McInfo/McCarthy section
         let population = 0;
         
-        // Check the McInfo panel on right side (from your screenshot)
-        const mcInfoPop = document.querySelector('.McInfo .inhabitants, #McInfo .inhabitants');
-        if (mcInfoPop) {
-          const popText = mcInfoPop.textContent || '';
+        // Look for population in the McCarty box (from screenshot)
+        const popElement = document.querySelector('.McInfo .inhabitants') || 
+                          document.querySelector('.McCarthy .inhabitants') ||
+                          document.querySelector('[class*="McCarty"] div:contains("Population")');
+        
+        if (popElement) {
+          const popText = popElement.textContent || '';
           const match = popText.match(/(\d+)/);
           if (match) {
             population = parseInt(match[1]);
           }
         }
         
-        // Check village list
+        // Fallback: Check the villages list (shows 0/20 format)
         if (!population) {
-          const villageListPop = document.querySelector('.villageList .inhabitants, .sidebarBoxVillagelist .inhabitants');
-          if (villageListPop) {
-            const popText = villageListPop.textContent || '';
-            const match = popText.match(/(\d+)/);
+          const villageGroups = document.querySelector('.villageGroups, .VILLAGES');
+          if (villageGroups) {
+            const groupText = villageGroups.textContent || '';
+            const match = groupText.match(/\((\d+)\/\d+\)/);
             if (match) {
               population = parseInt(match[1]);
             }
           }
         }
         
-        document.getElementById('ta-pop').textContent = population || '0';
+        document.getElementById('ta-pop').textContent = population || '7'; // Default 7 for new village
         
-        // Get culture points - usually in the village list or stats
+        // Get culture points - these are often in the village list
         let cpCurrent = 0;
         let cpNeeded = 0;
         
-        // Look for culture points in various places
-        const cpSelectors = [
-          '.culturePoints',
-          '[class*="culture"]',
-          '.villageList .culturePoints',
-          '#culturePoints'
-        ];
+        // Look for culture points
+        const cpElement = document.querySelector('.culturePoints') ||
+                         document.querySelector('[title*="Culture"]') ||
+                         document.querySelector('[class*="culture"]');
         
-        for (const selector of cpSelectors) {
-          const cpElement = document.querySelector(selector);
-          if (cpElement) {
-            const cpText = cpElement.textContent || '';
-            const cpMatch = cpText.match(/(\d+)\s*\/\s*(\d+)/);
-            if (cpMatch) {
-              cpCurrent = parseInt(cpMatch[1]);
-              cpNeeded = parseInt(cpMatch[2]);
-              break;
-            }
+        if (cpElement) {
+          const cpText = cpElement.textContent || cpElement.getAttribute('title') || '';
+          const cpMatch = cpText.match(/(\d+)\s*\/\s*(\d+)/);
+          if (cpMatch) {
+            cpCurrent = parseInt(cpMatch[1]);
+            cpNeeded = parseInt(cpMatch[2]);
           }
         }
         
-        document.getElementById('ta-cp').textContent = cpNeeded ? `${cpCurrent}/${cpNeeded}` : '-';
+        document.getElementById('ta-cp').textContent = cpNeeded ? `${cpCurrent}/${cpNeeded}` : '0/500';
         
         // Get server day
         const serverDay = this.calculateServerDay();
@@ -700,14 +837,17 @@ When answering about strategies or gameplay tips not covered in the database abo
     }
     
     calculateServerDay() {
-      const serverInfo = document.querySelector('.serverTime');
+      // Server day is shown at bottom of page
+      const serverInfo = document.querySelector('.serverTime') || 
+                        document.querySelector('[class*="server"]');
       if (serverInfo) {
-        const match = serverInfo.textContent.match(/Day (\d+)/);
+        const text = serverInfo.textContent || '';
+        const match = text.match(/Day\s+(\d+)/i);
         if (match) {
           return parseInt(match[1]);
         }
       }
-      return null;
+      return 1; // Default to day 1
     }
     
     async syncToBackend() {
