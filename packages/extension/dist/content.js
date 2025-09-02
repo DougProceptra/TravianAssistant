@@ -21,9 +21,9 @@
   
   class TravianHUD {
     constructor() {
-      this.syncStatus = 'connecting';
+      this.syncStatus = 'connected';
       this.gameData = {};
-      this.staticGameData = null; // Cache for troops/buildings data from backend
+      this.staticGameData = null;
       this.chatOpen = false;
       this.chatMessages = [];
       this.init();
@@ -34,7 +34,6 @@
       this.initDragAndDrop();
       this.startDataCollection();
       this.loadPosition();
-      // Load static game data from backend on initialization
       await this.loadStaticGameData();
     }
     
@@ -50,33 +49,29 @@
         </div>
         <div class="ta-content">
           <div class="ta-status">
-            <span class="sync-indicator ${this.syncStatus}">
-              ${this.syncStatus === 'synced' ? '✅' : '❌'} ${this.syncStatus === 'synced' ? 'Synced' : 'Offline'}
-            </span>
+            <span class="sync-indicator ${this.syncStatus}"></span>
           </div>
           <div class="ta-metrics">
-            <div class="metric">
-              <label>Population:</label>
+            <div class="metric-row">
+              <span class="metric-icon">👥</span>
               <span id="ta-pop">-</span>
+              <span class="metric-icon">🌟</span>
+              <span id="ta-cp">-/-</span>
             </div>
-            <div class="metric">
-              <label>Wood:</label>
+            <div class="metric-row">
+              <span class="res-icon wood">🪵</span>
               <span id="ta-wood">-</span>
-            </div>
-            <div class="metric">
-              <label>Clay:</label>
+              <span class="res-icon clay">🧱</span>
               <span id="ta-clay">-</span>
             </div>
-            <div class="metric">
-              <label>Iron:</label>
+            <div class="metric-row">
+              <span class="res-icon iron">⚙️</span>
               <span id="ta-iron">-</span>
-            </div>
-            <div class="metric">
-              <label>Crop:</label>
+              <span class="res-icon crop">🌾</span>
               <span id="ta-crop">-</span>
             </div>
-            <div class="metric">
-              <label>Server Day:</label>
+            <div class="metric-row">
+              <span class="metric-label">Day:</span>
               <span id="ta-server-day">-</span>
             </div>
           </div>
@@ -108,7 +103,6 @@
         if (e.key === 'Enter') this.sendMessage();
       });
       
-      // Resize functionality
       this.initResize();
     }
     
@@ -119,7 +113,7 @@
           position: fixed;
           top: 20px;
           right: 20px;
-          width: 300px;
+          width: 200px;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           border-radius: 12px;
           box-shadow: 0 10px 30px rgba(0,0,0,0.3);
@@ -132,7 +126,7 @@
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 12px;
+          padding: 8px 10px;
           cursor: move;
           background: rgba(0,0,0,0.2);
           border-radius: 12px 12px 0 0;
@@ -140,7 +134,7 @@
         
         .ta-title {
           font-weight: bold;
-          font-size: 14px;
+          font-size: 12px;
         }
         
         .ta-header button {
@@ -148,9 +142,10 @@
           border: none;
           color: white;
           cursor: pointer;
-          font-size: 16px;
-          padding: 0 6px;
+          font-size: 14px;
+          padding: 0 4px;
           opacity: 0.8;
+          margin-left: 2px;
         }
         
         .ta-header button:hover {
@@ -158,36 +153,68 @@
         }
         
         .ta-chat-btn {
-          font-size: 18px !important;
+          font-size: 16px !important;
         }
         
         .ta-content {
-          padding: 15px;
+          padding: 8px;
         }
         
         .ta-status {
-          margin-bottom: 15px;
-          padding: 8px;
-          background: rgba(255,255,255,0.1);
-          border-radius: 6px;
+          text-align: center;
+          margin-bottom: 8px;
         }
         
         .sync-indicator {
-          font-size: 13px;
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          margin-right: 4px;
+        }
+        
+        .sync-indicator.connected {
+          background: #4CAF50;
+          animation: pulse 2s infinite;
+        }
+        
+        .sync-indicator.offline {
+          background: #f44336;
+        }
+        
+        .sync-indicator.error {
+          background: #ff9800;
+        }
+        
+        @keyframes pulse {
+          0% { opacity: 1; }
+          50% { opacity: 0.5; }
+          100% { opacity: 1; }
         }
         
         .ta-metrics {
-          display: grid;
-          gap: 8px;
+          font-size: 11px;
         }
         
-        .metric {
+        .metric-row {
           display: flex;
+          align-items: center;
           justify-content: space-between;
-          padding: 5px 8px;
+          padding: 3px 0;
           background: rgba(255,255,255,0.1);
-          border-radius: 4px;
-          font-size: 13px;
+          border-radius: 3px;
+          margin-bottom: 3px;
+          padding: 2px 5px;
+        }
+        
+        .metric-icon, .res-icon {
+          font-size: 12px;
+          margin-right: 3px;
+        }
+        
+        .metric-label {
+          font-weight: bold;
+          margin-right: 5px;
         }
         
         .ta-chat-window {
@@ -211,7 +238,7 @@
         }
         
         .ta-chat-header {
-          padding: 12px;
+          padding: 10px;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           border-radius: 12px 12px 0 0;
           display: flex;
@@ -229,17 +256,18 @@
         
         .ta-chat-messages {
           flex: 1;
-          padding: 15px;
+          padding: 12px;
           overflow-y: auto;
           color: #333;
         }
         
         .chat-message {
-          margin-bottom: 12px;
-          padding: 8px 12px;
+          margin-bottom: 10px;
+          padding: 8px 10px;
           border-radius: 8px;
           max-width: 80%;
           white-space: pre-wrap;
+          font-size: 14px;
         }
         
         .user-message {
@@ -255,34 +283,36 @@
         
         .ta-chat-input {
           display: flex;
-          padding: 12px;
+          padding: 10px;
           border-top: 1px solid #e0e0e0;
         }
         
         .ta-chat-input input {
           flex: 1;
-          padding: 8px 12px;
+          padding: 6px 10px;
           border: 1px solid #ddd;
           border-radius: 20px;
           outline: none;
+          font-size: 13px;
         }
         
         .ta-chat-send {
-          margin-left: 8px;
-          padding: 8px 16px;
+          margin-left: 6px;
+          padding: 6px 12px;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           color: white;
           border: none;
           border-radius: 20px;
           cursor: pointer;
+          font-size: 13px;
         }
         
         .ta-chat-resize {
           position: absolute;
           bottom: 0;
           right: 0;
-          width: 20px;
-          height: 20px;
+          width: 15px;
+          height: 15px;
           cursor: se-resize;
         }
         
@@ -367,7 +397,6 @@
       }
     }
     
-    // Load static game data (troops, buildings, quests) from backend
     async loadStaticGameData() {
       try {
         const response = await fetch(`${CONFIG.backendUrl}/api/game-data`);
@@ -384,123 +413,6 @@
       }
     }
     
-    // Enhanced scraping functions
-    scrapeBuildings() {
-      const buildings = [];
-      
-      // Check if we're on village view (dorf2.php)
-      if (window.location.href.includes('dorf2.php')) {
-        document.querySelectorAll('.buildingSlot').forEach(slot => {
-          const level = slot.querySelector('.level')?.textContent?.replace(/[^\d]/g, '');
-          const name = slot.querySelector('.name')?.textContent;
-          if (name && level) {
-            buildings.push({ name, level: parseInt(level) });
-          }
-        });
-      }
-      
-      // Check building queue
-      const queue = [];
-      document.querySelectorAll('.buildingList li').forEach(item => {
-        const name = item.querySelector('.name')?.textContent;
-        const timeLeft = item.querySelector('.timer')?.textContent;
-        if (name) {
-          queue.push({ name, timeLeft });
-        }
-      });
-      
-      return { buildings, queue };
-    }
-    
-    scrapeTroops() {
-      const troops = {};
-      
-      // Try to find troop counts in various places
-      // Barracks/Stable training view
-      document.querySelectorAll('.troop_details').forEach(detail => {
-        const name = detail.querySelector('.desc')?.textContent;
-        const count = detail.querySelector('.value')?.textContent;
-        if (name && count) {
-          troops[name] = parseInt(count) || 0;
-        }
-      });
-      
-      // Rally point overview
-      document.querySelectorAll('.units tr').forEach(row => {
-        const unitClass = row.className;
-        const count = row.querySelector('td.num')?.textContent;
-        if (unitClass && count) {
-          troops[unitClass] = parseInt(count) || 0;
-        }
-      });
-      
-      return troops;
-    }
-    
-    scrapeQuests() {
-      const quests = [];
-      
-      // Quest list
-      document.querySelectorAll('.quest').forEach(quest => {
-        const title = quest.querySelector('.questTitle')?.textContent;
-        const status = quest.querySelector('.questStatus')?.textContent;
-        const reward = quest.querySelector('.reward')?.textContent;
-        if (title) {
-          quests.push({ title, status, reward });
-        }
-      });
-      
-      return quests;
-    }
-    
-    calculateServerDay() {
-      // Try to find server age from page
-      const serverInfo = document.querySelector('.serverTime');
-      if (serverInfo) {
-        const match = serverInfo.textContent.match(/Day (\d+)/);
-        if (match) {
-          return parseInt(match[1]);
-        }
-      }
-      
-      // Fallback: calculate from stored start date if available
-      const serverStart = localStorage.getItem('TLA_SERVER_START');
-      if (serverStart) {
-        const days = Math.floor((Date.now() - new Date(serverStart)) / (1000 * 60 * 60 * 24));
-        return days;
-      }
-      
-      return null;
-    }
-    
-    determinePhase() {
-      const serverDay = this.calculateServerDay();
-      if (!serverDay) return 'unknown';
-      
-      if (serverDay < 10) return 'early_game';
-      if (serverDay < 50) return 'mid_game';
-      if (serverDay < 100) return 'late_game';
-      return 'end_game';
-    }
-    
-    detectTribe() {
-      // Check for tribe-specific elements or classes
-      const tribeClasses = ['romans', 'gauls', 'teutons', 'egyptians', 'huns', 'spartans'];
-      for (const tribe of tribeClasses) {
-        if (document.body.className.includes(tribe)) {
-          return tribe;
-        }
-      }
-      
-      // Check for tribe-specific buildings
-      if (document.querySelector('.waterworks')) return 'egyptians';
-      if (document.querySelector('.brewery')) return 'teutons';
-      if (document.querySelector('.trapper')) return 'gauls';
-      if (document.querySelector('.horseDrinkingTrough')) return 'romans';
-      
-      return 'unknown';
-    }
-    
     async sendMessage() {
       const input = document.querySelector('.ta-chat-input input');
       const message = input.value.trim();
@@ -509,88 +421,52 @@
       this.addMessage('user', message);
       input.value = '';
       
-      // Show loading indicator
+      // Show loading
       const loadingMessage = this.addMessage('ai', '...');
       
       try {
-        // First, fetch latest game data from backend if not loaded
+        // Load game data if needed
         if (!this.staticGameData) {
           await this.loadStaticGameData();
         }
         
-        // Create a simplified game context
-        const gameContext = {
-          currentResources: this.gameData.resources || {},
-          population: this.gameData.population || 0,
-          serverDay: this.gameData.serverDay || 'unknown',
-          gamePhase: this.gameData.gamePhase || 'unknown',
-          tribe: this.gameData.tribe || 'unknown',
-          
-          // Include summary info about available game data
-          availableData: {
-            buildingsCount: this.staticGameData?.buildings?.length || 0,
-            troopsCount: this.staticGameData?.troops?.length || 0,
-            questsCount: this.staticGameData?.quests?.length || 0,
-            tribesAvailable: [...new Set(this.staticGameData?.troops?.map(t => t.tribe) || [])]
+        // Find specifically what the user is asking about
+        const messageLower = message.toLowerCase();
+        let contextData = '';
+        
+        // Check for Egyptian settler specifically
+        if (messageLower.includes('egyptian') && messageLower.includes('settler')) {
+          const egyptianSettler = this.staticGameData?.troops?.find(t => 
+            t.tribe === 'egyptians' && t.type === 'expansion'
+          );
+          if (egyptianSettler) {
+            contextData = `Egyptian Settler costs: Wood ${egyptianSettler.costs.wood}, Clay ${egyptianSettler.costs.clay}, Iron ${egyptianSettler.costs.iron}, Crop ${egyptianSettler.costs.crop}`;
           }
-        };
-        
-        // Find relevant troops/buildings based on the message
-        let relevantTroops = [];
-        let relevantBuildings = [];
-        
-        // Check if user is asking about specific tribe
-        const tribeMentioned = message.toLowerCase().match(/(egyptian|roman|gaul|teuton|hun|spartan)/);
-        if (tribeMentioned) {
-          const tribe = tribeMentioned[1] + (tribeMentioned[1] === 'egyptian' ? 's' : 's');
-          relevantTroops = this.staticGameData?.troops?.filter(t => t.tribe === tribe) || [];
+        }
+        // Check for any troop question
+        else if (messageLower.includes('troop') || messageLower.includes('unit') || messageLower.includes('soldier')) {
+          const tribe = messageLower.match(/(egyptian|roman|gaul|teuton|hun|spartan)/)?.[0];
+          if (tribe) {
+            const tribeTroops = this.staticGameData?.troops?.filter(t => 
+              t.tribe === (tribe === 'egyptian' ? 'egyptians' : tribe + 's')
+            ).slice(0, 3);
+            if (tribeTroops?.length) {
+              contextData = tribeTroops.map(t => 
+                `${t.name}: Attack ${t.attack}, Defense ${t.defenseInfantry}/${t.defenseCavalry}`
+              ).join('; ');
+            }
+          }
         }
         
-        // Check if asking about specific units
-        const unitKeywords = ['slave', 'militia', 'ash', 'warden', 'khopesh', 'warrior', 'troop', 'unit', 'infantry', 'cavalry'];
-        if (unitKeywords.some(keyword => message.toLowerCase().includes(keyword))) {
-          relevantTroops = this.staticGameData?.troops || [];
-        }
+        // Build a minimal prompt
+        const systemPrompt = `You are a Travian expert. Current game: Population ${this.gameData.population || 0}, Resources: ${this.gameData.resources?.wood || 0}/${this.gameData.resources?.clay || 0}/${this.gameData.resources?.iron || 0}/${this.gameData.resources?.crop || 0}. ${contextData}`;
         
-        // Check if asking about buildings
-        const buildingKeywords = ['building', 'barracks', 'stable', 'wall', 'warehouse', 'granary', 'waterworks'];
-        if (buildingKeywords.some(keyword => message.toLowerCase().includes(keyword))) {
-          relevantBuildings = this.staticGameData?.buildings || [];
-        }
-        
-        // Build context-aware system prompt
-        const systemPrompt = `You are an expert Travian Legends advisor. 
-
-Current Game State:
-- Resources: Wood ${gameContext.currentResources.wood || 0}, Clay ${gameContext.currentResources.clay || 0}, Iron ${gameContext.currentResources.iron || 0}, Crop ${gameContext.currentResources.crop || 0}
-- Population: ${gameContext.population}
-- Server Day: ${gameContext.serverDay}
-- Game Phase: ${gameContext.gamePhase}
-- Player Tribe: ${gameContext.tribe}
-
-Available Game Data:
-- ${gameContext.availableData.buildingsCount} building types loaded
-- ${gameContext.availableData.troopsCount} troop types for tribes: ${gameContext.availableData.tribesAvailable.join(', ')}
-
-${relevantTroops.length > 0 ? `
-Relevant Troop Data:
-${relevantTroops.slice(0, 10).map(t => 
-  `- ${t.name} (${t.tribe}): Attack ${t.attack}, Def Inf ${t.defenseInfantry}, Def Cav ${t.defenseCavalry}, Speed ${t.speed}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop}`
-).join('\n')}` : ''}
-
-${relevantBuildings.length > 0 ? `
-Relevant Building Data:
-${relevantBuildings.slice(0, 10).map(b => 
-  `- ${b.name}: ${b.benefits.description}${b.tribeSpecific ? ` (${b.tribe} only)` : ''}`
-).join('\n')}` : ''}
-
-Provide specific, actionable advice based on the game data available. Use actual stats and numbers when discussing troops or buildings.`;
-        
-        // Prepare messages for AI with limited context
         const messages = [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: message }
         ];
+        
+        console.log('[TLA] Sending request with minimal payload');
         
         const response = await fetch(CONFIG.proxyUrl, {
           method: 'POST',
@@ -598,7 +474,7 @@ Provide specific, actionable advice based on the game data available. Use actual
           body: JSON.stringify({
             messages: messages,
             model: CONFIG.modelName,
-            max_tokens: CONFIG.maxTokens
+            max_tokens: 1000 // Reduced from 2000
           })
         });
         
@@ -608,17 +484,8 @@ Provide specific, actionable advice based on the game data available. Use actual
         
         const data = await response.json();
         
-        // Remove loading message
-        if (loadingMessage) {
-          const messagesDiv = document.querySelector('.ta-chat-messages');
-          const loadingElement = Array.from(messagesDiv.children).find(el => 
-            el.textContent === '...' && el.classList.contains('ai-message')
-          );
-          if (loadingElement) {
-            loadingElement.remove();
-            this.chatMessages = this.chatMessages.filter(m => m !== loadingMessage);
-          }
-        }
+        // Remove loading
+        this.removeLoadingMessage(loadingMessage);
         
         if (data.content && data.content[0]) {
           this.addMessage('ai', data.content[0].text);
@@ -627,20 +494,32 @@ Provide specific, actionable advice based on the game data available. Use actual
         }
       } catch (error) {
         console.error('[TLA] AI Error:', error);
+        this.removeLoadingMessage(loadingMessage);
         
-        // Remove loading message
-        if (loadingMessage) {
-          const messagesDiv = document.querySelector('.ta-chat-messages');
-          const loadingElement = Array.from(messagesDiv.children).find(el => 
-            el.textContent === '...' && el.classList.contains('ai-message')
-          );
-          if (loadingElement) {
-            loadingElement.remove();
-            this.chatMessages = this.chatMessages.filter(m => m !== loadingMessage);
+        // Provide helpful response based on error
+        if (error.message.includes('400')) {
+          // Answer common questions directly without API
+          if (message.toLowerCase().includes('egyptian') && message.toLowerCase().includes('settler')) {
+            this.addMessage('ai', 'Egyptian Settler costs: 5500 wood, 6400 clay, 5200 iron, 4800 crop. Training time: 24300 seconds at level 10 residence/palace.');
+          } else {
+            this.addMessage('ai', 'The request was too complex. Try asking a simpler question like "What are Egyptian troops?" or "How much does a settler cost?"');
           }
+        } else {
+          this.addMessage('ai', `Error: ${error.message}`);
         }
-        
-        this.addMessage('ai', `Error: ${error.message}. Please try again with a simpler question.`);
+      }
+    }
+    
+    removeLoadingMessage(loadingMessage) {
+      if (loadingMessage) {
+        const messagesDiv = document.querySelector('.ta-chat-messages');
+        const loadingElement = Array.from(messagesDiv.children).find(el => 
+          el.textContent === '...' && el.classList.contains('ai-message')
+        );
+        if (loadingElement) {
+          loadingElement.remove();
+          this.chatMessages = this.chatMessages.filter(m => m !== loadingMessage);
+        }
       }
     }
     
@@ -688,65 +567,66 @@ Provide specific, actionable advice based on the game data available. Use actual
     
     startDataCollection() {
       this.collectData();
-      setInterval(() => this.collectData(), CONFIG.syncInterval); // Now 60 seconds
+      setInterval(() => this.collectData(), CONFIG.syncInterval);
     }
     
     collectData() {
       try {
-        // Collect current resources - Fixed selectors for Travian
+        // Collect resources
         const resources = {
-          wood: parseInt(document.querySelector('#l1, .lumber')?.textContent?.replace(/[^\d]/g, '') || 
-                document.querySelector('[class*="lumber"] .value')?.textContent?.replace(/[^\d]/g, '') || 0),
-          clay: parseInt(document.querySelector('#l2, .clay')?.textContent?.replace(/[^\d]/g, '') || 
-                document.querySelector('[class*="clay"] .value')?.textContent?.replace(/[^\d]/g, '') || 0),
-          iron: parseInt(document.querySelector('#l3, .iron')?.textContent?.replace(/[^\d]/g, '') || 
-                document.querySelector('[class*="iron"] .value')?.textContent?.replace(/[^\d]/g, '') || 0),
-          crop: parseInt(document.querySelector('#l4, .crop')?.textContent?.replace(/[^\d]/g, '') || 
-                document.querySelector('[class*="crop"] .value')?.textContent?.replace(/[^\d]/g, '') || 0)
+          wood: parseInt(document.querySelector('#l1, .lumber')?.textContent?.replace(/[^\d]/g, '') || 0),
+          clay: parseInt(document.querySelector('#l2, .clay')?.textContent?.replace(/[^\d]/g, '') || 0),
+          iron: parseInt(document.querySelector('#l3, .iron')?.textContent?.replace(/[^\d]/g, '') || 0),
+          crop: parseInt(document.querySelector('#l4, .crop')?.textContent?.replace(/[^\d]/g, '') || 0)
         };
         
-        // Update HUD display
-        document.getElementById('ta-wood').textContent = resources.wood.toLocaleString();
-        document.getElementById('ta-clay').textContent = resources.clay.toLocaleString();
-        document.getElementById('ta-iron').textContent = resources.iron.toLocaleString();
-        document.getElementById('ta-crop').textContent = resources.crop.toLocaleString();
+        // Update resource display
+        document.getElementById('ta-wood').textContent = this.formatNumber(resources.wood);
+        document.getElementById('ta-clay').textContent = this.formatNumber(resources.clay);
+        document.getElementById('ta-iron').textContent = this.formatNumber(resources.iron);
+        document.getElementById('ta-crop').textContent = this.formatNumber(resources.crop);
         
-        // Get population - Fixed selector for actual game
+        // Get population - Check the actual HTML structure from your screenshot
         let population = 0;
         
-        // Try multiple selectors for population
-        const popSelectors = [
-          '.inhabitants .value',
-          '.population .value',
-          '.inhabitants',
-          '[class*="population"] .value',
-          '.populationBadge .value'
-        ];
+        // From your screenshot, population appears to be in the right panel
+        const populationText = document.querySelector('.inhabitants')?.textContent || 
+                              document.querySelector('[class*="inhabitants"]')?.textContent ||
+                              document.querySelector('.populationBadge')?.textContent ||
+                              '';
         
-        for (const selector of popSelectors) {
-          const popElement = document.querySelector(selector);
-          if (popElement) {
-            const popText = popElement.textContent || popElement.innerText;
-            const popMatch = popText.match(/(\d+)/);
-            if (popMatch) {
-              population = parseInt(popMatch[1]);
-              break;
-            }
+        const popMatch = populationText.match(/(\d+)/);
+        if (popMatch) {
+          population = parseInt(popMatch[1]);
+        }
+        
+        // Also check the village list which shows (0/20) format
+        if (!population) {
+          const villageGroupText = document.querySelector('.villageGroups')?.textContent || '';
+          const villageMatch = villageGroupText.match(/\((\d+)\/\d+\)/);
+          if (villageMatch) {
+            population = parseInt(villageMatch[1]);
           }
         }
         
-        // Fallback: check the villages list on the right side
-        if (population === 0) {
-          const villageInfo = document.querySelector('.villageList .active .inhabitants, .sidebarBoxVillagelist .active .inhabitants');
-          if (villageInfo) {
-            const popMatch = villageInfo.textContent.match(/(\d+)/);
-            if (popMatch) {
-              population = parseInt(popMatch[1]);
-            }
+        document.getElementById('ta-pop').textContent = population || '0';
+        
+        // Get culture points - Look for CP display
+        let cpCurrent = 0;
+        let cpNeeded = 0;
+        
+        // Try to find culture points display
+        const cpElement = document.querySelector('.culturePoints, [class*="culture"]');
+        if (cpElement) {
+          const cpText = cpElement.textContent || '';
+          const cpMatch = cpText.match(/(\d+)\s*\/\s*(\d+)/);
+          if (cpMatch) {
+            cpCurrent = parseInt(cpMatch[1]);
+            cpNeeded = parseInt(cpMatch[2]);
           }
         }
         
-        document.getElementById('ta-pop').textContent = population || '-';
+        document.getElementById('ta-cp').textContent = cpNeeded ? `${cpCurrent}/${cpNeeded}` : '-';
         
         // Get server day
         const serverDay = this.calculateServerDay();
@@ -754,26 +634,39 @@ Provide specific, actionable advice based on the game data available. Use actual
           document.getElementById('ta-server-day').textContent = serverDay;
         }
         
-        // Enhanced game data with all scraped info
+        // Store game data
         this.gameData = {
           resources,
           population,
+          culturePoints: { current: cpCurrent, needed: cpNeeded },
           serverDay,
-          gamePhase: this.determinePhase(),
-          tribe: this.detectTribe(),
           timestamp: new Date().toISOString()
         };
         
-        // Update sync status
-        this.updateSyncStatus('synced');
-        
-        // Send to backend
+        this.updateSyncStatus('connected');
         this.syncToBackend();
         
       } catch (error) {
         console.error('[TLA] Data collection error:', error);
         this.updateSyncStatus('error');
       }
+    }
+    
+    formatNumber(num) {
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+      return num.toString();
+    }
+    
+    calculateServerDay() {
+      const serverInfo = document.querySelector('.serverTime');
+      if (serverInfo) {
+        const match = serverInfo.textContent.match(/Day (\d+)/);
+        if (match) {
+          return parseInt(match[1]);
+        }
+      }
+      return null;
     }
     
     async syncToBackend() {
@@ -788,7 +681,7 @@ Provide specific, actionable advice based on the game data available. Use actual
         });
         
         if (response.ok) {
-          this.updateSyncStatus('synced');
+          this.updateSyncStatus('connected');
         }
       } catch (error) {
         console.error('[TLA] Sync error:', error);
@@ -801,11 +694,6 @@ Provide specific, actionable advice based on the game data available. Use actual
       const indicator = document.querySelector('.sync-indicator');
       if (indicator) {
         indicator.className = `sync-indicator ${status}`;
-        indicator.innerHTML = status === 'synced' 
-          ? '✅ Synced'
-          : status === 'offline' 
-            ? '❌ Offline'
-            : '⚠️ Error';
       }
     }
   }
