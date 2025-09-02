@@ -59,10 +59,10 @@ function initializeDatabase() {
       x INTEGER,
       y INTEGER,
       population INTEGER,
-      resources JSON,
-      production JSON,
-      buildings JSON,
-      troops JSON,
+      resources TEXT,
+      production TEXT,
+      buildings TEXT,
+      troops TEXT,
       last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -71,7 +71,7 @@ function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       event_type TEXT NOT NULL,
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      data JSON NOT NULL,
+      data TEXT NOT NULL,
       processed BOOLEAN DEFAULT FALSE
     );
 
@@ -81,9 +81,9 @@ function initializeDatabase() {
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       priority INTEGER,
       action_type TEXT,
-      action_data JSON,
+      action_data TEXT,
       completed BOOLEAN DEFAULT FALSE,
-      result JSON
+      result TEXT
     );
 
     -- Static game data tables
@@ -92,9 +92,9 @@ function initializeDatabase() {
       name TEXT,
       category TEXT,
       max_level INTEGER,
-      requirements JSON,
-      costs JSON,
-      benefits JSON,
+      requirements TEXT,
+      costs TEXT,
+      benefits TEXT,
       tribe_specific BOOLEAN DEFAULT FALSE
     );
 
@@ -110,15 +110,15 @@ function initializeDatabase() {
       capacity INTEGER,
       consumption INTEGER,
       training_time INTEGER,
-      costs JSON
+      costs TEXT
     );
 
     CREATE TABLE IF NOT EXISTS quests (
       id TEXT PRIMARY KEY,
       category TEXT,
       name TEXT,
-      requirements JSON,
-      rewards JSON,
+      requirements TEXT,
+      rewards TEXT,
       order_index INTEGER
     );
   `);
@@ -150,11 +150,11 @@ async function loadGameData() {
             building.id,
             building.name,
             building.category,
-            building.maxLevel,
+            building.maxLevel || 20,
             JSON.stringify(building.requirements || {}),
             JSON.stringify(building.costs || {}),
             JSON.stringify(building.benefits || {}),
-            building.tribeSpecific || false
+            building.tribeSpecific ? 1 : 0
           );
         }
         console.log(`✅ Loaded ${gameData.buildings.length} buildings`);
@@ -185,8 +185,42 @@ async function loadGameData() {
         }
         console.log(`✅ Loaded ${gameData.troops.length} troops`);
       }
+      
+      // Load quests
+      if (gameData.quests) {
+        const stmt = db.prepare(`
+          INSERT OR REPLACE INTO quests (id, category, name, requirements, rewards, order_index)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        
+        for (const quest of gameData.quests) {
+          stmt.run(
+            quest.id,
+            quest.category,
+            quest.name,
+            JSON.stringify(quest.requirements || {}),
+            JSON.stringify(quest.rewards || {}),
+            quest.orderIndex || 0
+          );
+        }
+        console.log(`✅ Loaded ${gameData.quests.length} quests`);
+      }
     } else {
-      console.log('⚠️ Game data file not found. Will load from scraped data later.');
+      console.log('⚠️ Game data file not found. Creating minimal default data...');
+      
+      // Insert minimal default data
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO buildings (id, name, category, max_level, requirements, costs, benefits, tribe_specific)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      
+      // Basic resource fields
+      stmt.run('woodcutter', 'Woodcutter', 'resource', 20, '{}', '{}', '{}', 0);
+      stmt.run('clay_pit', 'Clay Pit', 'resource', 20, '{}', '{}', '{}', 0);
+      stmt.run('iron_mine', 'Iron Mine', 'resource', 20, '{}', '{}', '{}', 0);
+      stmt.run('cropland', 'Cropland', 'resource', 20, '{}', '{}', '{}', 0);
+      
+      console.log('✅ Created default building data');
     }
   } else {
     console.log(`✅ Game data already loaded (${buildingCount} buildings)`);
@@ -207,9 +241,19 @@ app.get('/health', (req, res) => {
 
 // Root endpoint
 app.get('/', (req, res) => {
+  const stats = {
+    villages: db.prepare('SELECT COUNT(*) as count FROM villages').get().count,
+    userVillages: db.prepare('SELECT COUNT(*) as count FROM user_villages').get().count,
+    buildings: db.prepare('SELECT COUNT(*) as count FROM buildings').get().count,
+    troops: db.prepare('SELECT COUNT(*) as count FROM troops').get().count,
+    recommendations: db.prepare('SELECT COUNT(*) as count FROM recommendations').get().count
+  };
+  
   res.json({
     message: 'TravianAssistant Backend Server',
     version: '3.0.0',
+    status: 'operational',
+    stats,
     endpoints: [
       'GET /health',
       'POST /api/map',
@@ -353,7 +397,8 @@ app.get('/api/game-data', (req, res) => {
       ...b,
       requirements: JSON.parse(b.requirements || '{}'),
       costs: JSON.parse(b.costs || '{}'),
-      benefits: JSON.parse(b.benefits || '{}')
+      benefits: JSON.parse(b.benefits || '{}'),
+      tribe_specific: b.tribe_specific === 1
     }));
     
     const troops = db.prepare('SELECT * FROM troops').all().map(t => ({
@@ -419,7 +464,8 @@ app.get('/api/recommendations', (req, res) => {
     const recommendations = db.prepare(query).all(limit).map(r => ({
       ...r,
       action_data: JSON.parse(r.action_data || '{}'),
-      result: JSON.parse(r.result || '{}')
+      result: r.result ? JSON.parse(r.result) : null,
+      completed: r.completed === 1
     }));
     
     res.json(recommendations);
@@ -434,6 +480,7 @@ app.get('/api/recommendations', (req, res) => {
 const server = app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`🌐 Access at: http://localhost:${PORT}`);
+  console.log(`📱 For external access, use your Replit URL`);
   
   // Initialize database and load game data
   initializeDatabase();
