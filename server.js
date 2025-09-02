@@ -1,0 +1,458 @@
+#!/usr/bin/env node
+
+/**
+ * TravianAssistant Backend Server
+ * Runs on Replit, manages game data, and coordinates with Chrome Extension
+ */
+
+const express = require('express');
+const cors = require('cors');
+const Database = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
+
+// Initialize Express
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+
+// Initialize SQLite database
+const DB_PATH = process.env.DB_PATH || './travian.db';
+const db = new Database(DB_PATH);
+db.pragma('journal_mode = WAL');
+
+console.log('🚀 TravianAssistant Backend Starting...');
+console.log(`📁 Database: ${DB_PATH}`);
+
+// Create tables if they don't exist
+function initializeDatabase() {
+  console.log('📊 Initializing database schema...');
+  
+  // Core game state tables
+  db.exec(`
+    -- Villages from map.sql
+    CREATE TABLE IF NOT EXISTS villages (
+      id INTEGER PRIMARY KEY,
+      x INTEGER NOT NULL,
+      y INTEGER NOT NULL,
+      tid INTEGER,
+      vid INTEGER UNIQUE,
+      village TEXT,
+      uid INTEGER,
+      player TEXT,
+      aid INTEGER,
+      alliance TEXT,
+      population INTEGER,
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(x, y)
+    );
+
+    -- User's village data (from scraping)
+    CREATE TABLE IF NOT EXISTS user_villages (
+      id TEXT PRIMARY KEY, -- accountId_villageId
+      account_id TEXT NOT NULL,
+      village_id TEXT NOT NULL,
+      village_name TEXT,
+      x INTEGER,
+      y INTEGER,
+      population INTEGER,
+      resources JSON,
+      production JSON,
+      buildings JSON,
+      troops JSON,
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Game events and recommendations
+    CREATE TABLE IF NOT EXISTS game_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_type TEXT NOT NULL,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      data JSON NOT NULL,
+      processed BOOLEAN DEFAULT FALSE
+    );
+
+    -- AI recommendations
+    CREATE TABLE IF NOT EXISTS recommendations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      priority INTEGER,
+      action_type TEXT,
+      action_data JSON,
+      completed BOOLEAN DEFAULT FALSE,
+      result JSON
+    );
+
+    -- Static game data tables
+    CREATE TABLE IF NOT EXISTS buildings (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      category TEXT,
+      max_level INTEGER,
+      requirements JSON,
+      costs JSON,
+      benefits JSON,
+      tribe_specific BOOLEAN DEFAULT FALSE
+    );
+
+    CREATE TABLE IF NOT EXISTS troops (
+      id TEXT PRIMARY KEY,
+      tribe TEXT,
+      name TEXT,
+      type TEXT,
+      attack INTEGER,
+      defense_infantry INTEGER,
+      defense_cavalry INTEGER,
+      speed INTEGER,
+      capacity INTEGER,
+      consumption INTEGER,
+      training_time INTEGER,
+      costs JSON
+    );
+
+    CREATE TABLE IF NOT EXISTS quests (
+      id TEXT PRIMARY KEY,
+      category TEXT,
+      name TEXT,
+      requirements JSON,
+      rewards JSON,
+      order_index INTEGER
+    );
+  `);
+  
+  console.log('✅ Database schema initialized');
+}
+
+// Load game data if not already loaded
+async function loadGameData() {
+  const buildingCount = db.prepare('SELECT COUNT(*) as count FROM buildings').get().count;
+  
+  if (buildingCount === 0) {
+    console.log('📥 Loading game data...');
+    
+    // Check if game data files exist
+    const gameDataPath = path.join(__dirname, 'data', 'game-data.json');
+    if (fs.existsSync(gameDataPath)) {
+      const gameData = JSON.parse(fs.readFileSync(gameDataPath, 'utf8'));
+      
+      // Load buildings
+      if (gameData.buildings) {
+        const stmt = db.prepare(`
+          INSERT OR REPLACE INTO buildings (id, name, category, max_level, requirements, costs, benefits, tribe_specific)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        for (const building of gameData.buildings) {
+          stmt.run(
+            building.id,
+            building.name,
+            building.category,
+            building.maxLevel,
+            JSON.stringify(building.requirements || {}),
+            JSON.stringify(building.costs || {}),
+            JSON.stringify(building.benefits || {}),
+            building.tribeSpecific || false
+          );
+        }
+        console.log(`✅ Loaded ${gameData.buildings.length} buildings`);
+      }
+      
+      // Load troops
+      if (gameData.troops) {
+        const stmt = db.prepare(`
+          INSERT OR REPLACE INTO troops (id, tribe, name, type, attack, defense_infantry, defense_cavalry, speed, capacity, consumption, training_time, costs)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        
+        for (const troop of gameData.troops) {
+          stmt.run(
+            troop.id,
+            troop.tribe,
+            troop.name,
+            troop.type,
+            troop.attack,
+            troop.defenseInfantry,
+            troop.defenseCavalry,
+            troop.speed,
+            troop.capacity,
+            troop.consumption,
+            troop.trainingTime,
+            JSON.stringify(troop.costs || {})
+          );
+        }
+        console.log(`✅ Loaded ${gameData.troops.length} troops`);
+      }
+    } else {
+      console.log('⚠️ Game data file not found. Will load from scraped data later.');
+    }
+  } else {
+    console.log(`✅ Game data already loaded (${buildingCount} buildings)`);
+  }
+}
+
+// API Routes
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    database: db.open ? 'connected' : 'disconnected',
+    uptime: process.uptime()
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'TravianAssistant Backend Server',
+    version: '3.0.0',
+    endpoints: [
+      'GET /health',
+      'POST /api/map',
+      'POST /api/village',
+      'GET /api/villages/:accountId',
+      'GET /api/game-data',
+      'POST /api/recommendation',
+      'GET /api/recommendations'
+    ]
+  });
+});
+
+// Import map.sql data
+app.post('/api/map', (req, res) => {
+  try {
+    const { sql } = req.body;
+    
+    if (!sql) {
+      return res.status(400).json({ error: 'No SQL data provided' });
+    }
+    
+    console.log('📍 Importing map.sql data...');
+    
+    // Parse and execute the SQL
+    const statements = sql.split(';').filter(s => s.trim());
+    let imported = 0;
+    
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO villages (x, y, tid, vid, village, uid, player, aid, alliance, population)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    
+    for (const statement of statements) {
+      if (statement.includes('INSERT INTO')) {
+        // Extract values from INSERT statement
+        const match = statement.match(/VALUES\s*\((.*?)\)/);
+        if (match) {
+          const values = match[1].split(',').map(v => {
+            v = v.trim();
+            if (v === 'NULL') return null;
+            if (v.startsWith("'") && v.endsWith("'")) {
+              return v.slice(1, -1).replace(/''/g, "'");
+            }
+            return parseInt(v);
+          });
+          
+          if (values.length >= 10) {
+            stmt.run(...values.slice(0, 10));
+            imported++;
+          }
+        }
+      }
+    }
+    
+    console.log(`✅ Imported ${imported} villages from map.sql`);
+    res.json({ success: true, imported });
+    
+  } catch (error) {
+    console.error('❌ Map import error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save scraped village data
+app.post('/api/village', (req, res) => {
+  try {
+    const { accountId, village } = req.body;
+    
+    if (!accountId || !village) {
+      return res.status(400).json({ error: 'Missing accountId or village data' });
+    }
+    
+    const id = `${accountId}_${village.id || 'unknown'}`;
+    
+    const stmt = db.prepare(`
+      INSERT OR REPLACE INTO user_villages (
+        id, account_id, village_id, village_name, x, y, population,
+        resources, production, buildings, troops, last_updated
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `);
+    
+    stmt.run(
+      id,
+      accountId,
+      village.id || 'unknown',
+      village.name,
+      village.coordinates?.x || 0,
+      village.coordinates?.y || 0,
+      village.population || 0,
+      JSON.stringify(village.resources || {}),
+      JSON.stringify(village.production || {}),
+      JSON.stringify(village.buildings || []),
+      JSON.stringify(village.troops || [])
+    );
+    
+    console.log(`✅ Saved village data for ${village.name}`);
+    res.json({ success: true, id });
+    
+  } catch (error) {
+    console.error('❌ Village save error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user villages
+app.get('/api/villages/:accountId', (req, res) => {
+  try {
+    const { accountId } = req.params;
+    
+    const villages = db.prepare(`
+      SELECT * FROM user_villages 
+      WHERE account_id = ? 
+      ORDER BY last_updated DESC
+    `).all(accountId);
+    
+    // Parse JSON fields
+    const parsed = villages.map(v => ({
+      ...v,
+      resources: JSON.parse(v.resources || '{}'),
+      production: JSON.parse(v.production || '{}'),
+      buildings: JSON.parse(v.buildings || '[]'),
+      troops: JSON.parse(v.troops || '[]')
+    }));
+    
+    res.json({
+      accountId,
+      villages: parsed,
+      count: parsed.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Get villages error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get game data (buildings, troops, etc.)
+app.get('/api/game-data', (req, res) => {
+  try {
+    const buildings = db.prepare('SELECT * FROM buildings').all().map(b => ({
+      ...b,
+      requirements: JSON.parse(b.requirements || '{}'),
+      costs: JSON.parse(b.costs || '{}'),
+      benefits: JSON.parse(b.benefits || '{}')
+    }));
+    
+    const troops = db.prepare('SELECT * FROM troops').all().map(t => ({
+      ...t,
+      costs: JSON.parse(t.costs || '{}')
+    }));
+    
+    const quests = db.prepare('SELECT * FROM quests ORDER BY order_index').all().map(q => ({
+      ...q,
+      requirements: JSON.parse(q.requirements || '{}'),
+      rewards: JSON.parse(q.rewards || '{}')
+    }));
+    
+    res.json({
+      buildings,
+      troops,
+      quests,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Get game data error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save AI recommendation
+app.post('/api/recommendation', (req, res) => {
+  try {
+    const { priority, actionType, actionData } = req.body;
+    
+    const stmt = db.prepare(`
+      INSERT INTO recommendations (priority, action_type, action_data)
+      VALUES (?, ?, ?)
+    `);
+    
+    const result = stmt.run(
+      priority || 5,
+      actionType,
+      JSON.stringify(actionData || {})
+    );
+    
+    res.json({ success: true, id: result.lastInsertRowid });
+    
+  } catch (error) {
+    console.error('❌ Save recommendation error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get recent recommendations
+app.get('/api/recommendations', (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const onlyActive = req.query.active === 'true';
+    
+    let query = 'SELECT * FROM recommendations';
+    if (onlyActive) {
+      query += ' WHERE completed = FALSE';
+    }
+    query += ' ORDER BY timestamp DESC, priority ASC LIMIT ?';
+    
+    const recommendations = db.prepare(query).all(limit).map(r => ({
+      ...r,
+      action_data: JSON.parse(r.action_data || '{}'),
+      result: JSON.parse(r.result || '{}')
+    }));
+    
+    res.json(recommendations);
+    
+  } catch (error) {
+    console.error('❌ Get recommendations error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// WebSocket for real-time updates (if needed later)
+const server = app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌐 Access at: http://localhost:${PORT}`);
+  
+  // Initialize database and load game data
+  initializeDatabase();
+  loadGameData();
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('📛 SIGTERM received, closing server...');
+  server.close(() => {
+    db.close();
+    console.log('👋 Server closed');
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('📛 SIGINT received, closing server...');
+  server.close(() => {
+    db.close();
+    console.log('👋 Server closed');
+  });
+});
