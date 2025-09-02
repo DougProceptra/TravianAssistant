@@ -8,9 +8,8 @@
 const express = require('express');
 const cors = require('cors');
 const Database = require('better-sqlite3');
-const fs = require('fs');
 const path = require('path');
-const fetch = require('node-fetch');
+const fs = require('fs');
 
 // Initialize Express
 const app = express();
@@ -381,7 +380,6 @@ app.get('/', (req, res) => {
         <div class="endpoint">GET /api/villages/:accountId</div>
         <div class="endpoint">POST /api/recommendation</div>
         <div class="endpoint">GET /api/recommendations</div>
-        <div class="endpoint">POST /api/ai/chat</div>
       </div>
       
       <div class="instructions">
@@ -448,8 +446,7 @@ app.get('/api/status', (req, res) => {
       'GET /api/villages/:accountId',
       'GET /api/game-data',
       'POST /api/recommendation',
-      'GET /api/recommendations',
-      'POST /api/ai/chat'
+      'GET /api/recommendations'
     ]
   });
 });
@@ -673,51 +670,6 @@ app.get('/api/recommendations', (req, res) => {
     
   } catch (error) {
     console.error('❌ Get recommendations error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// AI Chat Proxy Endpoint
-app.post('/api/ai/chat', async (req, res) => {
-  try {
-    const { messages, accountId, gameState } = req.body;
-    
-    if (!process.env.TLA_ANTHROPIC_API_KEY) {
-      return res.status(503).json({ 
-        error: 'AI service not configured. Set ANTHROPIC_API_KEY in environment.' 
-      });
-    }
-
-    const systemPrompt = `You are an expert Travian Legends advisor focused on rapid settlement (fastest second village).
-Current game state: ${JSON.stringify(gameState || {}, null, 2)}
-Provide specific, actionable advice. Be concise but detailed.`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.TLA_ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-sonnet-20240229',
-        max_tokens: 2000,
-        messages: messages,
-        system: systemPrompt
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('Anthropic API error:', error);
-      return res.status(response.status).json({ error: 'AI service error' });
-    }
-
-    const data = await response.json();
-    res.json(data);
-    
-  } catch (error) {
-    console.error('❌ AI chat error:', error);
     res.status(500).json({ error: error.message });
   }
 });
