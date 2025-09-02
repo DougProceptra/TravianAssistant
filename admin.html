@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TravianAssistant Admin Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { 
+      color: #333; 
+      border-bottom: 2px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    .player-card {
+      background: white;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .player-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    .player-id {
+      font-weight: bold;
+      color: #4CAF50;
+    }
+    .village {
+      background: #f9f9f9;
+      padding: 8px;
+      margin: 5px 0;
+      border-left: 3px solid #4CAF50;
+    }
+    .resources {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 5px;
+    }
+    .resource {
+      text-align: center;
+      padding: 5px;
+      background: #fff;
+      border-radius: 3px;
+    }
+    .last-update {
+      color: #666;
+      font-size: 0.9em;
+    }
+    .refresh-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .refresh-btn:hover {
+      background: #45a049;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: white;
+      padding: 15px;
+      border-radius: 5px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+    .stat-label {
+      color: #666;
+      margin-top: 5px;
+    }
+    .no-data {
+      color: #999;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <h1>🏰 TravianAssistant Admin Dashboard</h1>
+  
+  <div class="stats" id="stats">
+    <div class="stat-card">
+      <div class="stat-value" id="totalPlayers">0</div>
+      <div class="stat-label">Active Players</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="totalVillages">0</div>
+      <div class="stat-label">Total Villages</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="totalPop">0</div>
+      <div class="stat-label">Combined Population</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="lastUpdate">Never</div>
+      <div class="stat-label">Last Update</div>
+    </div>
+  </div>
+  
+  <button class="refresh-btn" onclick="loadAllPlayers()">🔄 Refresh Data</button>
+  
+  <div id="players"></div>
+
+  <script>
+    const BACKEND_URL = window.location.origin;
+    
+    async function loadAllPlayers() {
+      try {
+        // First get all unique account IDs from the database
+        const response = await fetch(`${BACKEND_URL}/api/all-players`);
+        const players = await response.json();
+        
+        const container = document.getElementById('players');
+        container.innerHTML = '<h2>Player Data</h2>';
+        
+        let totalPlayers = 0;
+        let totalVillages = 0;
+        let totalPop = 0;
+        let lastUpdate = null;
+        
+        if (players.length === 0) {
+          container.innerHTML += '<div class="no-data">No player data yet. Players need to visit Travian with the extension installed.</div>';
+        }
+        
+        for (const playerId of players) {
+          const villageResponse = await fetch(`${BACKEND_URL}/api/villages/${playerId}`);
+          const data = await villageResponse.json();
+          
+          if (data.villages && data.villages.length > 0) {
+            totalPlayers++;
+            totalVillages += data.villages.length;
+            
+            const playerCard = document.createElement('div');
+            playerCard.className = 'player-card';
+            
+            let playerHTML = `
+              <div class="player-header">
+                <span class="player-id">Player: ${playerId}</span>
+                <span>${data.villages.length} village(s)</span>
+              </div>
+            `;
+            
+            for (const village of data.villages) {
+              totalPop += village.population || 0;
+              
+              const updateTime = new Date(village.last_updated);
+              if (!lastUpdate || updateTime > lastUpdate) {
+                lastUpdate = updateTime;
+              }
+              
+              playerHTML += `
+                <div class="village">
+                  <strong>${village.village_name}</strong> 
+                  (${village.x}, ${village.y}) 
+                  Pop: ${village.population || 0}
+                  <div class="resources">
+                    <div class="resource">
+                      🪵 ${village.resources?.wood || 0}
+                      <br><small>+${village.production?.wood || 0}/h</small>
+                    </div>
+                    <div class="resource">
+                      🧱 ${village.resources?.clay || 0}
+                      <br><small>+${village.production?.clay || 0}/h</small>
+                    </div>
+                    <div class="resource">
+                      ⚒️ ${village.resources?.iron || 0}
+                      <br><small>+${village.production?.iron || 0}/h</small>
+                    </div>
+                    <div class="resource">
+                      🌾 ${village.resources?.crop || 0}
+                      <br><small>+${village.production?.crop || 0}/h</small>
+                    </div>
+                  </div>
+                  <div class="last-update">
+                    Last update: ${new Date(village.last_updated).toLocaleString()}
+                  </div>
+                </div>
+              `;
+            }
+            
+            playerCard.innerHTML = playerHTML;
+            container.appendChild(playerCard);
+          }
+        }
+        
+        // Update stats
+        document.getElementById('totalPlayers').textContent = totalPlayers;
+        document.getElementById('totalVillages').textContent = totalVillages;
+        document.getElementById('totalPop').textContent = totalPop.toLocaleString();
+        document.getElementById('lastUpdate').textContent = lastUpdate 
+          ? new Date(lastUpdate).toLocaleTimeString() 
+          : 'Never';
+          
+      } catch (error) {
+        console.error('Error loading players:', error);
+        document.getElementById('players').innerHTML = 
+          '<div class="no-data">Error loading player data. Check console for details.</div>';
+      }
+    }
+    
+    // Load on page load
+    loadAllPlayers();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadAllPlayers, 30000);
+  </script>
+</body>
+</html>

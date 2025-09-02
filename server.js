@@ -19,6 +19,7 @@ const HOST = '0.0.0.0'; // Listen on all interfaces for Replit
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+app.use(express.static(__dirname)); // Serve static files from root directory
 
 // Initialize SQLite database
 const DB_PATH = process.env.DB_PATH || './travian.db';
@@ -250,6 +251,9 @@ app.get('/', (req, res) => {
     recommendations: db.prepare('SELECT COUNT(*) as count FROM recommendations').get().count
   };
   
+  // Get unique player count
+  const players = db.prepare('SELECT DISTINCT account_id FROM user_villages').all();
+  
   // Send an HTML response for better visibility in Replit preview
   res.send(`
     <!DOCTYPE html>
@@ -293,6 +297,18 @@ app.get('/', (req, res) => {
           border-radius: 5px;
           margin-top: 20px;
         }
+        .admin-link {
+          display: inline-block;
+          background: #2196F3;
+          color: white;
+          padding: 10px 20px;
+          text-decoration: none;
+          border-radius: 5px;
+          margin-top: 10px;
+        }
+        .admin-link:hover {
+          background: #1976D2;
+        }
       </style>
     </head>
     <body>
@@ -302,18 +318,21 @@ app.get('/', (req, res) => {
       <div class="stats">
         <h2>📊 Database Statistics</h2>
         <ul>
+          <li><strong>Active Players:</strong> ${players.length}</li>
           <li>Villages (from map.sql): ${stats.villages}</li>
           <li>User Villages (scraped): ${stats.userVillages}</li>
           <li>Buildings loaded: ${stats.buildings}</li>
           <li>Troops loaded: ${stats.troops}</li>
           <li>AI Recommendations: ${stats.recommendations}</li>
         </ul>
+        <a href="/admin.html" class="admin-link">📊 View Admin Dashboard</a>
       </div>
       
       <div class="stats">
         <h2>🔌 API Endpoints</h2>
         <div class="endpoint">GET /health</div>
         <div class="endpoint">GET /api/game-data</div>
+        <div class="endpoint">GET /api/all-players</div>
         <div class="endpoint">POST /api/map</div>
         <div class="endpoint">POST /api/village</div>
         <div class="endpoint">GET /api/villages/:accountId</div>
@@ -322,12 +341,17 @@ app.get('/', (req, res) => {
       </div>
       
       <div class="instructions">
-        <h3>📝 Next Steps:</h3>
+        <h3>📝 For Players:</h3>
         <ol>
-          <li>Copy this Replit URL: <strong>${process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'Check your Replit URL above'}</strong></li>
-          <li>Update the Chrome extension's BACKEND_URL</li>
-          <li>Visit a Travian page to start collecting data</li>
+          <li>Install the Chrome extension</li>
+          <li>Set backend URL to: <strong>https://travianassistant.dougdostal.repl.co</strong></li>
+          <li>Enter your email when prompted (will be hashed for privacy)</li>
+          <li>Visit Travian pages to start data collection</li>
         </ol>
+        
+        <h3>👥 Multi-Player Support:</h3>
+        <p>Each player's data is stored separately using their hashed email as ID.</p>
+        <p>3-5 players can use this same backend simultaneously.</p>
       </div>
       
       <div style="margin-top: 30px; color: #666;">
@@ -336,6 +360,18 @@ app.get('/', (req, res) => {
     </body>
     </html>
   `);
+});
+
+// Get all unique player IDs
+app.get('/api/all-players', (req, res) => {
+  try {
+    const players = db.prepare('SELECT DISTINCT account_id FROM user_villages').all();
+    const playerIds = players.map(p => p.account_id);
+    res.json(playerIds);
+  } catch (error) {
+    console.error('❌ Get all players error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // JSON API endpoint for compatibility
@@ -355,6 +391,7 @@ app.get('/api/status', (req, res) => {
     stats,
     endpoints: [
       'GET /health',
+      'GET /api/all-players',
       'POST /api/map',
       'POST /api/village',
       'GET /api/villages/:accountId',
@@ -448,7 +485,7 @@ app.post('/api/village', (req, res) => {
       JSON.stringify(village.troops || [])
     );
     
-    console.log(`✅ Saved village data for ${village.name}`);
+    console.log(`✅ Saved village data for ${village.name} (Player: ${accountId})`);
     res.json({ success: true, id });
     
   } catch (error) {
@@ -527,7 +564,7 @@ app.get('/api/game-data', (req, res) => {
 // Save AI recommendation
 app.post('/api/recommendation', (req, res) => {
   try {
-    const { priority, actionType, actionData } = req.body;
+    const { priority, actionType, actionData, accountId } = req.body;
     
     const stmt = db.prepare(`
       INSERT INTO recommendations (priority, action_type, action_data)
@@ -537,9 +574,10 @@ app.post('/api/recommendation', (req, res) => {
     const result = stmt.run(
       priority || 5,
       actionType,
-      JSON.stringify(actionData || {})
+      JSON.stringify({ ...actionData, accountId })
     );
     
+    console.log(`✅ Saved recommendation for ${accountId}: ${actionType}`);
     res.json({ success: true, id: result.lastInsertRowid });
     
   } catch (error) {
@@ -553,11 +591,23 @@ app.get('/api/recommendations', (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const onlyActive = req.query.active === 'true';
+    const accountId = req.query.accountId;
     
     let query = 'SELECT * FROM recommendations';
+    const conditions = [];
+    
     if (onlyActive) {
-      query += ' WHERE completed = FALSE';
+      conditions.push('completed = FALSE');
     }
+    
+    if (accountId) {
+      conditions.push(`action_data LIKE '%"accountId":"${accountId}"%'`);
+    }
+    
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
     query += ' ORDER BY timestamp DESC, priority ASC LIMIT ?';
     
     const recommendations = db.prepare(query).all(limit).map(r => ({
@@ -579,15 +629,8 @@ app.get('/api/recommendations', (req, res) => {
 const server = app.listen(PORT, HOST, () => {
   console.log(`✅ Server running on ${HOST}:${PORT}`);
   console.log(`🌐 Local access: http://localhost:${PORT}`);
-  
-  // Try to detect Replit URL
-  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-    console.log(`📱 Replit URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
-  } else if (process.env.REPLIT_URL) {
-    console.log(`📱 Replit URL: ${process.env.REPLIT_URL}`);
-  } else {
-    console.log(`📱 For external access, check your Replit preview window`);
-  }
+  console.log(`📱 Replit URL: https://travianassistant.dougdostal.repl.co`);
+  console.log(`👥 Admin Dashboard: https://travianassistant.dougdostal.repl.co/admin.html`);
   
   // Initialize database and load game data
   initializeDatabase();
