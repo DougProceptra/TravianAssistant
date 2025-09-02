@@ -440,7 +440,18 @@
             t.tribe === 'egyptians' && t.type === 'expansion'
           );
           if (egyptianSettler) {
-            contextData = `Egyptian Settler costs: Wood ${egyptianSettler.costs.wood}, Clay ${egyptianSettler.costs.clay}, Iron ${egyptianSettler.costs.iron}, Crop ${egyptianSettler.costs.crop}`;
+            contextData = `Egyptian Settler costs: Wood ${egyptianSettler.costs.wood}, Clay ${egyptianSettler.costs.clay}, Iron ${egyptianSettler.costs.iron}, Crop ${egyptianSettler.costs.crop}. Training time: ${egyptianSettler.trainingTime} seconds.`;
+          }
+        }
+        // Check for any Egyptian troop question
+        else if (messageLower.includes('egyptian')) {
+          const egyptianTroops = this.staticGameData?.troops?.filter(t => 
+            t.tribe === 'egyptians'
+          ).slice(0, 5);
+          if (egyptianTroops?.length) {
+            contextData = `Egyptian troops: ${egyptianTroops.map(t => 
+              `${t.name} (Attack: ${t.attack}, Def: ${t.defenseInfantry}/${t.defenseCavalry}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop})`
+            ).join('; ')}`;
           }
         }
         // Check for any troop question
@@ -451,35 +462,47 @@
               t.tribe === (tribe === 'egyptian' ? 'egyptians' : tribe + 's')
             ).slice(0, 3);
             if (tribeTroops?.length) {
-              contextData = tribeTroops.map(t => 
+              contextData = `${tribe} troops: ${tribeTroops.map(t => 
                 `${t.name}: Attack ${t.attack}, Defense ${t.defenseInfantry}/${t.defenseCavalry}`
-              ).join('; ');
+              ).join('; ')}`;
             }
           }
         }
+        // Check for building questions
+        else if (messageLower.includes('building') || messageLower.includes('build')) {
+          const relevantBuildings = this.staticGameData?.buildings?.slice(0, 5);
+          if (relevantBuildings?.length) {
+            contextData = `Key buildings: ${relevantBuildings.map(b => 
+              `${b.name}: ${b.benefits.description}`
+            ).join('; ')}`;
+          }
+        }
         
-        // Build a minimal prompt
-        const systemPrompt = `You are a Travian expert. Current game: Population ${this.gameData.population || 0}, Resources: ${this.gameData.resources?.wood || 0}/${this.gameData.resources?.clay || 0}/${this.gameData.resources?.iron || 0}/${this.gameData.resources?.crop || 0}. ${contextData}`;
+        // Build the request WITHOUT system role in messages
+        const systemPrompt = `You are a Travian Legends expert advisor. Current game state: Population ${this.gameData.population || 0}, Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}. ${contextData}`;
         
-        const messages = [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: message }
-        ];
+        // FIXED: Use proper Anthropic API format with system as top-level parameter
+        const request = {
+          model: CONFIG.modelName,
+          max_tokens: CONFIG.maxTokens,
+          system: systemPrompt, // System prompt as top-level parameter, NOT in messages
+          messages: [
+            { role: 'user', content: message } // Only user/assistant roles in messages array
+          ]
+        };
         
-        console.log('[TLA] Sending request with minimal payload');
+        console.log('[TLA] Sending request with proper format');
         
         const response = await fetch(CONFIG.proxyUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: messages,
-            model: CONFIG.modelName,
-            max_tokens: 1000 // Reduced from 2000
-          })
+          body: JSON.stringify(request)
         });
         
         if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
+          const errorText = await response.text();
+          console.error('[TLA] API Error:', response.status, errorText);
+          throw new Error(`API error: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
@@ -495,18 +518,7 @@
       } catch (error) {
         console.error('[TLA] AI Error:', error);
         this.removeLoadingMessage(loadingMessage);
-        
-        // Provide helpful response based on error
-        if (error.message.includes('400')) {
-          // Answer common questions directly without API
-          if (message.toLowerCase().includes('egyptian') && message.toLowerCase().includes('settler')) {
-            this.addMessage('ai', 'Egyptian Settler costs: 5500 wood, 6400 clay, 5200 iron, 4800 crop. Training time: 24300 seconds at level 10 residence/palace.');
-          } else {
-            this.addMessage('ai', 'The request was too complex. Try asking a simpler question like "What are Egyptian troops?" or "How much does a settler cost?"');
-          }
-        } else {
-          this.addMessage('ai', `Error: ${error.message}`);
-        }
+        this.addMessage('ai', `Error: ${error.message}`);
       }
     }
     
