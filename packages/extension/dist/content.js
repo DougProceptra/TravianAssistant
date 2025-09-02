@@ -393,7 +393,7 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        this.addMessage('ai', 'Hello! I\'m your Travian AI advisor. I have access to complete game data including all troops, buildings, and mechanics for all tribes. Ask me about strategies, build orders, or any game mechanics!');
+        this.addMessage('ai', 'Hello! I\'m your Travian Legends AI advisor. I have complete data on all troops, buildings, and game mechanics. Ask me about specific costs, stats, or strategies!');
       }
     }
     
@@ -430,68 +430,89 @@
           await this.loadStaticGameData();
         }
         
-        // Find specifically what the user is asking about
         const messageLower = message.toLowerCase();
-        let contextData = '';
         
-        // Check for Egyptian settler specifically
-        if (messageLower.includes('egyptian') && messageLower.includes('settler')) {
-          const egyptianSettler = this.staticGameData?.troops?.find(t => 
-            t.tribe === 'egyptians' && t.type === 'expansion'
-          );
-          if (egyptianSettler) {
-            contextData = `Egyptian Settler costs: Wood ${egyptianSettler.costs.wood}, Clay ${egyptianSettler.costs.clay}, Iron ${egyptianSettler.costs.iron}, Crop ${egyptianSettler.costs.crop}. Training time: ${egyptianSettler.trainingTime} seconds.`;
-          }
-        }
-        // Check for any Egyptian troop question
-        else if (messageLower.includes('egyptian')) {
-          const egyptianTroops = this.staticGameData?.troops?.filter(t => 
-            t.tribe === 'egyptians'
-          ).slice(0, 5);
-          if (egyptianTroops?.length) {
-            contextData = `Egyptian troops: ${egyptianTroops.map(t => 
-              `${t.name} (Attack: ${t.attack}, Def: ${t.defenseInfantry}/${t.defenseCavalry}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop})`
-            ).join('; ')}`;
-          }
-        }
-        // Check for any troop question
-        else if (messageLower.includes('troop') || messageLower.includes('unit') || messageLower.includes('soldier')) {
-          const tribe = messageLower.match(/(egyptian|roman|gaul|teuton|hun|spartan)/)?.[0];
-          if (tribe) {
-            const tribeTroops = this.staticGameData?.troops?.filter(t => 
-              t.tribe === (tribe === 'egyptian' ? 'egyptians' : tribe + 's')
-            ).slice(0, 3);
-            if (tribeTroops?.length) {
-              contextData = `${tribe} troops: ${tribeTroops.map(t => 
-                `${t.name}: Attack ${t.attack}, Defense ${t.defenseInfantry}/${t.defenseCavalry}`
-              ).join('; ')}`;
-            }
-          }
-        }
-        // Check for building questions
-        else if (messageLower.includes('building') || messageLower.includes('build')) {
-          const relevantBuildings = this.staticGameData?.buildings?.slice(0, 5);
-          if (relevantBuildings?.length) {
-            contextData = `Key buildings: ${relevantBuildings.map(b => 
-              `${b.name}: ${b.benefits.description}`
-            ).join('; ')}`;
+        // Build comprehensive game data context
+        let gameDataContext = '';
+        
+        // Include ALL Egyptian troops if asking about Egyptian
+        if (messageLower.includes('egyptian')) {
+          const egyptianTroops = this.staticGameData?.troops?.filter(t => t.tribe === 'egyptians') || [];
+          if (egyptianTroops.length > 0) {
+            gameDataContext += '\n\nEGYPTIAN TROOPS IN TRAVIAN LEGENDS:\n';
+            egyptianTroops.forEach(t => {
+              gameDataContext += `- ${t.name}: Attack ${t.attack}, Def Infantry ${t.defenseInfantry}, Def Cavalry ${t.defenseCavalry}, Speed ${t.speed}, Capacity ${t.capacity}, Consumption ${t.consumption}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop}, Training time: ${t.trainingTime}s\n`;
+            });
           }
         }
         
-        // Build the request WITHOUT system role in messages
-        const systemPrompt = `You are a Travian Legends expert advisor. Current game state: Population ${this.gameData.population || 0}, Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}. ${contextData}`;
+        // Include building data if asking about buildings or academy
+        if (messageLower.includes('build') || messageLower.includes('academy') || messageLower.includes('barrack') || messageLower.includes('stable')) {
+          const relevantBuildings = this.staticGameData?.buildings || [];
+          if (relevantBuildings.length > 0) {
+            gameDataContext += '\n\nBUILDINGS IN TRAVIAN LEGENDS:\n';
+            relevantBuildings.forEach(b => {
+              gameDataContext += `- ${b.name}: ${b.benefits.description}, Max Level: ${b.maxLevel}`;
+              if (b.requirements && Object.keys(b.requirements).length > 0) {
+                gameDataContext += `, Requirements: ${JSON.stringify(b.requirements)}`;
+              }
+              if (b.tribeSpecific) {
+                gameDataContext += ` (${b.tribe} only)`;
+              }
+              gameDataContext += '\n';
+            });
+          }
+          
+          // Add specific building costs if available
+          gameDataContext += '\n\nNOTE: Specific building upgrade costs vary by level. Academy typically requires Main Building level 3 and Rally Point level 1 to build.';
+        }
         
-        // FIXED: Use proper Anthropic API format with system as top-level parameter
+        // Include all troops for general troop questions
+        if ((messageLower.includes('troop') || messageLower.includes('unit')) && !messageLower.includes('egyptian')) {
+          const allTroops = this.staticGameData?.troops || [];
+          const tribes = [...new Set(allTroops.map(t => t.tribe))];
+          gameDataContext += '\n\nALL TROOPS IN TRAVIAN LEGENDS BY TRIBE:\n';
+          tribes.forEach(tribe => {
+            const tribeTroops = allTroops.filter(t => t.tribe === tribe);
+            gameDataContext += `\n${tribe.toUpperCase()}:\n`;
+            tribeTroops.forEach(t => {
+              gameDataContext += `- ${t.name}: Attack ${t.attack}, Def ${t.defenseInfantry}/${t.defenseCavalry}\n`;
+            });
+          });
+        }
+        
+        // Build the system prompt with strict instructions
+        const systemPrompt = `You are an expert Travian Legends game advisor. You have access to the COMPLETE and ACCURATE game database below.
+
+CRITICAL INSTRUCTIONS:
+1. You MUST use ONLY the game data provided below for any questions about troops, buildings, costs, or game mechanics
+2. Do NOT search the web or use general knowledge about ancient Egypt or other topics unrelated to Travian Legends
+3. When asked about Egyptian troops, list ONLY the Travian Legends Egyptian troops from the data below
+4. When asked about buildings or costs, use ONLY the Travian Legends building data provided
+5. You MAY search the web ONLY for Travian Legends strategies, tips, or meta-game advice
+6. Always be specific that you're talking about Travian Legends, not real history
+
+Current Player Status:
+- Population: ${this.gameData.population || 0}
+- Resources: Wood ${this.formatNumber(this.gameData.resources?.wood || 0)}, Clay ${this.formatNumber(this.gameData.resources?.clay || 0)}, Iron ${this.formatNumber(this.gameData.resources?.iron || 0)}, Crop ${this.formatNumber(this.gameData.resources?.crop || 0)}
+- Server Day: ${this.gameData.serverDay || 'Unknown'}
+
+GAME DATABASE:
+${gameDataContext || 'No specific game data loaded for this query.'}
+
+Remember: Answer based on the Travian Legends game data above, NOT historical facts or web searches unless specifically about game strategies.`;
+        
+        // Send request with proper format
         const request = {
           model: CONFIG.modelName,
           max_tokens: CONFIG.maxTokens,
-          system: systemPrompt, // System prompt as top-level parameter, NOT in messages
+          system: systemPrompt,
           messages: [
-            { role: 'user', content: message } // Only user/assistant roles in messages array
+            { role: 'user', content: message }
           ]
         };
         
-        console.log('[TLA] Sending request with proper format');
+        console.log('[TLA] Sending request with game data context');
         
         const response = await fetch(CONFIG.proxyUrl, {
           method: 'POST',
@@ -502,7 +523,7 @@
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[TLA] API Error:', response.status, errorText);
-          throw new Error(`API error: ${response.status} - ${errorText}`);
+          throw new Error(`API error: ${response.status}`);
         }
         
         const data = await response.json();
@@ -586,10 +607,10 @@
       try {
         // Collect resources
         const resources = {
-          wood: parseInt(document.querySelector('#l1, .lumber')?.textContent?.replace(/[^\d]/g, '') || 0),
-          clay: parseInt(document.querySelector('#l2, .clay')?.textContent?.replace(/[^\d]/g, '') || 0),
-          iron: parseInt(document.querySelector('#l3, .iron')?.textContent?.replace(/[^\d]/g, '') || 0),
-          crop: parseInt(document.querySelector('#l4, .crop')?.textContent?.replace(/[^\d]/g, '') || 0)
+          wood: parseInt(document.querySelector('#l1')?.textContent?.replace(/[^\d-]/g, '') || 0),
+          clay: parseInt(document.querySelector('#l2')?.textContent?.replace(/[^\d-]/g, '') || 0),
+          iron: parseInt(document.querySelector('#l3')?.textContent?.replace(/[^\d-]/g, '') || 0),
+          crop: parseInt(document.querySelector('#l4')?.textContent?.replace(/[^\d-]/g, '') || 0)
         };
         
         // Update resource display
@@ -598,43 +619,55 @@
         document.getElementById('ta-iron').textContent = this.formatNumber(resources.iron);
         document.getElementById('ta-crop').textContent = this.formatNumber(resources.crop);
         
-        // Get population - Check the actual HTML structure from your screenshot
+        // Get population - Look for it in multiple places
         let population = 0;
         
-        // From your screenshot, population appears to be in the right panel
-        const populationText = document.querySelector('.inhabitants')?.textContent || 
-                              document.querySelector('[class*="inhabitants"]')?.textContent ||
-                              document.querySelector('.populationBadge')?.textContent ||
-                              '';
-        
-        const popMatch = populationText.match(/(\d+)/);
-        if (popMatch) {
-          population = parseInt(popMatch[1]);
+        // Check the McInfo panel on right side (from your screenshot)
+        const mcInfoPop = document.querySelector('.McInfo .inhabitants, #McInfo .inhabitants');
+        if (mcInfoPop) {
+          const popText = mcInfoPop.textContent || '';
+          const match = popText.match(/(\d+)/);
+          if (match) {
+            population = parseInt(match[1]);
+          }
         }
         
-        // Also check the village list which shows (0/20) format
+        // Check village list
         if (!population) {
-          const villageGroupText = document.querySelector('.villageGroups')?.textContent || '';
-          const villageMatch = villageGroupText.match(/\((\d+)\/\d+\)/);
-          if (villageMatch) {
-            population = parseInt(villageMatch[1]);
+          const villageListPop = document.querySelector('.villageList .inhabitants, .sidebarBoxVillagelist .inhabitants');
+          if (villageListPop) {
+            const popText = villageListPop.textContent || '';
+            const match = popText.match(/(\d+)/);
+            if (match) {
+              population = parseInt(match[1]);
+            }
           }
         }
         
         document.getElementById('ta-pop').textContent = population || '0';
         
-        // Get culture points - Look for CP display
+        // Get culture points - usually in the village list or stats
         let cpCurrent = 0;
         let cpNeeded = 0;
         
-        // Try to find culture points display
-        const cpElement = document.querySelector('.culturePoints, [class*="culture"]');
-        if (cpElement) {
-          const cpText = cpElement.textContent || '';
-          const cpMatch = cpText.match(/(\d+)\s*\/\s*(\d+)/);
-          if (cpMatch) {
-            cpCurrent = parseInt(cpMatch[1]);
-            cpNeeded = parseInt(cpMatch[2]);
+        // Look for culture points in various places
+        const cpSelectors = [
+          '.culturePoints',
+          '[class*="culture"]',
+          '.villageList .culturePoints',
+          '#culturePoints'
+        ];
+        
+        for (const selector of cpSelectors) {
+          const cpElement = document.querySelector(selector);
+          if (cpElement) {
+            const cpText = cpElement.textContent || '';
+            const cpMatch = cpText.match(/(\d+)\s*\/\s*(\d+)/);
+            if (cpMatch) {
+              cpCurrent = parseInt(cpMatch[1]);
+              cpNeeded = parseInt(cpMatch[2]);
+              break;
+            }
           }
         }
         
