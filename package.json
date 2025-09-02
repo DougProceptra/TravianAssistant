@@ -1,35 +1,30 @@
 {
   "name": "travian-assistant",
-  "version": "1.0.4",
-  "description": "Travian game assistant with Chrome extension",
-  "main": "scripts/extract-all-kirilloid.js",
+  "version": "3.0.0",
+  "description": "AI-powered Travian game assistant with Chrome extension",
+  "main": "server.js",
   "scripts": {
-    "start": "node scripts/extract-all-kirilloid.js",
-    "extract": "PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true node scripts/extract-all-kirilloid.js",
-    "extract-minimal": "PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true node scripts/extract-playwright-final.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "node backend/server.js",
-    "build": "cd packages/extension && npm run build"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build:extension": "cd packages/extension && npm run build",
+    "init:db": "node scripts/init-v3-database.js",
+    "import:map": "node scripts/import-map.js",
+    "test": "node scripts/test-backend-sqlite.js"
   },
   "keywords": [
     "travian",
     "game",
     "assistant",
-    "chrome-extension"
+    "chrome-extension",
+    "ai"
   ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "autoprefixer": "^10.4.21",
     "better-sqlite3": "^9.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "node-cron": "^4.2.1",
-    "playwright": "^1.49.0",
-    "postcss": "^8.5.6",
-    "puppeteer-core": "^21.0.0",
-    "tailwindcss": "^4.1.12"
+    "express": "^4.19.2"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
