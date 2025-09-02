@@ -393,7 +393,7 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        this.addMessage('ai', 'Hello! I\'m your Travian Legends AI advisor. I have complete data on all troops, buildings, and game mechanics. Ask me about specific costs, stats, or strategies!');
+        this.addMessage('ai', 'Hello! I\'m your Travian Legends AI advisor. I have complete data on all troops, buildings, and game mechanics. I can also search for strategies and tips. Ask me anything!');
       }
     }
     
@@ -439,18 +439,18 @@
         if (messageLower.includes('egyptian')) {
           const egyptianTroops = this.staticGameData?.troops?.filter(t => t.tribe === 'egyptians') || [];
           if (egyptianTroops.length > 0) {
-            gameDataContext += '\n\nEGYPTIAN TROOPS IN TRAVIAN LEGENDS:\n';
+            gameDataContext += '\n\nEGYPTIAN TROOPS (from game database):\n';
             egyptianTroops.forEach(t => {
               gameDataContext += `- ${t.name}: Attack ${t.attack}, Def Infantry ${t.defenseInfantry}, Def Cavalry ${t.defenseCavalry}, Speed ${t.speed}, Capacity ${t.capacity}, Consumption ${t.consumption}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop}, Training time: ${t.trainingTime}s\n`;
             });
           }
         }
         
-        // Include building data if asking about buildings or academy
+        // Include building data if asking about buildings
         if (messageLower.includes('build') || messageLower.includes('academy') || messageLower.includes('barrack') || messageLower.includes('stable')) {
           const relevantBuildings = this.staticGameData?.buildings || [];
           if (relevantBuildings.length > 0) {
-            gameDataContext += '\n\nBUILDINGS IN TRAVIAN LEGENDS:\n';
+            gameDataContext += '\n\nBUILDINGS (from game database):\n';
             relevantBuildings.forEach(b => {
               gameDataContext += `- ${b.name}: ${b.benefits.description}, Max Level: ${b.maxLevel}`;
               if (b.requirements && Object.keys(b.requirements).length > 0) {
@@ -462,45 +462,41 @@
               gameDataContext += '\n';
             });
           }
-          
-          // Add specific building costs if available
-          gameDataContext += '\n\nNOTE: Specific building upgrade costs vary by level. Academy typically requires Main Building level 3 and Rally Point level 1 to build.';
         }
         
         // Include all troops for general troop questions
         if ((messageLower.includes('troop') || messageLower.includes('unit')) && !messageLower.includes('egyptian')) {
           const allTroops = this.staticGameData?.troops || [];
           const tribes = [...new Set(allTroops.map(t => t.tribe))];
-          gameDataContext += '\n\nALL TROOPS IN TRAVIAN LEGENDS BY TRIBE:\n';
+          gameDataContext += '\n\nALL TROOPS BY TRIBE (from game database):\n';
           tribes.forEach(tribe => {
             const tribeTroops = allTroops.filter(t => t.tribe === tribe);
             gameDataContext += `\n${tribe.toUpperCase()}:\n`;
             tribeTroops.forEach(t => {
-              gameDataContext += `- ${t.name}: Attack ${t.attack}, Def ${t.defenseInfantry}/${t.defenseCavalry}\n`;
+              gameDataContext += `- ${t.name}: Attack ${t.attack}, Def ${t.defenseInfantry}/${t.defenseCavalry}, Speed ${t.speed}\n`;
             });
           });
         }
         
-        // Build the system prompt with strict instructions
-        const systemPrompt = `You are an expert Travian Legends game advisor. You have access to the COMPLETE and ACCURATE game database below.
+        // Build the system prompt with balanced instructions
+        const systemPrompt = `You are an expert Travian Legends Version 4 game advisor. You have access to accurate game data and can search for strategies.
 
-CRITICAL INSTRUCTIONS:
-1. You MUST use ONLY the game data provided below for any questions about troops, buildings, costs, or game mechanics
-2. Do NOT search the web or use general knowledge about ancient Egypt or other topics unrelated to Travian Legends
-3. When asked about Egyptian troops, list ONLY the Travian Legends Egyptian troops from the data below
-4. When asked about buildings or costs, use ONLY the Travian Legends building data provided
-5. You MAY search the web ONLY for Travian Legends strategies, tips, or meta-game advice
-6. Always be specific that you're talking about Travian Legends, not real history
+IMPORTANT GUIDELINES:
+1. For questions about specific troops, buildings, costs, or stats: Use ONLY the game database provided below
+2. For strategies, tips, build orders, or meta advice: You MAY search the web but ONLY for "Travian Legends" or "Travian Version 4" content
+3. When searching, always include "Travian Legends" or "Travian Version 4" in your search query
+4. Never reference ancient history or real-world Egypt/Rome/etc - only game content
+5. If the game database below contains the answer, use it instead of searching
 
 Current Player Status:
 - Population: ${this.gameData.population || 0}
 - Resources: Wood ${this.formatNumber(this.gameData.resources?.wood || 0)}, Clay ${this.formatNumber(this.gameData.resources?.clay || 0)}, Iron ${this.formatNumber(this.gameData.resources?.iron || 0)}, Crop ${this.formatNumber(this.gameData.resources?.crop || 0)}
 - Server Day: ${this.gameData.serverDay || 'Unknown'}
 
-GAME DATABASE:
+GAME DATABASE (use this for specific stats/costs):
 ${gameDataContext || 'No specific game data loaded for this query.'}
 
-Remember: Answer based on the Travian Legends game data above, NOT historical facts or web searches unless specifically about game strategies.`;
+When answering about strategies or gameplay tips not covered in the database above, you may search for "Travian Legends" guides and strategies.`;
         
         // Send request with proper format
         const request = {
@@ -512,7 +508,7 @@ Remember: Answer based on the Travian Legends game data above, NOT historical fa
           ]
         };
         
-        console.log('[TLA] Sending request with game data context');
+        console.log('[TLA] Sending request with game data and search permissions');
         
         const response = await fetch(CONFIG.proxyUrl, {
           method: 'POST',
