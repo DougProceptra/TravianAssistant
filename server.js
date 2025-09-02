@@ -13,7 +13,7 @@ const fs = require('fs');
 
 // Initialize Express
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 const HOST = '0.0.0.0'; // Listen on all interfaces for Replit
 
 // Middleware
