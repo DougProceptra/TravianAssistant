@@ -1,0 +1,216 @@
+{
+  "buildings": [
+    {
+      "id": "woodcutter",
+      "name": "Woodcutter",
+      "category": "resource",
+      "maxLevel": 20,
+      "requirements": {},
+      "costs": {
+        "1": { "wood": 40, "clay": 100, "iron": 50, "crop": 60, "time": 240 },
+        "2": { "wood": 65, "clay": 165, "iron": 85, "crop": 100, "time": 620 }
+      },
+      "benefits": {
+        "1": { "production": 5 },
+        "2": { "production": 9 }
+      }
+    },
+    {
+      "id": "clay_pit",
+      "name": "Clay Pit",
+      "category": "resource",
+      "maxLevel": 20,
+      "requirements": {},
+      "costs": {
+        "1": { "wood": 80, "clay": 40, "iron": 80, "crop": 50, "time": 220 },
+        "2": { "wood": 135, "clay": 65, "iron": 135, "crop": 85, "time": 550 }
+      },
+      "benefits": {
+        "1": { "production": 5 },
+        "2": { "production": 9 }
+      }
+    },
+    {
+      "id": "iron_mine",
+      "name": "Iron Mine",
+      "category": "resource",
+      "maxLevel": 20,
+      "requirements": {},
+      "costs": {
+        "1": { "wood": 100, "clay": 80, "iron": 30, "crop": 60, "time": 450 },
+        "2": { "wood": 165, "clay": 135, "iron": 50, "crop": 100, "time": 920 }
+      },
+      "benefits": {
+        "1": { "production": 5 },
+        "2": { "production": 9 }
+      }
+    },
+    {
+      "id": "cropland",
+      "name": "Cropland",
+      "category": "resource",
+      "maxLevel": 20,
+      "requirements": {},
+      "costs": {
+        "1": { "wood": 70, "clay": 90, "iron": 70, "crop": 20, "time": 150 },
+        "2": { "wood": 115, "clay": 150, "iron": 115, "crop": 35, "time": 440 }
+      },
+      "benefits": {
+        "1": { "production": 5 },
+        "2": { "production": 9 }
+      }
+    },
+    {
+      "id": "main_building",
+      "name": "Main Building",
+      "category": "infrastructure",
+      "maxLevel": 20,
+      "requirements": {},
+      "costs": {
+        "1": { "wood": 70, "clay": 40, "iron": 60, "crop": 20, "time": 3600 }
+      },
+      "benefits": {
+        "1": { "construction_time_reduction": 0.1 }
+      }
+    },
+    {
+      "id": "warehouse",
+      "name": "Warehouse",
+      "category": "infrastructure",
+      "maxLevel": 20,
+      "requirements": { "main_building": 1 },
+      "costs": {
+        "1": { "wood": 130, "clay": 160, "iron": 90, "crop": 40, "time": 3875 }
+      },
+      "benefits": {
+        "1": { "capacity": 1200 }
+      }
+    },
+    {
+      "id": "granary",
+      "name": "Granary",
+      "category": "infrastructure",
+      "maxLevel": 20,
+      "requirements": { "main_building": 1 },
+      "costs": {
+        "1": { "wood": 100, "clay": 130, "iron": 160, "crop": 40, "time": 3475 }
+      },
+      "benefits": {
+        "1": { "capacity": 1200 }
+      }
+    },
+    {
+      "id": "residence",
+      "name": "Residence",
+      "category": "infrastructure",
+      "maxLevel": 20,
+      "requirements": { "main_building": 5 },
+      "costs": {
+        "10": { "wood": 580, "clay": 460, "iron": 350, "crop": 180, "time": 11660, "cp": 1 }
+      },
+      "benefits": {
+        "10": { "settlers": true, "culture_points": 1 }
+      }
+    }
+  ],
+  "troops": [
+    {
+      "id": "slave_militia",
+      "tribe": "Egyptians",
+      "name": "Slave Militia",
+      "type": "infantry",
+      "attack": 10,
+      "defenseInfantry": 30,
+      "defenseCavalry": 20,
+      "speed": 7,
+      "capacity": 20,
+      "consumption": 1,
+      "trainingTime": 1040,
+      "costs": { "wood": 45, "clay": 60, "iron": 30, "crop": 15 }
+    },
+    {
+      "id": "ash_warden",
+      "tribe": "Egyptians", 
+      "name": "Ash Warden",
+      "type": "infantry",
+      "attack": 30,
+      "defenseInfantry": 55,
+      "defenseCavalry": 40,
+      "speed": 6,
+      "capacity": 45,
+      "consumption": 1,
+      "trainingTime": 1360,
+      "costs": { "wood": 115, "clay": 100, "iron": 145, "crop": 60 }
+    },
+    {
+      "id": "khopesh_warrior",
+      "tribe": "Egyptians",
+      "name": "Khopesh Warrior",
+      "type": "infantry",
+      "attack": 65,
+      "defenseInfantry": 30,
+      "defenseCavalry": 30,
+      "speed": 7,
+      "capacity": 50,
+      "consumption": 1,
+      "trainingTime": 1440,
+      "costs": { "wood": 170, "clay": 180, "iron": 220, "crop": 80 }
+    },
+    {
+      "id": "sopdu_explorer",
+      "tribe": "Egyptians",
+      "name": "Sopdu Explorer",
+      "type": "scout",
+      "attack": 0,
+      "defenseInfantry": 20,
+      "defenseCavalry": 10,
+      "speed": 16,
+      "capacity": 0,
+      "consumption": 1,
+      "trainingTime": 1760,
+      "costs": { "wood": 170, "clay": 150, "iron": 20, "crop": 40 }
+    }
+  ],
+  "quests": [
+    {
+      "id": "q001",
+      "category": "tutorial",
+      "name": "Build Woodcutter",
+      "requirements": { "building": "woodcutter", "level": 1 },
+      "rewards": { "wood": 90, "clay": 130, "iron": 60, "crop": 30 },
+      "orderIndex": 1
+    },
+    {
+      "id": "q002",
+      "category": "tutorial",
+      "name": "Build Clay Pit",
+      "requirements": { "building": "clay_pit", "level": 1 },
+      "rewards": { "wood": 140, "clay": 80, "iron": 110, "crop": 60 },
+      "orderIndex": 2
+    },
+    {
+      "id": "q003",
+      "category": "tutorial", 
+      "name": "Build Iron Mine",
+      "requirements": { "building": "iron_mine", "level": 1 },
+      "rewards": { "wood": 150, "clay": 130, "iron": 50, "crop": 80 },
+      "orderIndex": 3
+    },
+    {
+      "id": "q004",
+      "category": "tutorial",
+      "name": "Build Cropland",
+      "requirements": { "building": "cropland", "level": 1 },
+      "rewards": { "wood": 110, "clay": 140, "iron": 110, "crop": 30 },
+      "orderIndex": 4
+    },
+    {
+      "id": "q005",
+      "category": "economy",
+      "name": "Upgrade Woodcutter",
+      "requirements": { "building": "woodcutter", "level": 2 },
+      "rewards": { "wood": 125, "clay": 210, "iron": 105, "crop": 140 },
+      "orderIndex": 5
+    }
+  ]
+}
