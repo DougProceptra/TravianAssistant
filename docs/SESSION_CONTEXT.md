@@ -1,5 +1,206 @@
 # SESSION_CONTEXT.md
-*Last Updated: September 1, 2025 - v1.3.4 Evening Session*
+*Last Updated: September 2, 2025 - v2.0.0 - TravianRapidSettle Pivot*
+
+## 🚨 CRITICAL PROJECT PIVOT - READ FIRST
+
+### We Have Changed Direction!
+**OLD APPROACH (v1.x)**: Multi-village data collection, total account production
+**NEW APPROACH (v2.x)**: Single village focus, fastest settlement race, AI-driven strategy
+
+### Why The Pivot?
+1. **Technical Reality**: Cannot get all villages' production from one page
+2. **Statistics Page**: Contains no production data (only rankings)
+3. **window.resources**: Works but only for current village
+4. **Strategic Focus**: Early game (first 7 days) is most critical
+
+---
+
+## 📋 NEW PROJECT: TravianRapidSettle
+
+### Core Concept
+- **Goal**: Fastest possible second village (day 6 target)
+- **Method**: RBP-style data persistence + AI strategic reasoning
+- **Focus**: Single village optimization during critical first week
+
+### Architecture
+```
+Page Context → Content Script → AI → Recommendations
+     ↓              ↓            ↓         ↓
+window.resources  localStorage  Claude   HUD Display
+```
+
+### Key Files Created This Session
+1. **`/content/settlement-data-provider.ts`** - Clean data collection, no strategy
+2. **`/docs/TravianRapidSettlev1.md`** - Complete technical design
+3. **Test scripts in `/scripts/`** - For validating data access methods
+
+### What Works
+- ✅ window.resources accessible via script injection
+- ✅ Hero data scrapeable from page
+- ✅ Building/queue data available
+- ✅ localStorage persistence (RBP-style)
+- ✅ CSP allows textContent script injection
+
+### What Doesn't Work
+- ❌ Getting other villages' production without navigation
+- ❌ Statistics page for production data
+- ❌ Direct window access from content script
+
+---
+
+## 🎯 CURRENT STATE (September 2, 2025)
+
+### Completed Today
+1. **Data Access Solution**
+   - Created context bridge for window.resources
+   - Validated with test harness
+   - All tests pass
+
+2. **Strategic Pivot**
+   - Abandoned multi-village requirement
+   - Focused on settlement race
+   - Designed clean data provider
+
+3. **Documentation**
+   - Created TravianRapidSettlev1.md
+   - Updated this SESSION_CONTEXT.md
+   - Documented all findings
+
+### Ready for Implementation
+- Settlement data provider tested and ready
+- Game constants defined
+- AI integration points identified
+- HUD design specified
+
+---
+
+## 💡 KEY TECHNICAL DISCOVERIES
+
+### The window.resources Solution
+```javascript
+// THIS WORKS - Inject script to access page context
+const script = document.createElement('script');
+script.textContent = `
+  window.postMessage({
+    type: 'TLA_DATA',
+    data: window.resources
+  }, '*');
+`;
+document.head.appendChild(script);
+
+// Listen in content script
+window.addEventListener('message', (e) => {
+  if (e.data.type === 'TLA_DATA') {
+    // Got the data!
+  }
+});
+```
+
+### RBP Storage Pattern
+- Store snapshot on every page load
+- Accumulate data over time
+- Display aggregated information
+- No real-time multi-village data
+
+---
+
+## 🚀 NEXT SESSION INSTRUCTIONS
+
+### DO THIS FIRST
+1. Read `/docs/TravianRapidSettlev1.md` completely
+2. Understand the pivot - we're NOT doing multi-village anymore
+3. Focus on settlement race optimization
+
+### Implementation Priority
+1. Test `settlement-data-provider.ts` on live game
+2. Create AI prompt template
+3. Build simple HUD
+4. Test on fresh server (if available)
+
+### DO NOT
+- Try to get all villages' production
+- Waste time on statistics page
+- Build complex multi-village systems
+- Add prescriptive strategy to data provider
+
+---
+
+## 📊 TEST RESULTS SUMMARY
+
+### What We Tested
+- `test-harness.js`: All 5 tests passed
+- `data-audit-tool.js`: Found window.resources
+- `network-monitor.js`: Captured AJAX patterns
+- `dom-mutation-tracker.js`: Tracked updates
+
+### Key Finding
+**window.resources exists and is accessible** - Just needed proper context bridge
+
+---
+
+## 🎮 GAME CONSTANTS
+
+### Settlement Requirements
+- 500 CP for second village
+- 3 settlers at 5000/4000/5000/3000 each
+- Residence level 10
+- Academy level 1
+
+### Oasis Rewards
+- 40 resources per animal level killed
+- Hero strength = (level × 100) + points + equipment
+
+### CP Generation Priority
+1. Embassy: 24 CP/day
+2. Marketplace: 20 CP/day
+3. Main Building: 5 CP/level
+4. Cranny: 2 CP/level (cheap)
+
+---
+
+## ⚠️ CRITICAL REMINDERS
+
+1. **v1.3.5 extension still works** - Don't break it yet
+2. **New approach is separate** - Test before integrating
+3. **AI makes decisions** - Data provider just provides data
+4. **Focus on early game** - Days 0-7 only
+5. **Hero is critical** - Adventures + oasis clearing
+
+---
+
+## 📝 COMMIT HISTORY (This Session - Sept 2)
+- `a7cc38e2` - Create TravianRapidSettlev1.md
+- `c360409d` - Create clean settlement-data-provider.ts
+- `f05b75ac` - Enhanced with hero/oasis (v2 - too prescriptive)
+- `814b49c2` - Initial settlement optimizer
+- `d712c1c6` - Create test harness
+- Multiple diagnostic tools created
+
+---
+
+## 🔄 VERSION TRANSITION
+
+### Old Version (1.3.5)
+- Multi-village focus
+- Complex data collection
+- Statistics page dependency
+- Still running, don't break
+
+### New Version (2.0.0)
+- Single village focus
+- Settlement race optimization
+- AI-driven decisions
+- Clean data provider
+
+---
+
+## 📝 PREVIOUS SESSION (Sept 1) - For Reference
+- v1.3.4 implementation (now obsolete approach)
+- Statistics page integration attempt
+- ResourceBarPlus investigation
+- Multi-village data collection efforts
+
+---
 
 ## 🚨 MANDATORY AI WORKFLOW RULES
 
@@ -25,138 +226,4 @@ See `/docs/AI_WORKFLOW.md` for complete rules.
 
 ---
 
-## 🎯 CURRENT STATE (September 1, 2025 - v1.3.4)
-
-### ✅ FIXED IN THIS SESSION
-1. **Statistics Page Integration** (v1.3.4)
-   - Created `statistics-parser.ts` to scrape production data from `/statistics/general`
-   - Built `data-collector.ts` with caching mechanism (5-minute cache)
-   - Stores data in Chrome local storage for persistence
-   - Auto-updates when visiting statistics page
-   - Added "Update All Villages" button for easy navigation
-
-2. **Hybrid Data Collection System**
-   - Current village: Uses `window.resources.production` (real-time, accurate)
-   - All villages: Caches from statistics page (updated every 5 min or on page visit)
-   - Total production calculated and sent to AI
-   - No more individual village panic - AI sees TOTAL production!
-
-### 🔍 HOW IT WORKS NOW
-
-#### Data Flow
-1. **Current Village** → `window.resources.production` → Real-time accurate
-2. **All Villages** → Statistics page → Cache (5 min) → Chrome storage
-3. **AI Receives** → Total production summed across all villages
-
-#### To Update All Villages
-1. Click green "📊 Update All Villages" button (bottom right)
-2. OR navigate to Statistics > General manually
-3. Data auto-caches and persists
-
-#### Key Files Changed
-- `data-collector.ts` - Main collection orchestrator
-- `statistics-parser.ts` - Statistics page scraper
-- `find-global-data.ts` - Diagnostic tool (for debugging)
-- `content/index.ts` - Integration point
-- `version.ts` - Updated to 1.3.4
-
-## 📊 DATA ARCHITECTURE (WORKING)
-
-### Current Implementation
-```javascript
-// Current village (real-time)
-window.resources.production = {
-  l1: 2625,  // Wood/hour
-  l2: 5565,  // Clay/hour
-  l3: 3500,  // Iron/hour
-  l4: 3063,  // Crop/hour
-  l5: 4256   // Free crop/hour
-}
-
-// All villages (cached from statistics page)
-cachedVillagesData = [
-  { id: "123", name: "Village 1", production: {...} },
-  { id: "456", name: "Village 2", production: {...} },
-  // ... all 9 villages
-]
-
-// AI receives
-totalProduction = {
-  wood: 45000,
-  clay: 48000,
-  iron: 41000,
-  crop: 178621  // TOTAL across all villages!
-}
-```
-
-## ✅ WHAT'S WORKING
-1. **Current village production** via `window.resources.production`
-2. **All villages production** via statistics page caching
-3. **Total production calculation** sent to AI
-4. **Drag/resize** functionality (v1.3.3)
-5. **Chat UI** connected to AI (v1.3.0)
-6. **Persistent cache** in Chrome storage
-
-## ❌ REMAINING ISSUES
-1. **Chat Formatting**: Line breaks still not preserved in responses
-2. **Troop Data**: Not collected yet
-3. **Auto-refresh**: Statistics cache could auto-update in background
-
-## 🚀 NEXT PRIORITIES
-
-### Priority 1: Test Complete Flow
-1. Pull latest: `git pull`
-2. Build: `npm run build`
-3. Load extension in Chrome
-4. Navigate to any Travian page
-5. Click "Update All Villages" button
-6. Verify total production shows correctly in console
-7. Test AI chat - should see total crop not panic about individual villages
-
-### Priority 2: Fix Chat Formatting
-- Responses still show as wall of text
-- Need to preserve line breaks in markdown
-
-### Priority 3: Add Background Auto-Update
-- Periodically navigate to statistics page in background
-- Update cache without user interaction
-
-## 💡 KEY INSIGHTS
-
-### Why This Approach Works
-1. **Statistics page has ALL data** - No need to visit each village
-2. **Caching prevents overload** - Don't hammer the statistics page
-3. **Chrome storage persists** - Data survives page refreshes
-4. **Total calculation** - AI never sees scary individual villages
-
-### ResourceBarPlus Strategy
-- It uses similar approach but more aggressive
-- Intercepts AJAX calls (we could add this later)
-- Stores everything locally
-- Updates continuously (might be overkill)
-
-## 📝 COMMIT HISTORY (This Session)
-- `77c5de05` - Update version to 1.3.4 - Statistics page integration
-- `211a2669` - Integrate new data collection system with statistics page support
-- `8bca5b60` - Implement hybrid data collection: current village + statistics page caching
-- `503e744d` - Add statistics page parser for complete village production data
-- `f763f862` - Add diagnostic script to find global village data storage
-
-## ⚡ TESTING CHECKLIST
-- [ ] Pull latest code
-- [ ] Build extension
-- [ ] Load in Chrome
-- [ ] Navigate to Travian
-- [ ] Click "Update All Villages"
-- [ ] Check console for total production
-- [ ] Test AI chat with question about resources
-- [ ] Verify AI sees total, not individual villages
-
-## 🎮 GAME STATE
-- **9 villages** total in account
-- **Total production**: ~45k/48k/41k/178k (wood/clay/iron/crop per hour)
-- **Individual villages**: Some negative crop (normal for troops)
-- **Account health**: EXCELLENT (178k crop/hour total!)
-
----
-*The solution is working! Statistics page provides complete data, caching prevents overload, AI sees totals not individual villages.*
+*The pivot is complete. Focus is now on fastest settlement with AI assistance, not multi-village data collection.*
