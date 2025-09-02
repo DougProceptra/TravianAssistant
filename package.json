@@ -4,12 +4,15 @@
   "description": "AI-powered Travian game assistant with Chrome extension",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "build:extension": "cd packages/extension && npm run build",
+    "start": "node replit-start.js",
+    "start:server": "node server.js",
+    "start:dev": "NODE_ENV=development node server.js",
+    "setup": "bash setup-replit.sh",
+    "build:extension": "bash build-extension-quick.sh",
     "init:db": "node scripts/init-v3-database.js",
-    "import:map": "node scripts/import-map.js",
-    "test": "node scripts/test-backend-sqlite.js"
+    "reset:db": "rm -rf db/ && npm run init:db",
+    "test": "node test-backend.js",
+    "health": "curl http://localhost:3000/health"
   },
   "keywords": [
     "travian",
@@ -18,7 +21,7 @@
     "chrome-extension",
     "ai"
   ],
-  "author": "",
+  "author": "Doug Dostal",
   "license": "ISC",
   "dependencies": {
     "better-sqlite3": "^9.0.0",
@@ -29,5 +32,8 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^22.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
