@@ -662,7 +662,7 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        const welcomeMsg = 'Welcome! I\'m your Travian Legends strategic advisor for this ' + CONFIG.serverSpeed + 'x speed server.\n\nBased on your current data, you have ' + (this.gameData.culturePoints?.hoursRemaining || 'unknown') + ' hours until your next settlement.\n\nHow can I help optimize your gameplay today?';
+        const welcomeMsg = 'Welcome! I am your Travian Legends strategic advisor for this ' + CONFIG.serverSpeed + 'x speed server.\n\nBased on your current data, you have ' + (this.gameData.culturePoints?.hoursRemaining || 'unknown') + ' hours until your next settlement.\n\nHow can I help optimize your gameplay today?';
         this.addMessage('ai', welcomeMsg);
       }
     }
