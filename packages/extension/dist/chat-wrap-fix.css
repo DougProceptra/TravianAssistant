@@ -1,0 +1,12 @@
+/* Text wrapping fix for chat input */
+.ta-chat-input input {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  overflow-y: auto !important;
+  min-height: 36px !important;
+  max-height: 100px !important;
+  resize: vertical !important;
+}
+
+/* Or better - use textarea instead of input */
