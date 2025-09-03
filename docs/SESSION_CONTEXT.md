@@ -1,172 +1,161 @@
 # TravianAssistant Session Context
-*Last Updated: September 3, 2025 - MCP Server Architecture*
+*Last Updated: September 3, 2025*
 
-## Project Status: Chat Works, AI Needs Backend Access
+## Project Overview
+TravianAssistant is a Chrome extension that provides AI-powered strategic advice for the browser game Travian Legends. The extension scrapes game state from the browser, sends it to Claude AI for analysis, and displays recommendations in a HUD overlay.
 
-### Current Reality (September 3, 2025)
+## Current Working State ✅
 
-#### ✅ What's ACTUALLY Working
-1. **HUD displays** on Travian pages (minimal but functional)
-2. **AI Chat** opens and connects to Claude via Vercel proxy  
-3. **Basic data scraping** (population, current resources only)
-4. **Chat interface mechanics** (drag/resize works)
-5. **Backend stores data** (but AI doesn't know how to access it)
+### 1. Chrome Extension HUD
+- **Fully functional** drag-and-drop interface
+- **Displays**: Resources, production, culture points, population, hero stats
+- **Hero window**: Shows all stats including resource production (2.4k/2.4k/2.4k/2.4k /h)
+- **Chat interface**: Opens, sends messages, gets AI responses
 
-#### ❌ What's ACTUALLY Broken
-1. **AI has no game awareness** - talks about ancient Egypt instead of Travian Egyptians
-2. **AI can't access backend data** - doesn't know the endpoints exist
-3. **Missing data collection**:
-   - Culture points (production rate and total)
-   - Hero data (window opens but empty)
-   - Building levels and queues
-   - Troop counts
-4. **No memory/context persistence** - needs mem0.ai integration
-5. **AI gets distracted** - searches entire web instead of focusing on Travian
+### 2. Data Collection
+Successfully captures from game pages:
+- **Culture Points**: Current/needed, daily rate, hours to settlement (from culture buildings)
+- **Resources**: Current amounts and production rates (from dorf1.php)
+- **Hero Data**: Level, experience, health, fighting strength, bonuses, resource production
+- **Villages**: List with coordinates
+- **Population**: Current village population
 
-### The MCP Server Solution
+### 3. AI Integration
+- **Working**: Chat connects to Claude via Vercel proxy
+- **Model**: claude-sonnet-4-20250514
+- **Proxy**: https://travian-proxy-simple.vercel.app/api/proxy
 
-Instead of embedding game state in messages, we're treating the AI as an MCP client that queries the backend for data.
+## The Problem: AI Lacks Game Context ❌
 
-#### Architecture Change:
+When users ask strategic questions, Claude responds without access to the actual game data that's been scraped. The data exists in the extension's memory but isn't passed to Claude.
+
+### Current Data Flow
 ```
-OLD: Extension → Package all data → Send with message → AI
-NEW: Extension → Sync data to backend → AI queries backend as needed
+Game Page → Extension Scrapes → localStorage → HUD Display
+                ↓
+         Backend (stores it)
+                ↓
+           [DATA STOPS HERE - Claude can't access it]
 ```
 
-#### Implementation Plan:
-1. **Backend as MCP-style data server** with queryable endpoints
-2. **AI gets explicit instructions** to query these endpoints
-3. **System prompt constrains** AI to Travian Legends context
-4. **mem0.ai integration** for context persistence
+### What Happens Now
+User: "Should I build more resource fields?"
+Claude: [Generic response without knowing user has 80k wood, 41k clay, etc.]
 
-### System Components
+### What Should Happen
+User: "Should I build more resource fields?"
+Claude: "With your current 80k wood and 41k clay, and production at 1.3k/hour..."
 
-#### Backend Server (Replit)
-- **URL**: `https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev`
-- **Status**: Operational, stores data
-- **Endpoints**:
-  - `/health` - Working ✅
-  - `/game-data` - Returns game state ✅
-  - `/sync-game-data` - Receives updates ✅
-- **Issue**: AI doesn't know these exist
+## Next Priority: Connect Game Data to AI
 
-#### Vercel Proxy
-- **URL**: `https://travian-proxy-simple.vercel.app/api/proxy`
-- **Status**: Working perfectly ✅
-- **Model**: `claude-sonnet-4-20250514`
-- **Note**: This is NOT broken, works fine
+### Solution: Include Full Game State in Messages
+Modify the `sendMessage()` function in content.js to include complete game context:
 
-#### Chrome Extension
-- **HUD**: Shows population and current resources
-- **Missing**: Culture points, hero data, buildings, troops
-- **Chat**: Opens and works but AI lacks context
-
-### Game Context
-- **Server**: 2x speed server (ts20.x1.international.travian.com)
-- **Tribe**: Egyptians
-- **Phase**: Active gameplay (not game start)
-
-## Priority Fixes (September 3, 2025)
-
-### 1. Give AI Backend Access (IMMEDIATE)
-Update system prompt to include:
 ```javascript
-You have access to game data at:
-GET ${CONFIG.backendUrl}/game-data
-GET ${CONFIG.backendUrl}/villages
-GET ${CONFIG.backendUrl}/account/${accountId}
+async sendMessage() {
+  const input = document.querySelector('.ta-chat-input input');
+  const message = input.value.trim();
+  if (!message) return;
+  
+  // Build complete game context
+  const gameContext = {
+    resources: this.gameData.resources,        // {wood: 80000, clay: 41000, ...}
+    production: this.gameData.production,      // {wood: 1300, clay: 1500, ...}
+    culturePoints: this.gameData.culturePoints,// {current: 6500, needed: 10000, ...}
+    heroData: this.gameData.heroData,         // {level: 39, resourceProduction: {...}}
+    villages: this.gameData.villages,         // [{name: "Villages 9/10", x: -42, y: -17}]
+    population: this.gameData.population,     // 796
+    tribe: this.gameData.tribe,               // "egyptians"
+    serverSpeed: CONFIG.serverSpeed           // 2
+  };
+  
+  // Create contextual message that includes game state
+  const contextualMessage = `
+[Game Context - Travian Legends ${CONFIG.serverSpeed}x Server]
+Current Resources: Wood ${gameContext.resources.wood}, Clay ${gameContext.resources.clay}, Iron ${gameContext.resources.iron}, Crop ${gameContext.resources.crop}
+Production: Wood ${gameContext.production.wood}/h, Clay ${gameContext.production.clay}/h, Iron ${gameContext.production.iron}/h, Crop ${gameContext.production.crop}/h
+Culture Points: ${gameContext.culturePoints.current}/${gameContext.culturePoints.needed} (${gameContext.culturePoints.hoursRemaining}h to next village)
+Hero: Level ${gameContext.heroData.level}, Resource Production: ${gameContext.heroData.resourceProduction?.wood}/h per resource
+Villages: ${gameContext.villages.length}
+Population: ${gameContext.population}
 
-Always query current data before answering.
+User Question: ${message}`;
+  
+  // Send to AI with full context...
+}
 ```
 
-### 2. Constrain to Travian Context
-Add explicit game context:
+### Implementation Steps
+1. **Update sendMessage()** to build comprehensive game context
+2. **Format context** clearly for Claude to understand
+3. **Update system prompt** to explain the context format
+4. **Test** with game-specific questions
+
+## Technical Details
+
+### Key Files
+- `/packages/extension/dist/content.js` - Complete working extension
+- `/api/proxy.js` - Vercel proxy (working, don't change)
+- Backend: `https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev`
+
+### Extension Architecture
 ```javascript
-You are a Travian Legends strategic advisor.
-This is about the online game, NOT historical facts.
-User plays Egyptians on 2x speed server.
+class TravianHUD {
+  gameData = {
+    resources: {},         // Current resources
+    production: {},        // Per-hour production
+    culturePoints: {},     // CP data
+    heroData: {},         // Hero stats including resource production
+    villages: [],         // Village list
+    population: 0,        // Current pop
+    tribe: null          // Player tribe
+  };
+  
+  captureHeroData()       // Captures hero resource allocation
+  captureCulturePoints()  // Captures CP from culture buildings
+  captureProduction()     // Captures resource production rates
+  sendMessage()          // NEEDS UPDATE: Add game context here
+}
 ```
 
-### 3. Fix Data Collection
-Enhance scrapers for:
-- Culture points (rate + total)
-- Hero stats
-- Building levels
-- Troop counts
+### Hero Resource System
+Travian Legends allows hero resource points to be:
+1. **Distributed evenly** across all resources (e.g., 2400/hour each)
+2. **Focused on one resource** (e.g., 8000/hour wood only)
 
-### 4. Add mem0.ai Integration
-- Store game progression
-- Remember strategies
-- Track preferences
+The extension correctly captures whichever mode is selected.
 
-## File Locations
+## Game Context (Current Server)
+- **Server**: ts20.x1.international.travian.com (2x speed)
+- **Player**: Egyptians tribe
+- **Villages**: 9/10 slots filled
+- **Hero**: Level 39 with 100 points in resource production
+- **Phase**: Mid-game (settling 10th village soon)
 
-```
-TravianAssistant/
-├── server.js                    # Replit backend
-├── packages/extension/dist/
-│   ├── content.js              # Main extension code (LINE 220: sendMessage)
-│   ├── manifest.json           # v1.1.0
-│   └── styles.css             # HUD styling
-└── docs/
-    ├── SESSION_CONTEXT.md      # This file
-    ├── TravianAssistantV4.md   # Philosophy doc
-    └── context-intelligence.md # mem0.ai integration plan
-```
+## Development Workflow
+1. Edit in GitHub
+2. Pull to local: `git pull origin main`
+3. Reload extension: chrome://extensions
+4. Test on game pages
+5. Check console for [TLA] debug messages
 
-## Critical URLs & Keys
+## Testing Checklist
+- [x] Culture points capture (visit Town Hall)
+- [x] Resource production capture (visit dorf1.php)
+- [x] Hero data capture (visit hero attributes)
+- [x] Hero resource production display (shows 2.4k/2.4k/2.4k/2.4k /h)
+- [ ] AI receives game context (NEXT PRIORITY)
+- [ ] AI gives context-aware advice
 
-### Production URLs
-- **Backend**: `https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev`
-- **Proxy**: `https://travian-proxy-simple.vercel.app/api/proxy`
-- **Game**: `https://ts20.x1.international.travian.com`
-- **Context Service**: `https://proceptra.app.n8n.cloud/mcp/context-tools` (TODO)
+## Future Enhancements
+1. **Real-time monitoring**: Building queues, troop training, incoming attacks
+2. **Farm list analysis**: Efficiency tracking and optimization
+3. **Alliance coordination**: Shared defense planning
+4. **mem0.ai integration**: Persistent memory across sessions
+5. **Advanced analytics**: Resource forecasting, optimal build paths
 
-### Environment Variables
-- **Replit**: `TLA_ANTHROPIC_API_KEY` in Secrets
-- **Vercel**: `ANTHROPIC_API_KEY` in dashboard
-
-## Development Rules
-
-### DO:
-- Edit in GitHub, pull to Replit
-- Test changes on actual game page
-- Use `/api/proxy` endpoint
-- Model: `claude-sonnet-4-20250514`
-
-### DON'T:
-- Edit in Replit directly
-- Try to fix node-fetch
-- Change working proxy
-- Build complex HUDs
-
-## Testing Commands
-
-```bash
-# Test Backend
-curl https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev/health
-
-# Test Game Data
-curl https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev/game-data
-
-# Test AI Proxy
-curl -X POST https://travian-proxy-simple.vercel.app/api/proxy \
-  -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"What is Travian Legends?"}],"model":"claude-sonnet-4-20250514","max_tokens":2000}'
-```
-
-## Session Summary
-
-**Problem**: AI chat works but is useless - doesn't know about game or backend data.
-
-**Solution**: Make AI aware of backend endpoints and constrain to Travian context.
-
-**Next Steps**:
-1. Update system prompt with backend access
-2. Constrain AI to Travian Legends only
-3. Fix data collection gaps
-4. Add mem0.ai for persistence
-
----
-
-*The AI needs to become game-aware and backend-connected. Everything else is working.*
+## Repository Info
+- **GitHub**: DougProceptra/TravianAssistant
+- **Main branch**: All changes go here
+- **Vercel proxy**: travian-proxy-simple (separate repo, working fine)
+- **Replit backend**: Pulls from GitHub main branch
