@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * TravianAssistant Backend Server
+ * TravianAssistant Backend Server with Mem0 Integration
  * Runs on Replit, manages game data, and coordinates with Chrome Extension
  */
 
@@ -69,8 +69,8 @@ function initializeDatabase() {
 
     -- User's village data (from scraping)
     CREATE TABLE IF NOT EXISTS user_villages (
-      id TEXT PRIMARY KEY, -- accountId_villageId
-      account_id TEXT NOT NULL,
+      id TEXT PRIMARY KEY, -- userId_villageId
+      account_id TEXT NOT NULL, -- Now stores userId (hashed email)
       village_id TEXT NOT NULL,
       village_name TEXT,
       x INTEGER,
@@ -142,7 +142,7 @@ function initializeDatabase() {
     -- Settlement tracking for V2 focus
     CREATE TABLE IF NOT EXISTS settlement_tracking (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      account_id TEXT NOT NULL,
+      account_id TEXT NOT NULL, -- Now stores userId
       cp_current INTEGER DEFAULT 0,
       cp_production INTEGER DEFAULT 0,
       settlers_count INTEGER DEFAULT 0,
@@ -354,7 +354,7 @@ app.get('/', (req, res) => {
       </style>
     </head>
     <body>
-      <h1>🏰 TravianAssistant Backend Server</h1>
+      <h1>🏰 TravianAssistant Backend Server (Mem0 Enabled)</h1>
       <div class="status">✅ Server is running!</div>
       
       <div class="stats">
@@ -376,8 +376,9 @@ app.get('/', (req, res) => {
         <div class="endpoint">GET /api/game-data</div>
         <div class="endpoint">GET /api/all-players</div>
         <div class="endpoint">POST /api/map</div>
-        <div class="endpoint">POST /api/village</div>
-        <div class="endpoint">GET /api/villages/:accountId</div>
+        <div class="endpoint">POST /api/village (now uses userId)</div>
+        <div class="endpoint">GET /api/villages/:userId</div>
+        <div class="endpoint">POST /api/game-mechanics-context (NEW)</div>
         <div class="endpoint">POST /api/recommendation</div>
         <div class="endpoint">GET /api/recommendations</div>
       </div>
@@ -404,7 +405,7 @@ app.get('/', (req, res) => {
       </div>
       
       <div style="margin-top: 30px; color: #666;">
-        <small>Version 3.0.0 | Uptime: ${Math.round(process.uptime())} seconds | Database: ${DB_PATH}</small>
+        <small>Version 3.1.0 with Mem0 | Uptime: ${Math.round(process.uptime())} seconds | Database: ${DB_PATH}</small>
       </div>
     </body>
     </html>
@@ -435,20 +436,73 @@ app.get('/api/status', (req, res) => {
   
   res.json({
     message: 'TravianAssistant Backend Server',
-    version: '3.0.0',
+    version: '3.1.0',
     status: 'operational',
+    features: ['mem0-integration', 'multi-user', 'game-mechanics'],
     stats,
     endpoints: [
       'GET /health',
       'GET /api/all-players',
       'POST /api/map',
       'POST /api/village',
-      'GET /api/villages/:accountId',
+      'GET /api/villages/:userId',
       'GET /api/game-data',
+      'POST /api/game-mechanics-context',
       'POST /api/recommendation',
       'GET /api/recommendations'
     ]
   });
+});
+
+// NEW: Game mechanics context endpoint for AI
+app.post('/api/game-mechanics-context', (req, res) => {
+  try {
+    const { query, tribe, villages } = req.body;
+    
+    const context = {
+      buildings: [],
+      troops: [],
+      tips: []
+    };
+    
+    // Detect what mechanics are relevant based on query
+    if (query.match(/settle|village|culture|CP/i)) {
+      context.buildings = db.prepare(`
+        SELECT * FROM buildings 
+        WHERE id IN ('residence', 'palace', 'town_hall', 'command_center')
+      `).all().map(b => ({
+        ...b,
+        costs: JSON.parse(b.costs || '{}'),
+        benefits: JSON.parse(b.benefits || '{}')
+      }));
+      
+      context.tips.push('For 2x server: Aim for settlement by day 7');
+      context.tips.push('You need 3 settlers from Residence/Palace');
+      context.tips.push('Culture points needed: ' + (villages < 3 ? '10000' : '20000+'));
+    }
+    
+    if (query.match(/troop|army|attack|defense/i)) {
+      context.troops = db.prepare(`
+        SELECT * FROM troops 
+        WHERE tribe = ?
+        LIMIT 10
+      `).all(tribe || 'romans').map(t => ({
+        ...t,
+        costs: JSON.parse(t.costs || '{}')
+      }));
+    }
+    
+    if (query.match(/hero/i)) {
+      context.tips.push('Hero resource production: 100 points = 2400/hour per resource when distributed evenly');
+      context.tips.push('Or 8000/hour when focused on single resource');
+    }
+    
+    res.json(context);
+    
+  } catch (error) {
+    console.error('❌ Game mechanics error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Import map.sql data
@@ -502,16 +556,18 @@ app.post('/api/map', (req, res) => {
   }
 });
 
-// Save scraped village data
+// UPDATED: Save scraped village data with userId
 app.post('/api/village', (req, res) => {
   try {
-    const { accountId, village } = req.body;
+    // Support both userId (new) and accountId (legacy) for backwards compatibility
+    const userId = req.body.userId || req.body.accountId;
+    const { village } = req.body;
     
-    if (!accountId || !village) {
-      return res.status(400).json({ error: 'Missing accountId or village data' });
+    if (!userId || !village) {
+      return res.status(400).json({ error: 'Missing userId or village data' });
     }
     
-    const id = `${accountId}_${village.id || 'unknown'}`;
+    const id = `${userId}_${village.id || Date.now()}`;
     
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO user_villages (
@@ -522,7 +578,7 @@ app.post('/api/village', (req, res) => {
     
     stmt.run(
       id,
-      accountId,
+      userId,  // Now using hashed email as userId
       village.id || 'unknown',
       village.name,
       village.coordinates?.x || 0,
@@ -534,7 +590,7 @@ app.post('/api/village', (req, res) => {
       JSON.stringify(village.troops || [])
     );
     
-    console.log(`✅ Saved village data for ${village.name} (Player: ${accountId})`);
+    console.log(`✅ Saved village data for ${village.name} (User: ${userId.substring(0, 10)}...)`);
     res.json({ success: true, id });
     
   } catch (error) {
@@ -543,16 +599,16 @@ app.post('/api/village', (req, res) => {
   }
 });
 
-// Get user villages
-app.get('/api/villages/:accountId', (req, res) => {
+// UPDATED: Get user villages - support both userId and accountId
+app.get('/api/villages/:userId', (req, res) => {
   try {
-    const { accountId } = req.params;
+    const { userId } = req.params;
     
     const villages = db.prepare(`
       SELECT * FROM user_villages 
       WHERE account_id = ? 
       ORDER BY last_updated DESC
-    `).all(accountId);
+    `).all(userId);
     
     // Parse JSON fields
     const parsed = villages.map(v => ({
@@ -564,7 +620,7 @@ app.get('/api/villages/:accountId', (req, res) => {
     }));
     
     res.json({
-      accountId,
+      userId,
       villages: parsed,
       count: parsed.length
     });
@@ -613,7 +669,10 @@ app.get('/api/game-data', (req, res) => {
 // Save AI recommendation
 app.post('/api/recommendation', (req, res) => {
   try {
-    const { priority, actionType, actionData, accountId } = req.body;
+    const { priority, actionType, actionData, userId, accountId } = req.body;
+    
+    // Support both userId and accountId
+    const userIdentifier = userId || accountId;
     
     const stmt = db.prepare(`
       INSERT INTO recommendations (priority, action_type, action_data)
@@ -623,10 +682,10 @@ app.post('/api/recommendation', (req, res) => {
     const result = stmt.run(
       priority || 5,
       actionType,
-      JSON.stringify({ ...actionData, accountId })
+      JSON.stringify({ ...actionData, userId: userIdentifier })
     );
     
-    console.log(`✅ Saved recommendation for ${accountId}: ${actionType}`);
+    console.log(`✅ Saved recommendation for ${userIdentifier?.substring(0, 10)}...: ${actionType}`);
     res.json({ success: true, id: result.lastInsertRowid });
     
   } catch (error) {
@@ -640,7 +699,7 @@ app.get('/api/recommendations', (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const onlyActive = req.query.active === 'true';
-    const accountId = req.query.accountId;
+    const userId = req.query.userId || req.query.accountId;
     
     let query = 'SELECT * FROM recommendations';
     const conditions = [];
@@ -649,8 +708,8 @@ app.get('/api/recommendations', (req, res) => {
       conditions.push('completed = FALSE');
     }
     
-    if (accountId) {
-      conditions.push(`action_data LIKE '%"accountId":"${accountId}"%'`);
+    if (userId) {
+      conditions.push(`(action_data LIKE '%"userId":"${userId}"%' OR action_data LIKE '%"accountId":"${userId}"%')`);
     }
     
     if (conditions.length > 0) {
@@ -683,6 +742,8 @@ const server = app.listen(PORT, HOST, () => {
     console.log(`📱 Replit URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
     console.log(`👥 Admin Dashboard: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/admin.html`);
   }
+  
+  console.log('🧠 Mem0 Integration: Ready (configure in Vercel proxy)');
   
   // Initialize database and load game data
   initializeDatabase();
