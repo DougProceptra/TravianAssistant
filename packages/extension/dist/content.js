@@ -12,8 +12,8 @@
     accountId: localStorage.getItem('TLA_ACCOUNT_ID') || generateAccountId(),
     syncInterval: 60000,
     debugMode: true,
-    serverSpeed: 1, // 1x speed server
-    serverType: 'reign_of_fire' // Special server type
+    serverSpeed: 2, // 2x speed server as per user
+    serverType: 'standard' // Update based on actual server
   };
   
   function generateAccountId() {
@@ -34,6 +34,8 @@
         resources: {},
         population: 0,
         culturePoints: {},
+        villages: [],
+        heroData: {},
         serverDay: null,
         serverTime: null
       };
@@ -51,6 +53,11 @@
       await this.loadStaticGameData();
       this.startDataCollection();
       this.loadPosition();
+      
+      // Check if we're on hero page and scrape it
+      if (window.location.href.includes('/hero')) {
+        this.scrapeHeroPage();
+      }
     }
     
     createHUD() {
@@ -494,7 +501,11 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        const welcomeMsg = `Welcome! I'm your Travian Legends strategic advisor for this ${CONFIG.serverSpeed}x speed ${CONFIG.serverType.replace('_', ' ')} server. My goal is to help you optimize for a fast settler rush and long-term success. What's your current priority?`;
+        const welcomeMsg = `Welcome! I'm your Travian Legends strategic advisor for this ${CONFIG.serverSpeed}x speed server. 
+        
+I can see you're playing with ${this.gameData.tribe || 'your tribe'} and have ${this.gameData.villages?.length || 'multiple'} villages. 
+
+What would you like help with today?`;
         this.addMessage('ai', welcomeMsg);
       }
     }
@@ -505,7 +516,7 @@
       heroWindow.style.display = isVisible ? 'none' : 'block';
       
       if (!isVisible) {
-        this.updateHeroStats();
+        this.updateHeroDisplay();
       }
     }
     
@@ -515,28 +526,87 @@
       debugWindow.style.display = isVisible ? 'none' : 'block';
     }
     
-    updateHeroStats() {
-      // Try to scrape hero data from hero page or hero icon
-      const heroIcon = document.querySelector('.heroImage, .hero_image, [class*="hero"]');
-      if (heroIcon) {
-        const levelMatch = (heroIcon.title || heroIcon.textContent || '').match(/Level\s*(\d+)/i);
-        if (levelMatch) {
-          document.getElementById('ta-hero-level').textContent = levelMatch[1];
-        }
-        
-        const healthBar = document.querySelector('.heroHealthBar, [class*="heroHealth"]');
-        if (healthBar) {
-          const healthPercent = healthBar.style.width || healthBar.getAttribute('value') || '100';
-          document.getElementById('ta-hero-health').textContent = parseInt(healthPercent);
-        }
-      }
+    updateHeroDisplay() {
+      // Update hero display from stored data
+      const hero = this.gameData.heroData || {};
+      document.getElementById('ta-hero-level').textContent = hero.level || '-';
+      document.getElementById('ta-hero-exp').textContent = hero.experience || '-';
+      document.getElementById('ta-hero-health').textContent = hero.health || '-';
+      document.getElementById('ta-hero-attack').textContent = hero.attack || '-';
+      document.getElementById('ta-hero-defense').textContent = hero.defense || '-';
+      document.getElementById('ta-hero-off-bonus').textContent = hero.offBonus || '-';
+      document.getElementById('ta-hero-def-bonus').textContent = hero.defBonus || '-';
+      document.getElementById('ta-hero-resources').textContent = hero.resourceBonus || '-';
+    }
+    
+    scrapeHeroPage() {
+      // This runs when we're on the hero attributes page
+      console.log('[TLA] Scraping hero page...');
       
-      if (window.location.href.includes('hero')) {
-        const attackPower = document.querySelector('.attackPower, [class*="attack"] .value')?.textContent || '0';
-        const defensePower = document.querySelector('.defensePower, [class*="defense"] .value')?.textContent || '0';
+      try {
+        const heroData = {};
         
-        document.getElementById('ta-hero-attack').textContent = attackPower;
-        document.getElementById('ta-hero-defense').textContent = defensePower;
+        // Hero level and experience
+        const levelElem = document.querySelector('.heroLevel, .level');
+        if (levelElem) {
+          const levelMatch = levelElem.textContent.match(/(\d+)/);
+          if (levelMatch) heroData.level = parseInt(levelMatch[1]);
+        }
+        
+        // Hero experience
+        const expBar = document.querySelector('.heroXp, .experience .bar');
+        if (expBar) {
+          const title = expBar.getAttribute('title') || expBar.textContent;
+          const expMatch = title.match(/(\d+)\s*\/\s*(\d+)/);
+          if (expMatch) {
+            heroData.experience = `${expMatch[1]}/${expMatch[2]}`;
+          }
+        }
+        
+        // Hero health
+        const healthBar = document.querySelector('.health .bar, .heroHealth');
+        if (healthBar) {
+          const healthPercent = healthBar.style.width || 
+                               healthBar.getAttribute('value') || 
+                               healthBar.textContent;
+          heroData.health = parseInt(healthPercent) || 100;
+        }
+        
+        // Hero attributes
+        const attributes = document.querySelectorAll('.attribute, .heroAttributes .row');
+        attributes.forEach(attr => {
+          const text = attr.textContent;
+          if (text.includes('Attack') || text.includes('Fighting strength')) {
+            const match = text.match(/(\d+)/);
+            if (match) heroData.attack = parseInt(match[1]);
+          }
+          if (text.includes('Defence')) {
+            const match = text.match(/(\d+)/);
+            if (match) heroData.defense = parseInt(match[1]);
+          }
+          if (text.includes('Off Bonus') || text.includes('offensive bonus')) {
+            const match = text.match(/(\d+)/);
+            if (match) heroData.offBonus = parseInt(match[1]);
+          }
+          if (text.includes('Def Bonus') || text.includes('defensive bonus')) {
+            const match = text.match(/(\d+)/);
+            if (match) heroData.defBonus = parseInt(match[1]);
+          }
+          if (text.includes('Resources') || text.includes('resource production')) {
+            const match = text.match(/(\d+)/);
+            if (match) heroData.resourceBonus = parseInt(match[1]);
+          }
+        });
+        
+        // Store hero data
+        if (Object.keys(heroData).length > 0) {
+          this.gameData.heroData = heroData;
+          localStorage.setItem('TLA_HERO_DATA', JSON.stringify(heroData));
+          console.log('[TLA] Hero data scraped:', heroData);
+          this.updateHeroDisplay();
+        }
+      } catch (error) {
+        console.error('[TLA] Hero scraping error:', error);
       }
     }
     
@@ -555,9 +625,16 @@
       } catch (error) {
         console.error('[TLA] Failed to load game data:', error);
       }
+      
+      // Load stored hero data
+      const storedHero = localStorage.getItem('TLA_HERO_DATA');
+      if (storedHero) {
+        this.gameData.heroData = JSON.parse(storedHero);
+      }
     }
     
     detectTribe() {
+      // Check for tribe-specific buildings or units in the page
       const tribeIndicators = {
         'romans': ['City Wall', 'Horse Drinking', 'Legionnaire', 'Praetorian'],
         'gauls': ['Palisade', 'Trapper', 'Phalanx', 'Druidrider'],
@@ -567,14 +644,17 @@
         'spartans': ['Defensive Wall', 'Hoplite', 'Shieldsman']
       };
       
+      const pageText = document.body.textContent.toLowerCase();
+      
       for (const [tribe, indicators] of Object.entries(tribeIndicators)) {
         for (const indicator of indicators) {
-          if (document.body.textContent.includes(indicator)) {
+          if (pageText.includes(indicator.toLowerCase())) {
             return tribe;
           }
         }
       }
       
+      // Check body class or other indicators
       const bodyClass = document.body.className.toLowerCase();
       for (const tribe of Object.keys(tribeIndicators)) {
         if (bodyClass.includes(tribe)) {
@@ -586,75 +666,56 @@
     }
     
     buildSystemPrompt() {
-      // Get relevant troops for the player's tribe
-      let troopsDatabase = '';
-      if (this.gameData.tribe && this.staticGameData?.troops) {
-        const tribeTroops = this.staticGameData.troops.filter(t => 
-          t.tribe === this.gameData.tribe
-        );
-        if (tribeTroops.length > 0) {
-          troopsDatabase = `
-## TRIBE-SPECIFIC TROOPS (${this.gameData.tribe.toUpperCase()})
-${tribeTroops.map(t => 
-  `* ${t.name}: Attack ${t.attack}, Def ${t.defenseInfantry}/${t.defenseCavalry}, Speed ${t.speed}, Cost: ${t.costs.wood}/${t.costs.clay}/${t.costs.iron}/${t.costs.crop}, Training: ${t.trainingTime}s`
-).join('\n')}`;
-        }
-      }
+      // Build comprehensive system prompt with backend access info
+      const backendUrl = CONFIG.backendUrl;
       
-      // Build the comprehensive system prompt based on expert recommendations
-      return `You are an expert AI assistant designed to act as a strategic advisor for the game Travian Legends. You are playing on a ${CONFIG.serverSpeed}x speed "${CONFIG.serverType.replace('_', ' ')}" special server.
+      return `You are an expert Travian Legends strategic advisor. This is specifically about the online browser game Travian Legends, NOT historical facts.
 
-## ROLE AND OBJECTIVE
-* **Primary Role:** Expert Travian Legends advisor. Your goal is to help the player, ${this.gameData.playerName || '[unknown]'}, optimize their account for long-term success.
-* **Immediate Objective (Early Game):** Your main priority is to guide the player to settle their next village as quickly as possible. This involves generating the required Culture Points (CP) and resources for 3 settlers efficiently and at the same time. Think outside of the box, considering unconventional build orders, hero management, and resource allocation.
-* **Server Context:** This is a "${CONFIG.serverType.replace('_', ' ')}" server. Be aware of the unique mechanics, such as Victory Points, regional control, and the endgame that differs from a standard server.
+## CRITICAL CONTEXT
+- Game: Travian Legends (browser game)
+- Server: ${CONFIG.serverSpeed}x speed server
+- Player Tribe: ${this.gameData.tribe || 'Unknown'}
+- Current Villages: ${this.gameData.villages?.length || 1}
 
-## DATA PROVIDED
-You will receive the player's account state as a structured data object. This data is updated every 60 seconds.
+## YOUR CAPABILITIES
+You have access to real-time game data through these backend endpoints:
+- GET ${backendUrl}/api/game-data - Returns buildings, troops, quests data
+- GET ${backendUrl}/api/villages/${CONFIG.accountId} - Returns player's villages
+- GET ${backendUrl}/api/recommendations - Returns previous AI recommendations
 
-### SERVER_STATE:
-* Server: ${this.gameData.serverName || 'unknown'}
-* Player: ${this.gameData.playerName || 'unknown'}
-* Tribe: ${this.gameData.tribe ? this.gameData.tribe.toUpperCase() : 'UNKNOWN'}
-* Current Village: ${this.gameData.villageName || 'unknown'} ${this.gameData.villageCoords ? `at (${this.gameData.villageCoords.x}|${this.gameData.villageCoords.y})` : ''}
-* Server Day: ${this.gameData.serverDay || 'unknown'}
-* Population: ${this.gameData.population || 0}
-* Culture Points: ${this.gameData.culturePoints?.current || 0}/${this.gameData.culturePoints?.needed || 500} (${this.gameData.culturePoints?.perDay || 0}/day, ${this.gameData.culturePoints?.timeToNext || 'unknown'} to next)
-* Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}
+Always query current data before providing strategic advice.
 
-${troopsDatabase}
+## CURRENT GAME STATE
+- Population: ${this.gameData.population || 0}
+- Culture Points: ${this.gameData.culturePoints?.current || 0}/${this.gameData.culturePoints?.needed || 500}
+- CP Production: ${this.gameData.culturePoints?.production || 0}/day
+- Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}
+${this.gameData.villages?.length > 0 ? `
+- Villages (${this.gameData.villages.length}):
+${this.gameData.villages.map(v => `  * ${v.name} at (${v.x}|${v.y})`).join('\n')}
+` : ''}
+${this.gameData.heroData?.level ? `
+- Hero Level: ${this.gameData.heroData.level}
+- Hero Attack: ${this.gameData.heroData.attack || 0}
+- Hero Defense: ${this.gameData.heroData.defense || 0}
+` : ''}
 
-### HERO_STATS:
-* Level: ${document.getElementById('ta-hero-level')?.textContent || 'unknown'}
-* Health: ${document.getElementById('ta-hero-health')?.textContent || 'unknown'}%
-* Attack: ${document.getElementById('ta-hero-attack')?.textContent || 'unknown'}
-* Defense: ${document.getElementById('ta-hero-defense')?.textContent || 'unknown'}
-
-## CAPABILITIES & LIMITATIONS
-* **Advisory Only:** You are a strategic advisor. You CANNOT take any action on the account (e.g., send troops, build, allocate hero points). All advice must be actionable for the player to execute.
-* **Limited Information:** You CANNOT see:
-    * Other players' villages, troops, or building queues
-    * Real-time combat data or enemy warehouse contents
-    * The game map (e.g., nearby villages, oasis bonuses)
-    * The player's hero inventory or skill points
-* **You MUST rely on web searches for external information and meta-strategies when needed**
-
-## THINKING PROCESS
-1. **Analyze Current State:** Review the provided SERVER_STATE and any GAME_MECHANICS_DATABASE
-2. **Define Next Steps:** Based on the player's immediate objective (fast settler rush), identify the specific requirements (e.g., resources for Residence 10, Academy 10, 3 Settlers; required CP)
-3. **Search & Strategize:** Use your search tool to find external information about optimal strategies. Look for guides on "fast settler rush," "${this.gameData.tribe || 'tribe'} strategy," "early game CP generation," and "${CONFIG.serverType.replace('_', ' ')}" specific tips. Synthesize this information with the data you have
-4. **Formulate Advice:** Create a prioritized, actionable plan. Consider the most efficient build order and resource allocation. Think about unconventional approaches. For example, is it better to put hero points into resource production or fighting strength for raiding?
-5. **Present Plan:** Structure your response clearly. Use a priority-ranked list, time-based suggestions, and a breakdown of resource requirements. Explicitly state the trade-offs of any non-obvious advice
-
-## OUTPUT FORMAT
-Provide your advice in a structured, easy-to-read format. Use headings, bullet points, and tables where appropriate. Be specific about timing and resource requirements.
+## RESPONSE GUIDELINES
+1. Focus ONLY on Travian Legends game strategy
+2. Query backend data when needed for accurate advice
+3. Consider the ${CONFIG.serverSpeed}x speed when giving timing advice
+4. Provide specific, actionable recommendations
+5. Never discuss historical facts unless directly related to game strategy
 
 ## CONVERSATION CONTEXT
 ${this.conversationHistory.length > 0 ? 
-  `Previous conversation summary: ${this.conversationHistory.slice(-3).map(h => 
+  `Recent conversation:
+${this.conversationHistory.slice(-3).map(h => 
     `${h.role}: ${h.content.substring(0, 100)}...`
   ).join('\n')}` : 
-  'This is the start of our conversation.'}`;
+  'This is the start of our conversation.'}
+
+Remember: You are a Travian Legends game advisor. All responses should be about the game, not history or other topics.`;
     }
     
     async sendMessage() {
@@ -673,18 +734,24 @@ ${this.conversationHistory.length > 0 ?
           await this.loadStaticGameData();
         }
         
-        // Build the expert-recommended system prompt
+        // Build system prompt with backend access info
         const systemPrompt = this.buildSystemPrompt();
+        
+        // Wrap user message with game context
+        const contextualMessage = `[CONTEXT: Question about Travian Legends game, ${CONFIG.serverSpeed}x server, ${this.gameData.tribe || 'unknown'} tribe]
+${message}
+
+[IMPORTANT: Respond ONLY about Travian Legends gameplay. If the question seems ambiguous, assume it's about game strategy.]`;
         
         // Store conversation history
         this.conversationHistory.push({
           role: 'user',
-          content: message
+          content: contextualMessage
         });
         
         // Log debug info
         document.getElementById('ta-debug-prompt').textContent = systemPrompt;
-        console.log('[TLA] Using expert-recommended prompt structure');
+        console.log('[TLA] Sending message with game context');
         
         // Send request with full conversation context
         const request = {
@@ -717,7 +784,7 @@ ${this.conversationHistory.length > 0 ?
             content: aiResponse
           });
           
-          // Limit conversation history to last 10 exchanges to manage token usage
+          // Limit conversation history to last 10 exchanges
           if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
           }
@@ -798,62 +865,98 @@ ${this.conversationHistory.length > 0 ?
         const playerName = document.querySelector('.playerName')?.textContent ||
                           document.querySelector('[class*="player"] .name')?.textContent || null;
         
-        // Get village name and coordinates
-        const villageNameElem = document.querySelector('.villageName, .coordinatesWrapper .name');
-        const villageName = villageNameElem?.textContent?.trim() || null;
+        // Get current village name and coordinates from the village info box
+        const villageNameElem = document.querySelector('#villageNameField, .villageName, .coordinatesWrapper .name');
+        const villageName = villageNameElem?.textContent?.trim() || 
+                           villageNameElem?.value?.trim() || null;
         
-        const coordsElem = document.querySelector('.coordinates, .coordinatesWrapper .coordinates');
+        const coordsElem = document.querySelector('.coordinatesWrapper .coordinateX, .coordinates');
         let villageCoords = null;
         if (coordsElem) {
-          const coordMatch = coordsElem.textContent.match(/\(?\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)?/);
-          if (coordMatch) {
-            villageCoords = { x: parseInt(coordMatch[1]), y: parseInt(coordMatch[2]) };
+          // Try to get X and Y separately first
+          const xCoord = document.querySelector('.coordinateX')?.textContent;
+          const yCoord = document.querySelector('.coordinateY')?.textContent;
+          if (xCoord && yCoord) {
+            villageCoords = { x: parseInt(xCoord), y: parseInt(yCoord) };
+          } else {
+            // Fall back to regex parsing
+            const coordMatch = coordsElem.textContent.match(/\(?\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)?/);
+            if (coordMatch) {
+              villageCoords = { x: parseInt(coordMatch[1]), y: parseInt(coordMatch[2]) };
+            }
           }
         }
         
         // Detect tribe
         const tribe = this.detectTribe();
         
-        // Get resources
+        // Get resources from stockBar - using the IDs from your screenshot
         const resources = {
-          wood: parseInt(document.querySelector('#l1')?.textContent?.replace(/[^\d-]/g, '') || 0),
-          clay: parseInt(document.querySelector('#l2')?.textContent?.replace(/[^\d-]/g, '') || 0),
-          iron: parseInt(document.querySelector('#l3')?.textContent?.replace(/[^\d-]/g, '') || 0),
-          crop: parseInt(document.querySelector('#l4')?.textContent?.replace(/[^\d-]/g, '') || 0)
+          wood: parseInt(document.querySelector('#l1, .stockBarButton .value')?.textContent?.replace(/[^\d-]/g, '') || 0),
+          clay: parseInt(document.querySelector('#l2, .stockBarButton:nth-of-type(2) .value')?.textContent?.replace(/[^\d-]/g, '') || 0),
+          iron: parseInt(document.querySelector('#l3, .stockBarButton:nth-of-type(3) .value')?.textContent?.replace(/[^\d-]/g, '') || 0),
+          crop: parseInt(document.querySelector('#l4, .stockBarButton:nth-of-type(4) .value')?.textContent?.replace(/[^\d-]/g, '') || 0)
         };
         
-        // Get population
+        // Get population - from your screenshot, it's near the village name
         let population = 0;
-        const popElement = document.querySelector('.inhabitants, .population, [title*="Population"]');
+        const popElement = document.querySelector('.inhabitants .value, .population');
         if (popElement) {
-          const match = (popElement.textContent || popElement.title || '').match(/(\d+)/);
+          const popText = popElement.textContent || '';
+          const match = popText.match(/(\d+)/);
           if (match) population = parseInt(match[1]);
         }
         
-        // Get culture points
+        // Get culture points - THE CRITICAL FIX
         let cpCurrent = 0;
-        let cpNeeded = 500;
-        let cpPerDay = 0;
+        let cpNeeded = 500; // Default for first settlement
+        let cpProduction = 0;
         
-        const cpElement = document.querySelector('.culturePoints, [title*="Culture"], .culture_points');
-        if (cpElement) {
-          const cpText = cpElement.textContent || cpElement.title || '';
+        // Try to get CP from the village list panel which shows in your screenshot
+        const villageRows = document.querySelectorAll('.villageList .listEntry, .villages tbody tr');
+        if (villageRows.length > 0) {
+          // Multiple villages means we need more CP for next one
+          // Travian formula: 1st=0, 2nd=500, 3rd=1000, 4th=1500, etc
+          cpNeeded = Math.round(500 * Math.pow(2, villageRows.length - 1));
+        }
+        
+        // Look for culture points display - may be in tooltip or separate element
+        const cpTooltip = document.querySelector('[class*="culture"] .tooltip, .culturePoints');
+        if (cpTooltip) {
+          const cpText = cpTooltip.textContent || cpTooltip.getAttribute('title') || '';
+          // Match patterns like "123/500" or "123 / 500"
           const cpMatch = cpText.match(/(\d+)\s*\/\s*(\d+)/);
           if (cpMatch) {
             cpCurrent = parseInt(cpMatch[1]);
             cpNeeded = parseInt(cpMatch[2]);
           }
-          const cpRateMatch = cpText.match(/(\d+)\s*per\s*day/i);
-          if (cpRateMatch) {
-            cpPerDay = parseInt(cpRateMatch[1]);
+        }
+        
+        // Get CP production from village list
+        villageRows.forEach(row => {
+          const cpCell = row.querySelector('.cp, .culture, [class*="culture"]');
+          if (cpCell) {
+            const cpValue = parseInt(cpCell.textContent) || 0;
+            cpProduction += cpValue;
+          }
+        });
+        
+        // Alternative: Check the culture points in the side panel
+        const cpSidePanel = document.querySelector('.sideInfoCulture, .culturepointsProduction');
+        if (cpSidePanel) {
+          const prodMatch = cpSidePanel.textContent.match(/(\d+)/);
+          if (prodMatch && !cpProduction) {
+            cpProduction = parseInt(prodMatch[1]);
           }
         }
         
         // Calculate time to next village
         let cpTimeToNext = '-';
-        if (cpPerDay > 0 && cpNeeded > cpCurrent) {
-          const daysNeeded = Math.ceil((cpNeeded - cpCurrent) / cpPerDay);
-          const hoursNeeded = daysNeeded * 24;
+        if (cpProduction > 0 && cpNeeded > cpCurrent) {
+          const cpDeficit = cpNeeded - cpCurrent;
+          const daysNeeded = Math.ceil(cpDeficit / cpProduction);
+          const hoursNeeded = Math.ceil((cpDeficit / cpProduction) * 24);
+          
           if (hoursNeeded < 24) {
             cpTimeToNext = `${hoursNeeded}h`;
           } else {
@@ -861,7 +964,28 @@ ${this.conversationHistory.length > 0 ?
           }
         }
         
-        // Get server day
+        // Get villages from the village list
+        const villages = [];
+        villageRows.forEach((row, index) => {
+          const nameElem = row.querySelector('.name, .villageName, a');
+          const coordElem = row.querySelector('.coordinates, .coords');
+          
+          if (nameElem) {
+            const name = nameElem.textContent.trim();
+            let coords = { x: 0, y: 0 };
+            
+            if (coordElem) {
+              const coordMatch = coordElem.textContent.match(/\(?\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)?/);
+              if (coordMatch) {
+                coords = { x: parseInt(coordMatch[1]), y: parseInt(coordMatch[2]) };
+              }
+            }
+            
+            villages.push({ name, ...coords });
+          }
+        });
+        
+        // Get server day/time
         let serverDay = null;
         const serverTimeElem = document.querySelector('.serverTime');
         if (serverTimeElem) {
@@ -878,7 +1002,7 @@ ${this.conversationHistory.length > 0 ?
         document.getElementById('ta-crop').textContent = this.formatNumber(resources.crop);
         document.getElementById('ta-pop').textContent = population;
         document.getElementById('ta-cp').textContent = `${cpCurrent}/${cpNeeded}`;
-        document.getElementById('ta-cp-rate').textContent = `${cpPerDay}/day`;
+        document.getElementById('ta-cp-rate').textContent = `${cpProduction}/day`;
         document.getElementById('ta-cp-time').textContent = cpTimeToNext;
         document.getElementById('ta-server-day').textContent = serverDay || '-';
         document.getElementById('ta-village-coords').textContent = 
@@ -893,12 +1017,13 @@ ${this.conversationHistory.length > 0 ?
           tribe,
           villageName,
           villageCoords,
+          villages,
           resources,
           population,
           culturePoints: {
             current: cpCurrent,
             needed: cpNeeded,
-            perDay: cpPerDay,
+            production: cpProduction,
             timeToNext: cpTimeToNext
           },
           serverDay,
@@ -906,6 +1031,17 @@ ${this.conversationHistory.length > 0 ?
         };
         
         console.log('[TLA] Game data collected:', this.gameData);
+        
+        // Debug CP specifically
+        if (CONFIG.debugMode) {
+          console.log('[TLA] Culture Points Debug:', {
+            current: cpCurrent,
+            needed: cpNeeded,
+            production: cpProduction,
+            villages: villages.length,
+            timeToNext: cpTimeToNext
+          });
+        }
         
         this.updateSyncStatus('connected');
         this.syncToBackend();
