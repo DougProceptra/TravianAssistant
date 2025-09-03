@@ -165,9 +165,43 @@
       await this.loadStoredData();
       this.startDataCollection();
       this.loadPosition();
+      
+      // Set up URL change detection for single-page app navigation
+      this.setupNavigationDetection();
+      
+      // Initial capture attempts
       this.captureCulturePoints();
       this.captureProduction();
       this.captureHeroData();
+    }
+    
+    setupNavigationDetection() {
+      // Listen for URL changes (for single-page apps)
+      let lastUrl = location.href;
+      new MutationObserver(() => {
+        const url = location.href;
+        if (url !== lastUrl) {
+          lastUrl = url;
+          console.log('[TLA] Navigation detected to:', url);
+          
+          // Wait a bit for page to load then try capturing
+          setTimeout(() => {
+            this.captureCulturePoints();
+            this.captureHeroData();
+            this.captureProduction();
+          }, 1000);
+        }
+      }).observe(document, { subtree: true, childList: true });
+      
+      // Also listen for popstate events
+      window.addEventListener('popstate', () => {
+        console.log('[TLA] Popstate navigation to:', window.location.href);
+        setTimeout(() => {
+          this.captureCulturePoints();
+          this.captureHeroData();
+          this.captureProduction();
+        }, 1000);
+      });
     }
     
     createHUD() {
@@ -724,48 +758,80 @@
       if (storedHero) {
         this.gameData.heroData = JSON.parse(storedHero);
         console.log('[TLA] Loaded stored hero data:', this.gameData.heroData);
+        this.updateHeroDisplay(); // Update display with stored data
       }
     }
     
     captureCulturePoints() {
-      if (window.location.href.includes('gid=24') || 
-          window.location.href.includes('gid=25') || 
-          window.location.href.includes('gid=26') || 
-          window.location.href.includes('gid=29')) {
+      // Debug: Log current URL and check for CP buildings
+      const currentUrl = window.location.href;
+      console.log('[TLA] Checking for CP data at:', currentUrl);
+      
+      // More flexible URL matching
+      const isCPBuilding = currentUrl.includes('build.php') && (
+        currentUrl.includes('gid=24') || // Town Hall
+        currentUrl.includes('gid=25') || // Residence  
+        currentUrl.includes('gid=26') || // Palace
+        currentUrl.includes('gid=29')    // Treasury
+      );
+      
+      if (isCPBuilding) {
+        console.log('[TLA] On culture building - attempting CP capture...');
         
-        console.log('[TLA] On culture building - capturing CP...');
+        // Try multiple selectors for different Travian versions
         const cpData = {};
         const bodyText = document.body.innerText;
         
-        const currentMatch = bodyText.match(/Culture points produced so far[\s\S]*?(\d{3,})/);
-        if (currentMatch) cpData.current = parseInt(currentMatch[1]);
+        // Debug: Log first 500 chars to see what we're working with
+        console.log('[TLA] Page text sample:', bodyText.substring(0, 500));
         
-        const neededMatch = bodyText.match(/Next village controllable at[\s\S]*?(\d{3,})/);
-        if (neededMatch) cpData.needed = parseInt(neededMatch[1]);
+        // Try various text patterns
+        const patterns = [
+          /Culture points produced so far[\s\S]*?(\d{3,})/,
+          /Current culture points[\s\S]*?(\d{3,})/,
+          /Culture points[\s\S]*?(\d{3,})/,
+          /CP[\s\S]*?(\d{3,})/
+        ];
         
-        const deficitMatch = bodyText.match(/Culture points still needed[\s\S]*?(\d{3,})/);
-        if (deficitMatch) cpData.deficit = parseInt(deficitMatch[1]);
-        
-        document.querySelectorAll('td').forEach(cell => {
-          const text = cell.textContent?.trim();
-          if (text && /^\d{3,5}$/.test(text)) {
-            const num = parseInt(text);
-            if (num > 5000 && num < 10000) cpData.totalPerDay = num;
+        for (const pattern of patterns) {
+          const match = bodyText.match(pattern);
+          if (match) {
+            cpData.current = parseInt(match[1]);
+            console.log('[TLA] Found current CP:', cpData.current);
+            break;
           }
-        });
-        
-        if (cpData.deficit && cpData.totalPerDay) {
-          cpData.hoursRemaining = Math.ceil((cpData.deficit / cpData.totalPerDay) * 24);
         }
         
-        if (cpData.current) {
+        // Look for needed CP
+        const neededPatterns = [
+          /Next village controllable at[\s\S]*?(\d{3,})/,
+          /Next village at[\s\S]*?(\d{3,})/,
+          /Required[\s\S]*?(\d{3,})/
+        ];
+        
+        for (const pattern of neededPatterns) {
+          const match = bodyText.match(pattern);
+          if (match) {
+            cpData.needed = parseInt(match[1]);
+            console.log('[TLA] Found needed CP:', cpData.needed);
+            break;
+          }
+        }
+        
+        // Store if we found anything
+        if (cpData.current || cpData.needed) {
           this.gameData.culturePoints = cpData;
           localStorage.setItem('TLA_CP_DATA', JSON.stringify({
             ...cpData,
             timestamp: new Date().toISOString()
           }));
-          console.log('[TLA] Captured CP data:', cpData);
+          console.log('[TLA] Stored CP data:', cpData);
+          this.updateDisplay();
+        } else {
+          console.log('[TLA] No CP data found on page');
         }
+      } else {
+        console.log('[TLA] Not on a CP building page');
       }
     }
     
@@ -796,121 +862,95 @@
     }
     
     captureHeroData() {
-      if (window.location.href.includes('hero.php') || 
-          window.location.href.includes('/hero/') ||
-          window.location.href.includes('hero/attributes')) {
+      const currentUrl = window.location.href;
+      console.log('[TLA] Checking for hero data at:', currentUrl);
+      
+      // More flexible URL matching for hero pages
+      const isHeroPage = currentUrl.includes('hero.php') || 
+                        currentUrl.includes('/hero/') ||
+                        currentUrl.includes('hero') && currentUrl.includes('attributes');
+      
+      if (isHeroPage) {
+        console.log('[TLA] On hero page - attempting hero data capture...');
         
-        console.log('[TLA] On hero page - capturing hero data...');
-        const heroData = {};
-        
-        const heroHeader = document.querySelector('#content h1, .contentNavi h1');
-        if (heroHeader) {
-          const levelMatch = heroHeader.textContent.match(/level\s+(\d+)/i);
-          if (levelMatch) {
-            heroData.level = parseInt(levelMatch[1]);
-            console.log('[TLA] Found level:', heroData.level);
-          }
-        }
-        
-        const bodyText = document.body.textContent;
-        const expMatch = bodyText.match(/Experience[\s\S]*?(\d{4,})/i) || 
-                        bodyText.match(/(\d{5,})\s*exp/i) ||
-                        bodyText.match(/experience[\s:]*(\d{4,})/i);
-        if (expMatch) {
-          heroData.experience = parseInt(expMatch[1]);
-          console.log('[TLA] Found experience:', heroData.experience);
-        }
-        
-        const healthMatch = bodyText.match(/Health[\s\S]*?(\d+)%/i) || 
-                           bodyText.match(/(\d+)%.*health/i);
-        if (healthMatch) {
-          heroData.health = parseInt(healthMatch[1]);
-          console.log('[TLA] Found health:', heroData.health);
-        }
-        
-        const strengthMatch = bodyText.match(/Fighting strength[\s\S]*?(\d{3,})/i) || 
-                             bodyText.match(/(\d{3,})\s*fighting/i);
-        if (strengthMatch) {
-          heroData.fightingStrength = parseInt(strengthMatch[1]);
-          console.log('[TLA] Found fighting strength:', heroData.fightingStrength);
-        }
-        
-        const offBonusMatch = bodyText.match(/Off bonus[\s\S]*?([\d.]+)%/i);
-        if (offBonusMatch) {
-          heroData.offBonus = parseFloat(offBonusMatch[1]);
-          console.log('[TLA] Found off bonus:', heroData.offBonus);
-        }
-        
-        const defBonusMatch = bodyText.match(/Def bonus[\s\S]*?([\d.]+)%/i);
-        if (defBonusMatch) {
-          heroData.defBonus = parseFloat(defBonusMatch[1]);
-          console.log('[TLA] Found def bonus:', heroData.defBonus);
-        }
-        
-        const resourceProduction = {};
-        const productionSection = Array.from(document.querySelectorAll('*')).find(el => 
-          el.textContent?.includes('Hero production')
-        );
-        
-        if (productionSection) {
-          console.log('[TLA] Found hero production section');
-          const parent = productionSection.parentElement || productionSection;
-          const numbers = parent.textContent.match(/\d{4,}/g);
+        // Add delay to let page fully load
+        setTimeout(() => {
+          const heroData = {};
+          const bodyText = document.body.textContent;
           
-          if (numbers && numbers.length > 0) {
-            const inputs = parent.querySelectorAll('input[type="radio"], input[type="checkbox"]');
-            let selectedIndex = -1;
-            let isEvenDistribution = false;
-            
-            inputs.forEach((input, idx) => {
-              if (input.checked) {
-                selectedIndex = idx;
-                if (idx === 0) isEvenDistribution = true;
+          // Debug: Log a sample of page text
+          console.log('[TLA] Hero page text sample:', bodyText.substring(0, 500));
+          
+          // Try multiple selectors and patterns
+          // Look for level in various places
+          const levelPatterns = [
+            /Hero Level[\s:]*(\d+)/i,
+            /Level[\s:]*(\d+)/i,
+            /Lvl[\s:]*(\d+)/i,
+            /Hero.*?(\d+)/i
+          ];
+          
+          for (const pattern of levelPatterns) {
+            const match = bodyText.match(pattern);
+            if (match) {
+              const level = parseInt(match[1]);
+              if (level >= 0 && level <= 100) { // Sanity check
+                heroData.level = level;
+                console.log('[TLA] Found hero level:', heroData.level);
+                break;
               }
-            });
-            
-            const evenValue = parseInt(numbers[0]);
-            
-            if (isEvenDistribution || selectedIndex === 0) {
-              resourceProduction.wood = evenValue;
-              resourceProduction.clay = evenValue;
-              resourceProduction.iron = evenValue;
-              resourceProduction.crop = evenValue;
-              console.log('[TLA] Hero production set to even distribution:', evenValue);
-            } else if (selectedIndex > 0 && selectedIndex <= 4) {
-              const singleValue = numbers[selectedIndex] ? parseInt(numbers[selectedIndex]) : parseInt(numbers[1]);
-              resourceProduction.wood = selectedIndex === 1 ? singleValue : 0;
-              resourceProduction.clay = selectedIndex === 2 ? singleValue : 0;
-              resourceProduction.iron = selectedIndex === 3 ? singleValue : 0;
-              resourceProduction.crop = selectedIndex === 4 ? singleValue : 0;
-              console.log('[TLA] Hero production set to single resource at index', selectedIndex, ':', singleValue);
-            } else {
-              resourceProduction.wood = evenValue;
-              resourceProduction.clay = evenValue;
-              resourceProduction.iron = evenValue;
-              resourceProduction.crop = evenValue;
-              console.log('[TLA] Defaulting to even distribution:', evenValue);
             }
-            
-            heroData.resourceProduction = resourceProduction;
           }
-        }
-        
-        console.log('[TLA] Hero page URL:', window.location.href);
-        console.log('[TLA] Hero data extracted:', heroData);
-        
-        if (heroData.level || heroData.experience || heroData.health || heroData.resourceProduction) {
-          const existingData = this.gameData.heroData || {};
-          this.gameData.heroData = { ...existingData, ...heroData };
           
-          localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
-            ...this.gameData.heroData,
-            timestamp: new Date().toISOString()
-          }));
-          console.log('[TLA] Captured and stored hero data:', this.gameData.heroData);
-        } else {
-          console.log('[TLA] No hero data found on this page');
-        }
+          // Look for experience
+          const expPatterns = [
+            /Experience[\s:]*(\d{1,})/i,
+            /Exp[\s:]*(\d{1,})/i,
+            /XP[\s:]*(\d{1,})/i
+          ];
+          
+          for (const pattern of expPatterns) {
+            const match = bodyText.match(pattern);
+            if (match) {
+              heroData.experience = parseInt(match[1]);
+              console.log('[TLA] Found experience:', heroData.experience);
+              break;
+            }
+          }
+          
+          // Look for health
+          const healthPatterns = [
+            /Health[\s:]*(\d+)%/i,
+            /HP[\s:]*(\d+)%/i,
+            /(\d+)%.*?health/i
+          ];
+          
+          for (const pattern of healthPatterns) {
+            const match = bodyText.match(pattern);
+            if (match) {
+              heroData.health = parseInt(match[1]);
+              console.log('[TLA] Found health:', heroData.health);
+              break;
+            }
+          }
+          
+          // Store if we found anything
+          if (Object.keys(heroData).length > 0) {
+            const existingData = this.gameData.heroData || {};
+            this.gameData.heroData = { ...existingData, ...heroData };
+            
+            localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
+              ...this.gameData.heroData,
+              timestamp: new Date().toISOString()
+            }));
+            console.log('[TLA] Captured and stored hero data:', this.gameData.heroData);
+            this.updateHeroDisplay();
+          } else {
+            console.log('[TLA] No hero data found on page');
+          }
+        }, 1500); // Wait 1.5 seconds for page to load
+      } else {
+        console.log('[TLA] Not on a hero page');
       }
     }
     
