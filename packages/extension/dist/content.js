@@ -550,11 +550,7 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        const welcomeMsg = `Welcome! I'm your Travian Legends strategic advisor for this ${CONFIG.serverSpeed}x speed server.
-        
-Based on your current data, you have ${this.gameData.culturePoints?.hoursRemaining || 'unknown'} hours until your next settlement.
-
-How can I help optimize your gameplay today?`;
+        const welcomeMsg = 'Welcome! I\'m your Travian Legends strategic advisor for this ' + CONFIG.serverSpeed + 'x speed server.\n\nBased on your current data, you have ' + (this.gameData.culturePoints?.hoursRemaining || 'unknown') + ' hours until your next settlement.\n\nHow can I help optimize your gameplay today?';
         this.addMessage('ai', welcomeMsg);
       }
     }
@@ -816,22 +812,19 @@ How can I help optimize your gameplay today?`;
     
     buildSystemPrompt() {
       const backendUrl = CONFIG.backendUrl;
-      return `You are an expert Travian Legends strategic advisor. This is the online game, NOT historical information.
-
-## CONTEXT
-- Server: ${CONFIG.serverSpeed}x speed
-- Tribe: ${this.gameData.tribe || 'Unknown'}
-- Villages: ${this.gameData.villages?.length || 1}
-- Culture Points: ${this.gameData.culturePoints?.current || 0}/${this.gameData.culturePoints?.needed || 'unknown'}
-- Time to Settlement: ${this.gameData.culturePoints?.hoursRemaining || 'unknown'} hours
-- Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}
-
-## BACKEND ACCESS
-You can query these endpoints:
-- GET ${backendUrl}/api/game-data
-- GET ${backendUrl}/api/villages/${CONFIG.accountId}
-
-Always provide strategic advice specific to Travian Legends gameplay.`;
+      return 'You are an expert Travian Legends strategic advisor. This is the online game, NOT historical information.\n\n' +
+             '## CONTEXT\n' +
+             '- Server: ' + CONFIG.serverSpeed + 'x speed\n' +
+             '- Tribe: ' + (this.gameData.tribe || 'Unknown') + '\n' +
+             '- Villages: ' + (this.gameData.villages?.length || 1) + '\n' +
+             '- Culture Points: ' + (this.gameData.culturePoints?.current || 0) + '/' + (this.gameData.culturePoints?.needed || 'unknown') + '\n' +
+             '- Time to Settlement: ' + (this.gameData.culturePoints?.hoursRemaining || 'unknown') + ' hours\n' +
+             '- Resources: Wood ' + (this.gameData.resources?.wood || 0) + ', Clay ' + (this.gameData.resources?.clay || 0) + ', Iron ' + (this.gameData.resources?.iron || 0) + ', Crop ' + (this.gameData.resources?.crop || 0) + '\n\n' +
+             '## BACKEND ACCESS\n' +
+             'You can query these endpoints:\n' +
+             '- GET ' + backendUrl + '/api/game-data\n' +
+             '- GET ' + backendUrl + '/api/villages/' + CONFIG.accountId + '\n\n' +
+             'Always provide strategic advice specific to Travian Legends gameplay.';
     }
     
     async sendMessage() {
@@ -846,8 +839,7 @@ Always provide strategic advice specific to Travian Legends gameplay.`;
       
       try {
         const systemPrompt = this.buildSystemPrompt();
-        const contextualMessage = `[Travian Legends ${CONFIG.serverSpeed}x server]
-${message}`;
+        const contextualMessage = '[Travian Legends ' + CONFIG.serverSpeed + 'x server]\n' + message;
         
         this.conversationHistory.push({
           role: 'user',
@@ -867,7 +859,7 @@ ${message}`;
           body: JSON.stringify(request)
         });
         
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        if (!response.ok) throw new Error('API error: ' + response.status);
         
         const data = await response.json();
         this.removeLoadingMessage(loadingMessage);
@@ -887,7 +879,7 @@ ${message}`;
       } catch (error) {
         console.error('[TLA] AI Error:', error);
         this.removeLoadingMessage(loadingMessage);
-        this.addMessage('ai', `Error: ${error.message}`);
+        this.addMessage('ai', 'Error: ' + error.message);
       }
     }
     
@@ -909,7 +901,7 @@ ${message}`;
       this.chatMessages.push(message);
       const messagesDiv = document.querySelector('.ta-chat-messages');
       const messageDiv = document.createElement('div');
-      messageDiv.className = `chat-message ${type === 'user' ? 'user-message' : 'ai-message'}`;
+      messageDiv.className = 'chat-message ' + (type === 'user' ? 'user-message' : 'ai-message');
       messageDiv.textContent = text;
       messagesDiv.appendChild(messageDiv);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -919,7 +911,7 @@ ${message}`;
     async loadStaticGameData() {
       try {
         console.log('[TLA] Loading game data from backend...');
-        const response = await fetch(`${CONFIG.backendUrl}/api/game-data`);
+        const response = await fetch(CONFIG.backendUrl + '/api/game-data');
         if (response.ok) {
           this.staticGameData = await response.json();
         }
@@ -1015,18 +1007,15 @@ ${message}`;
     
     updateDisplay() {
       // Update server info
-      const serverInfo = `${this.gameData.serverName || 'Server'} - ${this.gameData.tribe || 'Unknown'}`;
+      const serverInfo = (this.gameData.serverName || 'Server') + ' - ' + (this.gameData.tribe || 'Unknown');
       document.getElementById('ta-server-info').textContent = serverInfo;
       
       // Update culture points
       const cp = this.gameData.culturePoints || {};
       if (cp.current && cp.needed) {
-        document.getElementById('ta-cp').textContent = 
-          `${this.formatNumber(cp.current)}/${this.formatNumber(cp.needed)}`;
-        document.getElementById('ta-cp-rate').textContent = 
-          `${this.formatNumber(cp.totalPerDay || 0)}/day`;
-        document.getElementById('ta-cp-time').textContent = 
-          cp.hoursRemaining ? `${cp.hoursRemaining}h left` : '-';
+        document.getElementById('ta-cp').textContent = this.formatNumber(cp.current) + '/' + this.formatNumber(cp.needed);
+        document.getElementById('ta-cp-rate').textContent = this.formatNumber(cp.totalPerDay || 0) + '/day';
+        document.getElementById('ta-cp-time').textContent = cp.hoursRemaining ? cp.hoursRemaining + 'h left' : '-';
       }
       
       // Update resources with production
@@ -1034,16 +1023,16 @@ ${message}`;
       const prod = this.gameData.production || {};
       
       document.getElementById('ta-wood').textContent = this.formatNumber(res.wood || 0);
-      document.getElementById('ta-wood-prod').textContent = prod.wood ? `+${this.formatNumber(prod.wood)}/h` : '-';
+      document.getElementById('ta-wood-prod').textContent = prod.wood ? '+' + this.formatNumber(prod.wood) + '/h' : '-';
       
       document.getElementById('ta-clay').textContent = this.formatNumber(res.clay || 0);
-      document.getElementById('ta-clay-prod').textContent = prod.clay ? `+${this.formatNumber(prod.clay)}/h` : '-';
+      document.getElementById('ta-clay-prod').textContent = prod.clay ? '+' + this.formatNumber(prod.clay) + '/h' : '-';
       
       document.getElementById('ta-iron').textContent = this.formatNumber(res.iron || 0);
-      document.getElementById('ta-iron-prod').textContent = prod.iron ? `+${this.formatNumber(prod.iron)}/h` : '-';
+      document.getElementById('ta-iron-prod').textContent = prod.iron ? '+' + this.formatNumber(prod.iron) + '/h' : '-';
       
       document.getElementById('ta-crop').textContent = this.formatNumber(res.crop || 0);
-      document.getElementById('ta-crop-prod').textContent = prod.crop ? `+${this.formatNumber(prod.crop)}/h` : '-';
+      document.getElementById('ta-crop-prod').textContent = prod.crop ? '+' + this.formatNumber(prod.crop) + '/h' : '-';
       
       // Update population only
       document.getElementById('ta-pop').textContent = this.gameData.population || '-';
@@ -1057,7 +1046,7 @@ ${message}`;
     
     async syncToBackend() {
       try {
-        await fetch(`${CONFIG.backendUrl}/api/village`, {
+        await fetch(CONFIG.backendUrl + '/api/village', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1076,7 +1065,7 @@ ${message}`;
       this.syncStatus = status;
       const indicator = document.querySelector('.sync-indicator');
       if (indicator) {
-        indicator.className = `sync-indicator ${status}`;
+        indicator.className = 'sync-indicator ' + status;
       }
     }
   }
