@@ -55,11 +55,7 @@
       this.loadPosition();
       this.captureCulturePoints();
       this.captureProduction();
-      
-      // Capture hero data if on hero page
-      if (window.location.href.includes('/hero')) {
-        this.scrapeHeroPage();
-      }
+      this.captureHeroData();
     }
     
     createHUD() {
@@ -127,14 +123,6 @@
               <span class="ta-icon">👥</span>
               <span id="ta-pop">-</span>
             </div>
-            <div class="ta-row">
-              <span class="ta-icon">📍</span>
-              <span id="ta-village">-</span>
-            </div>
-            <div class="ta-row">
-              <span class="ta-icon">📅</span>
-              <span id="ta-server-day">Day -</span>
-            </div>
           </div>
         </div>
         
@@ -148,11 +136,10 @@
             <div class="hero-stat">Level: <span id="ta-hero-level">-</span></div>
             <div class="hero-stat">Experience: <span id="ta-hero-exp">-</span></div>
             <div class="hero-stat">Health: <span id="ta-hero-health">-</span>%</div>
-            <div class="hero-stat">Attack: <span id="ta-hero-attack">-</span></div>
-            <div class="hero-stat">Defense: <span id="ta-hero-defense">-</span></div>
+            <div class="hero-stat">Fighting Strength: <span id="ta-hero-fighting">-</span></div>
             <div class="hero-stat">Off Bonus: <span id="ta-hero-off-bonus">-</span>%</div>
             <div class="hero-stat">Def Bonus: <span id="ta-hero-def-bonus">-</span>%</div>
-            <div class="hero-stat">Resources: <span id="ta-hero-resources">-</span>%</div>
+            <div class="hero-stat">Resource Bonus: <span id="ta-hero-resources">-</span>%</div>
           </div>
         </div>
         
@@ -563,11 +550,11 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        const welcomeMsg = `Welcome! I'm your Travian Legends strategic advisor for this ${CONFIG.serverSpeed}x speed server.
+        const welcomeMsg = \`Welcome! I'm your Travian Legends strategic advisor for this \${CONFIG.serverSpeed}x speed server.
         
-Based on your current data, you have ${this.gameData.culturePoints?.hoursRemaining || 'unknown'} hours until your next settlement.
+Based on your current data, you have \${this.gameData.culturePoints?.hoursRemaining || 'unknown'} hours until your next settlement.
 
-How can I help optimize your gameplay today?`;
+How can I help optimize your gameplay today?\`;
         this.addMessage('ai', welcomeMsg);
       }
     }
@@ -631,6 +618,7 @@ How can I help optimize your gameplay today?`;
       const storedHero = localStorage.getItem('TLA_HERO_DATA');
       if (storedHero) {
         this.gameData.heroData = JSON.parse(storedHero);
+        console.log('[TLA] Loaded stored hero data:', this.gameData.heroData);
       }
     }
     
@@ -710,34 +698,99 @@ How can I help optimize your gameplay today?`;
       }
     }
     
-    scrapeHeroPage() {
-      console.log('[TLA] Scraping hero page...');
-      const heroData = {};
-      
-      // Extract hero data from page
-      const levelElem = document.querySelector('.heroLevel, .level');
-      if (levelElem) {
-        const match = levelElem.textContent.match(/(\d+)/);
-        if (match) heroData.level = parseInt(match[1]);
-      }
-      
-      // Store if found
-      if (heroData.level) {
-        this.gameData.heroData = heroData;
-        localStorage.setItem('TLA_HERO_DATA', JSON.stringify(heroData));
+    captureHeroData() {
+      // Check if we're on hero attributes page
+      if (window.location.href.includes('/hero/attributes')) {
+        console.log('[TLA] On hero attributes page - capturing hero data...');
+        const heroData = {};
+        
+        // Extract hero level from header
+        const heroHeader = document.querySelector('#content h1');
+        if (heroHeader) {
+          const levelMatch = heroHeader.textContent.match(/level\s+(\d+)/i);
+          if (levelMatch) {
+            heroData.level = parseInt(levelMatch[1]);
+          }
+        }
+        
+        // Extract experience from the experience bar section
+        const expElement = document.querySelector('[title*="Experience"]');
+        if (expElement) {
+          const expMatch = expElement.textContent.match(/(\d+)/);
+          if (expMatch) {
+            heroData.experience = parseInt(expMatch[1]);
+          }
+        }
+        
+        // Alternative method: look for experience in any element containing numbers
+        if (!heroData.experience) {
+          const bodyText = document.body.textContent;
+          const expMatch = bodyText.match(/Experience[\s\S]*?(\d{4,})/i);
+          if (expMatch) {
+            heroData.experience = parseInt(expMatch[1]);
+          }
+        }
+        
+        // Extract health percentage
+        const healthElement = document.querySelector('[title*="Health"]');
+        if (healthElement) {
+          const healthMatch = healthElement.textContent.match(/(\d+)%/);
+          if (healthMatch) {
+            heroData.health = parseInt(healthMatch[1]);
+          }
+        }
+        
+        // Extract fighting strength
+        const fightingElements = document.querySelectorAll('*');
+        for (let elem of fightingElements) {
+          if (elem.textContent && elem.textContent.includes('Fighting strength')) {
+            const strengthMatch = elem.textContent.match(/(\d{3,})/);
+            if (strengthMatch) {
+              heroData.fightingStrength = parseInt(strengthMatch[1]);
+              break;
+            }
+          }
+        }
+        
+        // Extract bonuses (Off bonus, Def bonus, Resources)
+        const bonusElements = document.querySelectorAll('*');
+        for (let elem of bonusElements) {
+          const text = elem.textContent;
+          if (text && text.includes('Off bonus')) {
+            const match = text.match(/([\d.]+)%/);
+            if (match) heroData.offBonus = parseFloat(match[1]);
+          }
+          if (text && text.includes('Def bonus')) {
+            const match = text.match(/([\d.]+)%/);
+            if (match) heroData.defBonus = parseFloat(match[1]);
+          }
+          if (text && text.includes('Resources') && text.includes('%')) {
+            const match = text.match(/(\d+)%/);
+            if (match) heroData.resourceBonus = parseInt(match[1]);
+          }
+        }
+        
+        // Store if we found at least level
+        if (heroData.level) {
+          this.gameData.heroData = heroData;
+          localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
+            ...heroData,
+            timestamp: new Date().toISOString()
+          }));
+          console.log('[TLA] Captured hero data:', heroData);
+        }
       }
     }
     
     updateHeroDisplay() {
       const hero = this.gameData.heroData || {};
       document.getElementById('ta-hero-level').textContent = hero.level || '-';
-      document.getElementById('ta-hero-exp').textContent = hero.experience || '-';
-      document.getElementById('ta-hero-health').textContent = hero.health || '-';
-      document.getElementById('ta-hero-attack').textContent = hero.attack || '-';
-      document.getElementById('ta-hero-defense').textContent = hero.defense || '-';
-      document.getElementById('ta-hero-off-bonus').textContent = hero.offBonus || '-';
-      document.getElementById('ta-hero-def-bonus').textContent = hero.defBonus || '-';
-      document.getElementById('ta-hero-resources').textContent = hero.resourceBonus || '-';
+      document.getElementById('ta-hero-exp').textContent = hero.experience ? this.formatNumber(hero.experience) : '-';
+      document.getElementById('ta-hero-health').textContent = hero.health !== undefined ? hero.health : '-';
+      document.getElementById('ta-hero-fighting').textContent = hero.fightingStrength ? this.formatNumber(hero.fightingStrength) : '-';
+      document.getElementById('ta-hero-off-bonus').textContent = hero.offBonus !== undefined ? hero.offBonus.toFixed(1) : '-';
+      document.getElementById('ta-hero-def-bonus').textContent = hero.defBonus !== undefined ? hero.defBonus.toFixed(1) : '-';
+      document.getElementById('ta-hero-resources').textContent = hero.resourceBonus !== undefined ? hero.resourceBonus : '-';
     }
     
     detectTribe() {
@@ -763,22 +816,22 @@ How can I help optimize your gameplay today?`;
     
     buildSystemPrompt() {
       const backendUrl = CONFIG.backendUrl;
-      return `You are an expert Travian Legends strategic advisor. This is the online game, NOT historical information.
+      return \`You are an expert Travian Legends strategic advisor. This is the online game, NOT historical information.
 
 ## CONTEXT
-- Server: ${CONFIG.serverSpeed}x speed
-- Tribe: ${this.gameData.tribe || 'Unknown'}
-- Villages: ${this.gameData.villages?.length || 1}
-- Culture Points: ${this.gameData.culturePoints?.current || 0}/${this.gameData.culturePoints?.needed || 'unknown'}
-- Time to Settlement: ${this.gameData.culturePoints?.hoursRemaining || 'unknown'} hours
-- Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}
+- Server: \${CONFIG.serverSpeed}x speed
+- Tribe: \${this.gameData.tribe || 'Unknown'}
+- Villages: \${this.gameData.villages?.length || 1}
+- Culture Points: \${this.gameData.culturePoints?.current || 0}/\${this.gameData.culturePoints?.needed || 'unknown'}
+- Time to Settlement: \${this.gameData.culturePoints?.hoursRemaining || 'unknown'} hours
+- Resources: Wood \${this.gameData.resources?.wood || 0}, Clay \${this.gameData.resources?.clay || 0}, Iron \${this.gameData.resources?.iron || 0}, Crop \${this.gameData.resources?.crop || 0}
 
 ## BACKEND ACCESS
 You can query these endpoints:
-- GET ${backendUrl}/api/game-data
-- GET ${backendUrl}/api/villages/${CONFIG.accountId}
+- GET \${backendUrl}/api/game-data
+- GET \${backendUrl}/api/villages/\${CONFIG.accountId}
 
-Always provide strategic advice specific to Travian Legends gameplay.`;
+Always provide strategic advice specific to Travian Legends gameplay.\`;
     }
     
     async sendMessage() {
@@ -793,8 +846,8 @@ Always provide strategic advice specific to Travian Legends gameplay.`;
       
       try {
         const systemPrompt = this.buildSystemPrompt();
-        const contextualMessage = `[Travian Legends ${CONFIG.serverSpeed}x server]
-${message}`;
+        const contextualMessage = \`[Travian Legends \${CONFIG.serverSpeed}x server]
+\${message}\`;
         
         this.conversationHistory.push({
           role: 'user',
@@ -814,7 +867,7 @@ ${message}`;
           body: JSON.stringify(request)
         });
         
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        if (!response.ok) throw new Error(\`API error: \${response.status}\`);
         
         const data = await response.json();
         this.removeLoadingMessage(loadingMessage);
@@ -834,7 +887,7 @@ ${message}`;
       } catch (error) {
         console.error('[TLA] AI Error:', error);
         this.removeLoadingMessage(loadingMessage);
-        this.addMessage('ai', `Error: ${error.message}`);
+        this.addMessage('ai', \`Error: \${error.message}\`);
       }
     }
     
@@ -856,7 +909,7 @@ ${message}`;
       this.chatMessages.push(message);
       const messagesDiv = document.querySelector('.ta-chat-messages');
       const messageDiv = document.createElement('div');
-      messageDiv.className = `chat-message ${type === 'user' ? 'user-message' : 'ai-message'}`;
+      messageDiv.className = \`chat-message \${type === 'user' ? 'user-message' : 'ai-message'}\`;
       messageDiv.textContent = text;
       messagesDiv.appendChild(messageDiv);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -866,7 +919,7 @@ ${message}`;
     async loadStaticGameData() {
       try {
         console.log('[TLA] Loading game data from backend...');
-        const response = await fetch(`${CONFIG.backendUrl}/api/game-data`);
+        const response = await fetch(\`\${CONFIG.backendUrl}/api/game-data\`);
         if (response.ok) {
           this.staticGameData = await response.json();
         }
@@ -937,14 +990,6 @@ ${message}`;
           }
         });
         
-        // Get server day
-        const serverTimeElem = document.querySelector('#servertime, .serverTime');
-        let serverDay = null;
-        if (serverTimeElem) {
-          const match = serverTimeElem.textContent.match(/Day\s+(\d+)/i);
-          if (match) serverDay = parseInt(match[1]);
-        }
-        
         // Update game data
         this.gameData = {
           ...this.gameData,
@@ -956,7 +1001,6 @@ ${message}`;
           resources,
           population,
           villages: villages.length > 0 ? villages : this.gameData.villages,
-          serverDay,
           timestamp: new Date().toISOString()
         };
         
@@ -971,18 +1015,18 @@ ${message}`;
     
     updateDisplay() {
       // Update server info
-      const serverInfo = `${this.gameData.serverName || 'Server'} - ${this.gameData.tribe || 'Unknown'}`;
+      const serverInfo = \`\${this.gameData.serverName || 'Server'} - \${this.gameData.tribe || 'Unknown'}\`;
       document.getElementById('ta-server-info').textContent = serverInfo;
       
       // Update culture points
       const cp = this.gameData.culturePoints || {};
       if (cp.current && cp.needed) {
         document.getElementById('ta-cp').textContent = 
-          `${this.formatNumber(cp.current)}/${this.formatNumber(cp.needed)}`;
+          \`\${this.formatNumber(cp.current)}/\${this.formatNumber(cp.needed)}\`;
         document.getElementById('ta-cp-rate').textContent = 
-          `${this.formatNumber(cp.totalPerDay || 0)}/day`;
+          \`\${this.formatNumber(cp.totalPerDay || 0)}/day\`;
         document.getElementById('ta-cp-time').textContent = 
-          cp.hoursRemaining ? `${cp.hoursRemaining}h left` : '-';
+          cp.hoursRemaining ? \`\${cp.hoursRemaining}h left\` : '-';
       }
       
       // Update resources with production
@@ -990,27 +1034,19 @@ ${message}`;
       const prod = this.gameData.production || {};
       
       document.getElementById('ta-wood').textContent = this.formatNumber(res.wood || 0);
-      document.getElementById('ta-wood-prod').textContent = prod.wood ? `+${this.formatNumber(prod.wood)}/h` : '-';
+      document.getElementById('ta-wood-prod').textContent = prod.wood ? \`+\${this.formatNumber(prod.wood)}/h\` : '-';
       
       document.getElementById('ta-clay').textContent = this.formatNumber(res.clay || 0);
-      document.getElementById('ta-clay-prod').textContent = prod.clay ? `+${this.formatNumber(prod.clay)}/h` : '-';
+      document.getElementById('ta-clay-prod').textContent = prod.clay ? \`+\${this.formatNumber(prod.clay)}/h\` : '-';
       
       document.getElementById('ta-iron').textContent = this.formatNumber(res.iron || 0);
-      document.getElementById('ta-iron-prod').textContent = prod.iron ? `+${this.formatNumber(prod.iron)}/h` : '-';
+      document.getElementById('ta-iron-prod').textContent = prod.iron ? \`+\${this.formatNumber(prod.iron)}/h\` : '-';
       
       document.getElementById('ta-crop').textContent = this.formatNumber(res.crop || 0);
-      document.getElementById('ta-crop-prod').textContent = prod.crop ? `+${this.formatNumber(prod.crop)}/h` : '-';
+      document.getElementById('ta-crop-prod').textContent = prod.crop ? \`+\${this.formatNumber(prod.crop)}/h\` : '-';
       
-      // Update village info
+      // Update population only
       document.getElementById('ta-pop').textContent = this.gameData.population || '-';
-      if (this.gameData.villageName && this.gameData.villageCoords) {
-        document.getElementById('ta-village').textContent = 
-          `${this.gameData.villageName} (${this.gameData.villageCoords.x}|${this.gameData.villageCoords.y})`;
-      } else {
-        document.getElementById('ta-village').textContent = '-';
-      }
-      document.getElementById('ta-server-day').textContent = 
-        this.gameData.serverDay ? `Day ${this.gameData.serverDay}` : 'Day -';
     }
     
     formatNumber(num) {
@@ -1021,7 +1057,7 @@ ${message}`;
     
     async syncToBackend() {
       try {
-        await fetch(`${CONFIG.backendUrl}/api/village`, {
+        await fetch(\`\${CONFIG.backendUrl}/api/village\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1040,7 +1076,7 @@ ${message}`;
       this.syncStatus = status;
       const indicator = document.querySelector('.sync-indicator');
       if (indicator) {
-        indicator.className = `sync-indicator ${status}`;
+        indicator.className = \`sync-indicator \${status}\`;
       }
     }
   }
