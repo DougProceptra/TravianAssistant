@@ -1,100 +1,168 @@
 # TravianAssistant v4: AI-First Strategic Advisor
-*Version 1.1.0 - September 2025*
+*Version 1.1.0 - September 3, 2025*
 
 ## Core Philosophy
 **The AI Agent IS the Product** - Everything else is plumbing to feed data to the AI.
 
-## Architecture
+## Current State (September 3, 2025)
+
+### Working ✅
+- Chat interface connects to Claude via Vercel proxy
+- Basic HUD shows population and current resources
+- Data syncs to backend every 30 seconds
+- Draggable/resizable chat window
+
+### Broken ❌
+- **AI is "blind"** - doesn't know backend endpoints exist
+- **AI is unfocused** - talks about historical Egypt, not game
+- **Data gaps** - missing culture points, hero, buildings, troops
+- **No memory** - doesn't remember previous conversations
+
+## The MCP Server Architecture
+
 ```
-Game Page → Scraper → Context Builder → AI Agent → Strategic Advice
-                              ↓
-                     Context Intelligence
-                          (Learning)
+Game Page → Scraper → Backend (Data Server)
+                           ↑
+                      AI Queries
+                           ↓
+User Question → AI → Backend Request → Strategic Answer
 ```
 
-## Success Metrics
-- User asks: "What should I do next?"
-- AI responds with strategic advice based on ACTUAL game state
-- Not displaying data user can already see
+### Key Insight
+AI should **pull** data when needed, not receive everything **pushed** in each message.
 
-## Technical Stack
-- **AI Model:** Claude Sonnet 4 (claude-sonnet-4-20250514)
-- **Context Service:** https://proceptra.app.n8n.cloud/mcp/context-tools
-- **Data Pipeline:** Real-time scraping → Context injection → AI
-- **Version:** 1.1.0 across all components
+## Implementation Priorities
 
-## Implementation Focus
-1. Fix data pipeline - scrapers find data but AI receives zeros
-2. Inject complete game context with every AI query
-3. Connect context intelligence for learning
-4. Test with real game data and iterate
+### 1. Make AI Backend-Aware (IMMEDIATE)
+```javascript
+systemPrompt: `You are a Travian Legends strategic advisor.
+You have access to real-time game data:
+- GET ${backendUrl}/game-data - current game state
+- GET ${backendUrl}/villages - all villages
+- GET ${backendUrl}/account/{id} - account data
+
+ALWAYS query current data before answering questions.`
+```
+
+### 2. Constrain to Game Context
+```javascript
+// Wrap every user message
+`[CONTEXT: Travian Legends game, 2x server, Egyptian tribe]
+Question: ${userMessage}
+Respond ONLY about game strategy, not historical facts.`
+```
+
+### 3. Fix Data Collection
+- Culture point production rate
+- Culture points total
+- Hero stats and items
+- Building levels and queues
+- Troop counts in each village
+
+### 4. Add Memory (mem0.ai)
+- Previous strategies discussed
+- User preferences and play style
+- Game progression history
+- Learned patterns
 
 ## What This Is NOT
-- NOT a HUD with data displays
-- NOT a complex UI system
-- NOT automation of game actions
-- NOT a replacement for game interface
+- NOT a dashboard with charts
+- NOT a HUD showing game data
+- NOT automation of actions
+- NOT a calculator tool
 
 ## What This IS
-- Strategic advisor that understands your game state
-- Learning system that improves over time
-- Natural language interface for complex decisions
-- Time-saving analysis tool
+- Strategic advisor that queries backend for data
+- Learning system via mem0.ai
+- Natural language game consultant
+- Time-saving analysis partner
 
-## Key Technical Decisions
-- Chrome Extension Manifest V3 (required by Chrome)
-- Content scripts for data scraping (no ES6 modules)
-- Vercel Edge Functions for API proxy (CORS compliance)
-- Chat interface as primary UI (no complex HUDs)
+## Success Metrics
 
-## Current State (Sept 1, 2025)
-- ✅ Chat interface working (drag/resize functional)
-- ✅ Basic scraping finds villages
-- ❌ Data pipeline broken (AI receives empty context)
-- ❌ Context intelligence not connected
-- ⏳ Ready for v1.1.0 implementation
+### Before (Current State)
+**User**: "What should I build?"
+**AI**: "The ancient Egyptians built pyramids..."
 
-## User Experience
-1. User plays Travian normally
-2. Clicks chat button when needing advice
-3. AI provides strategic recommendations
-4. System learns from interactions
+### After (Target State)
+**User**: "What should I build?"
+**AI**: *[queries backend]* "Your Village 2 has -230 crop/hour. Build cropland to level 5 (45 min) to stabilize."
 
-## The Critical Bug
+## Technical Architecture
+
+### Frontend (Extension)
+- Scrapes game data
+- Syncs to backend
+- Provides chat UI
+- Version: 1.1.0
+
+### Backend (Replit)
+- Stores game state
+- Provides REST API
+- MCP-style data server
+- URL: `https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev`
+
+### AI Proxy (Vercel)
+- Routes to Claude API
+- Handles CORS
+- URL: `https://travian-proxy-simple.vercel.app/api/proxy`
+- Model: `claude-sonnet-4-20250514`
+
+### Context Service (mem0)
+- Stores preferences
+- Tracks patterns
+- Remembers strategies
+- URL: `https://proceptra.app.n8n.cloud/mcp/context-tools`
+
+## Development Rules
+
+### DO:
+- Keep chat as primary interface
+- Make AI query backend for data
+- Focus on strategic advice
+- Use mem0 for persistence
+
+### DON'T:
+- Build complex HUDs
+- Display data user can see
+- Automate game actions
+- Pass huge contexts in messages
+
+## The Critical Fix
+
 ```javascript
-// Scrapers find data:
-[TLA Overview] Successfully parsed 9 villages ✅
+// OLD APPROACH (broken):
+sendMessage(userMsg) {
+  // Tries to embed all game data
+  const context = { ...everything };
+  // AI gets overwhelmed or empty data
+}
 
-// But AI receives empty context:
-[TLA Content] Found 0 villages ❌
+// NEW APPROACH (MCP pattern):
+sendMessage(userMsg) {
+  const systemPrompt = "Query backend for data as needed";
+  // AI pulls what it needs
+}
 ```
 
-## Build Process (v1.1.0)
-```bash
-cd packages/extension
-npm run build
-# Ensure manifest.json shows version 1.1.0
-```
+## User Experience Flow
 
-## Success Examples
-**User**: "What should I build next?"
-**AI**: "Based on your crop production deficit of -230/hour in Village 2, build croplands to level 5. This will take 45 minutes and stabilize your economy."
+1. User asks question in chat
+2. AI recognizes game query
+3. AI fetches current data from backend
+4. AI analyzes with Travian knowledge
+5. AI provides strategic advice
+6. System stores interaction in mem0
 
-**User**: "When should I settle?"
-**AI**: "You have 180 culture points, need 500. At current rate (+12/hour), you'll have enough in 27 hours. Start training settlers now in Village 1."
+## Next Session Checklist
 
-## What NOT to Build
-- ❌ Dashboard displays
-- ❌ Resource calculators
-- ❌ Complex HUD overlays
-- ❌ Automation features
-- ❌ Anything that duplicates game UI
-
-## Development Priorities
-1. **Fix data pipeline** (Priority 1)
-2. **Connect backend validation** (Priority 2)
-3. **Integrate context intelligence** (Priority 3)
-4. **End-to-end testing** (Priority 4)
+- [ ] Update system prompt with backend endpoints
+- [ ] Add Travian context wrapper to messages
+- [ ] Test "What should I build?" query
+- [ ] Fix culture point scraping
+- [ ] Implement hero data collection
+- [ ] Connect mem0.ai service
+- [ ] Test full conversation flow
 
 ---
-*Remember: The AI chat is the entire interface. Everything else is invisible plumbing.*
+
+*Remember: The AI chat IS the product. Data collection is invisible plumbing.*
