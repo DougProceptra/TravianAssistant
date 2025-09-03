@@ -202,6 +202,11 @@
           this.captureProduction();
         }, 1000);
       });
+      
+      // Check for hero modal opening
+      setInterval(() => {
+        this.captureHeroDataFromModal();
+      }, 2000);
     }
     
     createHUD() {
@@ -861,6 +866,130 @@
       }
     }
     
+    captureHeroDataFromModal() {
+      // Look for hero modal/dialog that's visible
+      const heroModalSelectors = [
+        '.dialog-window',  // Common dialog class
+        '#content',        // Content area when modal is open
+        '.hero-attributes',
+        '[class*="hero"]',
+        '.modal'
+      ];
+      
+      let heroModal = null;
+      for (const selector of heroModalSelectors) {
+        const elem = document.querySelector(selector);
+        if (elem && elem.textContent && elem.textContent.includes('level')) {
+          heroModal = elem;
+          break;
+        }
+      }
+      
+      // Check if we have a hero header visible
+      const heroHeader = document.querySelector('h1');
+      const isHeroVisible = heroHeader && heroHeader.textContent && heroHeader.textContent.toLowerCase().includes('level');
+      
+      if (heroModal || isHeroVisible) {
+        console.log('[TLA] Hero modal/page detected, attempting capture...');
+        
+        const heroData = {};
+        
+        // Look for level in the header
+        if (heroHeader) {
+          const levelMatch = heroHeader.textContent.match(/level\s*(\d+)/i);
+          if (levelMatch) {
+            heroData.level = parseInt(levelMatch[1]);
+            console.log('[TLA] Found level from header:', heroData.level);
+          }
+        }
+        
+        // Look for values in table cells or specific elements
+        const cells = document.querySelectorAll('td, .value, .num, [class*="value"]');
+        
+        // Experience is often a 5-digit number
+        cells.forEach(cell => {
+          const text = cell.textContent.trim();
+          if (/^\d{5,6}$/.test(text)) {
+            const num = parseInt(text);
+            if (num > 10000 && num < 1000000 && !heroData.experience) {
+              heroData.experience = num;
+              console.log('[TLA] Found likely experience value:', num);
+            }
+          }
+        });
+        
+        // Health is often shown as percentage
+        const healthElement = Array.from(document.querySelectorAll('*')).find(el => 
+          el.textContent.includes('%') && el.textContent.match(/\b(\d{1,3})%/)
+        );
+        if (healthElement) {
+          const match = healthElement.textContent.match(/\b(\d{1,3})%/);
+          if (match) {
+            heroData.health = parseInt(match[1]);
+            console.log('[TLA] Found health:', heroData.health);
+          }
+        }
+        
+        // Fighting strength - look for 4-digit numbers near "Fighting" or in attributes section
+        const fightingRow = Array.from(document.querySelectorAll('tr, div')).find(el =>
+          el.textContent.toLowerCase().includes('fighting') || 
+          el.textContent.toLowerCase().includes('strength')
+        );
+        if (fightingRow) {
+          const match = fightingRow.textContent.match(/\b(\d{4,5})\b/);
+          if (match) {
+            heroData.fightingStrength = parseInt(match[1]);
+            console.log('[TLA] Found fighting strength:', heroData.fightingStrength);
+          }
+        }
+        
+        // Hero production - look for resource values
+        const productionSection = Array.from(document.querySelectorAll('*')).find(el =>
+          el.textContent.includes('Hero production') || 
+          el.textContent.includes('Resource production')
+        );
+        
+        if (productionSection) {
+          const prodNumbers = productionSection.textContent.match(/\b(\d{4,5})\b/g);
+          if (prodNumbers && prodNumbers.length > 0) {
+            const value = parseInt(prodNumbers[0]);
+            heroData.resourceProduction = {
+              wood: value,
+              clay: value, 
+              iron: value,
+              crop: value
+            };
+            console.log('[TLA] Found hero production:', value);
+          }
+        }
+        
+        // Store if we found new data
+        if (Object.keys(heroData).length > 0) {
+          const existingData = this.gameData.heroData || {};
+          
+          // Only update if values have changed
+          let hasChanges = false;
+          for (const key in heroData) {
+            if (existingData[key] !== heroData[key]) {
+              hasChanges = true;
+              break;
+            }
+          }
+          
+          if (hasChanges) {
+            this.gameData.heroData = { ...existingData, ...heroData };
+            
+            localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
+              ...this.gameData.heroData,
+              timestamp: new Date().toISOString()
+            }));
+            console.log('[TLA] Updated hero data:', this.gameData.heroData);
+            this.updateHeroDisplay();
+          }
+        }
+      }
+    }
+    
     captureHeroData() {
       const currentUrl = window.location.href;
       console.log('[TLA] Checking for hero data at:', currentUrl);
@@ -875,79 +1004,7 @@
         
         // Add delay to let page fully load
         setTimeout(() => {
-          const heroData = {};
-          const bodyText = document.body.textContent;
-          
-          // Debug: Log a sample of page text
-          console.log('[TLA] Hero page text sample:', bodyText.substring(0, 500));
-          
-          // Try multiple selectors and patterns
-          // Look for level in various places
-          const levelPatterns = [
-            /Hero Level[\s:]*(\d+)/i,
-            /Level[\s:]*(\d+)/i,
-            /Lvl[\s:]*(\d+)/i,
-            /Hero.*?(\d+)/i
-          ];
-          
-          for (const pattern of levelPatterns) {
-            const match = bodyText.match(pattern);
-            if (match) {
-              const level = parseInt(match[1]);
-              if (level >= 0 && level <= 100) { // Sanity check
-                heroData.level = level;
-                console.log('[TLA] Found hero level:', heroData.level);
-                break;
-              }
-            }
-          }
-          
-          // Look for experience
-          const expPatterns = [
-            /Experience[\s:]*(\d{1,})/i,
-            /Exp[\s:]*(\d{1,})/i,
-            /XP[\s:]*(\d{1,})/i
-          ];
-          
-          for (const pattern of expPatterns) {
-            const match = bodyText.match(pattern);
-            if (match) {
-              heroData.experience = parseInt(match[1]);
-              console.log('[TLA] Found experience:', heroData.experience);
-              break;
-            }
-          }
-          
-          // Look for health
-          const healthPatterns = [
-            /Health[\s:]*(\d+)%/i,
-            /HP[\s:]*(\d+)%/i,
-            /(\d+)%.*?health/i
-          ];
-          
-          for (const pattern of healthPatterns) {
-            const match = bodyText.match(pattern);
-            if (match) {
-              heroData.health = parseInt(match[1]);
-              console.log('[TLA] Found health:', heroData.health);
-              break;
-            }
-          }
-          
-          // Store if we found anything
-          if (Object.keys(heroData).length > 0) {
-            const existingData = this.gameData.heroData || {};
-            this.gameData.heroData = { ...existingData, ...heroData };
-            
-            localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
-              ...this.gameData.heroData,
-              timestamp: new Date().toISOString()
-            }));
-            console.log('[TLA] Captured and stored hero data:', this.gameData.heroData);
-            this.updateHeroDisplay();
-          } else {
-            console.log('[TLA] No hero data found on page');
-          }
+          this.captureHeroDataFromModal();
         }, 1500); // Wait 1.5 seconds for page to load
       } else {
         console.log('[TLA] Not on a hero page');
