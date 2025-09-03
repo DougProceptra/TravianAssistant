@@ -165,48 +165,14 @@
       await this.loadStoredData();
       this.startDataCollection();
       this.loadPosition();
-      
-      // Set up URL change detection for single-page app navigation
-      this.setupNavigationDetection();
-      
-      // Initial capture attempts
       this.captureCulturePoints();
       this.captureProduction();
       this.captureHeroData();
-    }
-    
-    setupNavigationDetection() {
-      // Listen for URL changes (for single-page apps)
-      let lastUrl = location.href;
-      new MutationObserver(() => {
-        const url = location.href;
-        if (url !== lastUrl) {
-          lastUrl = url;
-          console.log('[TLA] Navigation detected to:', url);
-          
-          // Wait a bit for page to load then try capturing
-          setTimeout(() => {
-            this.captureCulturePoints();
-            this.captureHeroData();
-            this.captureProduction();
-          }, 1000);
-        }
-      }).observe(document, { subtree: true, childList: true });
       
-      // Also listen for popstate events
-      window.addEventListener('popstate', () => {
-        console.log('[TLA] Popstate navigation to:', window.location.href);
-        setTimeout(() => {
-          this.captureCulturePoints();
-          this.captureHeroData();
-          this.captureProduction();
-        }, 1000);
-      });
-      
-      // Check for hero modal opening
+      // Set up continuous hero monitoring
       setInterval(() => {
-        this.captureHeroDataFromModal();
-      }, 2000);
+        this.captureHeroDataFromPanel();
+      }, 3000);
     }
     
     createHUD() {
@@ -763,80 +729,49 @@
       if (storedHero) {
         this.gameData.heroData = JSON.parse(storedHero);
         console.log('[TLA] Loaded stored hero data:', this.gameData.heroData);
-        this.updateHeroDisplay(); // Update display with stored data
+        this.updateHeroDisplay();
       }
     }
     
     captureCulturePoints() {
-      // Debug: Log current URL and check for CP buildings
-      const currentUrl = window.location.href;
-      console.log('[TLA] Checking for CP data at:', currentUrl);
-      
-      // More flexible URL matching
-      const isCPBuilding = currentUrl.includes('build.php') && (
-        currentUrl.includes('gid=24') || // Town Hall
-        currentUrl.includes('gid=25') || // Residence  
-        currentUrl.includes('gid=26') || // Palace
-        currentUrl.includes('gid=29')    // Treasury
-      );
-      
-      if (isCPBuilding) {
-        console.log('[TLA] On culture building - attempting CP capture...');
+      if (window.location.href.includes('gid=24') || 
+          window.location.href.includes('gid=25') || 
+          window.location.href.includes('gid=26') || 
+          window.location.href.includes('gid=29')) {
         
-        // Try multiple selectors for different Travian versions
+        console.log('[TLA] On culture building - capturing CP...');
         const cpData = {};
         const bodyText = document.body.innerText;
         
-        // Debug: Log first 500 chars to see what we're working with
-        console.log('[TLA] Page text sample:', bodyText.substring(0, 500));
+        const currentMatch = bodyText.match(/Culture points produced so far[\s\S]*?(\d{3,})/);
+        if (currentMatch) cpData.current = parseInt(currentMatch[1]);
         
-        // Try various text patterns
-        const patterns = [
-          /Culture points produced so far[\s\S]*?(\d{3,})/,
-          /Current culture points[\s\S]*?(\d{3,})/,
-          /Culture points[\s\S]*?(\d{3,})/,
-          /CP[\s\S]*?(\d{3,})/
-        ];
+        const neededMatch = bodyText.match(/Next village controllable at[\s\S]*?(\d{3,})/);
+        if (neededMatch) cpData.needed = parseInt(neededMatch[1]);
         
-        for (const pattern of patterns) {
-          const match = bodyText.match(pattern);
-          if (match) {
-            cpData.current = parseInt(match[1]);
-            console.log('[TLA] Found current CP:', cpData.current);
-            break;
+        const deficitMatch = bodyText.match(/Culture points still needed[\s\S]*?(\d{3,})/);
+        if (deficitMatch) cpData.deficit = parseInt(deficitMatch[1]);
+        
+        document.querySelectorAll('td').forEach(cell => {
+          const text = cell.textContent?.trim();
+          if (text && /^\d{3,5}$/.test(text)) {
+            const num = parseInt(text);
+            if (num > 5000 && num < 10000) cpData.totalPerDay = num;
           }
+        });
+        
+        if (cpData.deficit && cpData.totalPerDay) {
+          cpData.hoursRemaining = Math.ceil((cpData.deficit / cpData.totalPerDay) * 24);
         }
         
-        // Look for needed CP
-        const neededPatterns = [
-          /Next village controllable at[\s\S]*?(\d{3,})/,
-          /Next village at[\s\S]*?(\d{3,})/,
-          /Required[\s\S]*?(\d{3,})/
-        ];
-        
-        for (const pattern of neededPatterns) {
-          const match = bodyText.match(pattern);
-          if (match) {
-            cpData.needed = parseInt(match[1]);
-            console.log('[TLA] Found needed CP:', cpData.needed);
-            break;
-          }
-        }
-        
-        // Store if we found anything
-        if (cpData.current || cpData.needed) {
+        if (cpData.current) {
           this.gameData.culturePoints = cpData;
           localStorage.setItem('TLA_CP_DATA', JSON.stringify({
             ...cpData,
             timestamp: new Date().toISOString()
           }));
-          console.log('[TLA] Stored CP data:', cpData);
-          this.updateDisplay();
-        } else {
-          console.log('[TLA] No CP data found on page');
+          console.log('[TLA] Captured CP data:', cpData);
         }
-      } else {
-        console.log('[TLA] Not on a CP building page');
       }
     }
     
@@ -866,155 +801,119 @@
       }
     }
     
-    captureHeroDataFromModal() {
-      // Check if hero modal is visible by looking for the hero header
-      const heroHeader = document.querySelector('h1');
-      const isHeroModalVisible = heroHeader && 
-                                heroHeader.textContent && 
-                                heroHeader.textContent.toLowerCase().includes('level');
+    captureHeroDataFromPanel() {
+      // Check if the hero panel/modal is visible
+      const heroPanel = document.querySelector('.dialog-window, .hero-stats, #hero-stats, .heroStats');
+      if (!heroPanel) return;
       
-      if (isHeroModalVisible) {
-        console.log('[TLA] Hero modal detected, capturing data...');
+      // Check if it's actually visible
+      const rect = heroPanel.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      
+      console.log('[TLA] Hero panel detected, capturing data...');
+      const heroData = {};
+      
+      // Look for level in the header
+      const headerText = heroPanel.textContent || heroPanel.innerText || '';
+      
+      // Extract level (like "McCarthy - level 39")
+      const levelMatch = headerText.match(/level\s*(\d+)/i);
+      if (levelMatch) {
+        heroData.level = parseInt(levelMatch[1]);
+        console.log('[TLA] Found level:', heroData.level);
+      }
+      
+      // Look for labeled rows with values
+      const rows = heroPanel.querySelectorAll('tr, .row, [class*="row"]');
+      rows.forEach(row => {
+        const text = row.textContent || row.innerText || '';
         
-        const heroData = {};
-        const pageText = document.body.innerText;
-        
-        // Get level from header
-        if (heroHeader) {
-          const levelMatch = heroHeader.textContent.match(/level\s*(\d+)/i);
-          if (levelMatch) {
-            heroData.level = parseInt(levelMatch[1]);
-            console.log('[TLA] Found level:', heroData.level);
+        // Experience
+        if (text.includes('Experience')) {
+          const match = text.match(/(\d+)/);
+          if (match) {
+            heroData.experience = parseInt(match[1]);
+            console.log('[TLA] Found experience:', heroData.experience);
           }
         }
         
-        // Look for labeled values in the attributes table
-        // Parse each row looking for label: value pairs
-        const rows = document.querySelectorAll('tr');
-        rows.forEach(row => {
-          const text = row.innerText;
-          
-          // Health - look for percentage with "Health" nearby
-          if (text.toLowerCase().includes('health')) {
-            const healthMatch = text.match(/(\d+)\s*%/);
-            if (healthMatch) {
-              heroData.health = parseInt(healthMatch[1]);
-              console.log('[TLA] Found health:', heroData.health);
-            }
-          }
-          
-          // Experience - look for "Experience" label
-          if (text.toLowerCase().includes('experience')) {
-            const expMatch = text.match(/(\d{5,6})/);
-            if (expMatch) {
-              heroData.experience = parseInt(expMatch[1]);
-              console.log('[TLA] Found experience:', heroData.experience);
-            }
-          }
-          
-          // Fighting strength - numerical value near "Fighting" text
-          if (text.toLowerCase().includes('fighting')) {
-            const strengthMatch = text.match(/(\d{4,5})/);
-            if (strengthMatch) {
-              heroData.fightingStrength = parseInt(strengthMatch[1]);
-              console.log('[TLA] Found fighting strength:', heroData.fightingStrength);
-            }
-          }
-          
-          // Off bonus
-          if (text.toLowerCase().includes('off bonus')) {
-            const offMatch = text.match(/([\d.]+)\s*%/);
-            if (offMatch) {
-              heroData.offBonus = parseFloat(offMatch[1]);
-              console.log('[TLA] Found off bonus:', heroData.offBonus);
-            }
-          }
-          
-          // Def bonus
-          if (text.toLowerCase().includes('def bonus')) {
-            const defMatch = text.match(/([\d.]+)\s*%/);
-            if (defMatch) {
-              heroData.defBonus = parseFloat(defMatch[1]);
-              console.log('[TLA] Found def bonus:', heroData.defBonus);
-            }
-          }
-        });
-        
-        // Alternative: Look for the specific values visible in the modal
-        // Health bar might be displayed with inline styles or progress elements
-        const healthBar = document.querySelector('[style*="90%"], [style*="width:90%"]');
-        if (healthBar && !heroData.health) {
-          heroData.health = 90; // From your screenshot
-          console.log('[TLA] Found health from bar: 90%');
-        }
-        
-        // Look for resource production in the hero production section
-        const resourceSection = Array.from(document.querySelectorAll('*')).find(el =>
-          el.textContent.includes('Hero production')
-        );
-        
-        if (resourceSection) {
-          // Look for the selected radio button and associated values
-          const inputs = resourceSection.querySelectorAll('input[type="radio"]:checked');
-          const numbers = resourceSection.textContent.match(/\b(\d{4,5})\b/g);
-          
-          if (numbers && numbers.length > 0) {
-            const value = parseInt(numbers[0]);
-            heroData.resourceProduction = {
-              wood: value,
-              clay: value,
-              iron: value,
-              crop: value
-            };
-            console.log('[TLA] Found resource production:', value);
+        // Health
+        if (text.includes('Health')) {
+          const match = text.match(/(\d+)%/);
+          if (match) {
+            heroData.health = parseInt(match[1]);
+            console.log('[TLA] Found health:', heroData.health);
           }
         }
         
-        // Store if we found new data
-        if (Object.keys(heroData).length > 0) {
-          const existingData = this.gameData.heroData || {};
-          
-          // Check if values have changed
-          let hasChanges = false;
-          for (const key in heroData) {
-            if (existingData[key] !== heroData[key]) {
-              hasChanges = true;
-              break;
-            }
+        // Fighting strength
+        if (text.includes('Fighting') || text.includes('strength')) {
+          const match = text.match(/(\d+)/);
+          if (match && parseInt(match[1]) > 1000) {
+            heroData.fightingStrength = parseInt(match[1]);
+            console.log('[TLA] Found fighting strength:', heroData.fightingStrength);
           }
-          
-          if (hasChanges) {
-            this.gameData.heroData = { ...existingData, ...heroData };
-            
-            localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
-              ...this.gameData.heroData,
-              timestamp: new Date().toISOString()
-            }));
-            console.log('[TLA] Updated hero data:', this.gameData.heroData);
-            this.updateHeroDisplay();
+        }
+        
+        // Speed
+        if (text.includes('Speed')) {
+          const match = text.match(/(\d+)/);
+          if (match) {
+            heroData.speed = parseInt(match[1]);
+            console.log('[TLA] Found speed:', heroData.speed);
           }
+        }
+      });
+      
+      // Look for hero production section
+      const productionSection = heroPanel.querySelector('.heroProduction, [class*="production"]');
+      if (productionSection) {
+        const inputs = productionSection.querySelectorAll('input[type="radio"]:checked');
+        const values = productionSection.textContent.match(/\d{4,}/g);
+        if (values && values.length > 0) {
+          const prodValue = parseInt(values[0]);
+          heroData.resourceProduction = {
+            wood: prodValue,
+            clay: prodValue,
+            iron: prodValue,
+            crop: prodValue
+          };
+          console.log('[TLA] Found resource production:', prodValue);
+        }
+      }
+      
+      // Only update if we found new data
+      if (Object.keys(heroData).length > 0) {
+        const existingData = this.gameData.heroData || {};
+        
+        // Check if data has actually changed
+        let hasChanges = false;
+        for (const key in heroData) {
+          if (existingData[key] !== heroData[key]) {
+            hasChanges = true;
+            break;
+          }
+        }
+        
+        if (hasChanges) {
+          this.gameData.heroData = { ...existingData, ...heroData };
+          localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
+            ...this.gameData.heroData,
+            timestamp: new Date().toISOString()
+          }));
+          console.log('[TLA] Updated hero data:', this.gameData.heroData);
+          this.updateHeroDisplay();
         }
       }
     }
     
     captureHeroData() {
-      const currentUrl = window.location.href;
-      console.log('[TLA] Checking for hero data at:', currentUrl);
-      
-      // More flexible URL matching for hero pages
-      const isHeroPage = currentUrl.includes('hero.php') || 
-                        currentUrl.includes('/hero/') ||
-                        currentUrl.includes('hero') && currentUrl.includes('attributes');
-      
-      if (isHeroPage) {
-        console.log('[TLA] On hero page - attempting hero data capture...');
+      if (window.location.href.includes('hero.php') || 
+          window.location.href.includes('/hero/') ||
+          window.location.href.includes('hero/attributes')) {
         
-        // Add delay to let page fully load
-        setTimeout(() => {
-          this.captureHeroDataFromModal();
-        }, 1500); // Wait 1.5 seconds for page to load
-      } else {
-        console.log('[TLA] Not on a hero page');
+        console.log('[TLA] On hero page - capturing hero data...');
+        this.captureHeroDataFromPanel();
       }
     }
     
