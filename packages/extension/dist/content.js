@@ -695,16 +695,16 @@
     }
     
     captureHeroData() {
-      // Check if we're on hero page - includes resources tab
+      // Check if we're on hero attributes page
       if (window.location.href.includes('hero.php') || 
           window.location.href.includes('/hero/') ||
-          window.location.href.includes('hero/resources')) {
+          window.location.href.includes('hero/attributes')) {
         
         console.log('[TLA] On hero page - capturing hero data...');
         const heroData = {};
         
         // Extract hero level from header
-        const heroHeader = document.querySelector('#content h1');
+        const heroHeader = document.querySelector('#content h1, .contentNavi h1');
         if (heroHeader) {
           const levelMatch = heroHeader.textContent.match(/level\s+(\d+)/i);
           if (levelMatch) {
@@ -752,64 +752,69 @@
           console.log('[TLA] Found def bonus:', heroData.defBonus);
         }
         
-        // Check if we're on the resources tab specifically
-        if (window.location.href.includes('hero/resources') || window.location.href.includes('tab=resources')) {
-          console.log('[TLA] On hero resources tab - capturing resource production...');
+        // Extract hero resource production
+        // This is shown in the "Hero production" section with resource icons
+        const resourceProduction = {};
+        
+        // Look for the hero production section
+        const productionSection = Array.from(document.querySelectorAll('*')).find(el => 
+          el.textContent?.includes('Hero production')
+        );
+        
+        if (productionSection) {
+          console.log('[TLA] Found hero production section');
           
-          // Look for resource production values in the table
-          const resourceProduction = {};
+          // Find the production values - they appear as numbers next to resource icons
+          // Format is typically: icon 2400, icon 8000, icon 6000, icon 8000
+          // Where the first value (2400) is selected, others are potential values
           
-          // Try to find the production table
-          const tables = document.querySelectorAll('table');
-          tables.forEach(table => {
-            const rows = table.querySelectorAll('tr');
-            rows.forEach(row => {
-              const cells = row.querySelectorAll('td');
-              if (cells.length >= 2) {
-                const labelText = cells[0]?.textContent?.toLowerCase() || '';
-                const valueText = cells[1]?.textContent || '';
-                
-                // Look for production values
-                if (labelText.includes('wood') || labelText.includes('lumber')) {
-                  const value = parseInt(valueText.replace(/[^\d]/g, ''));
-                  if (value) resourceProduction.wood = value;
-                }
-                if (labelText.includes('clay') || labelText.includes('brick')) {
-                  const value = parseInt(valueText.replace(/[^\d]/g, ''));
-                  if (value) resourceProduction.clay = value;
-                }
-                if (labelText.includes('iron')) {
-                  const value = parseInt(valueText.replace(/[^\d]/g, ''));
-                  if (value) resourceProduction.iron = value;
-                }
-                if (labelText.includes('crop') || labelText.includes('wheat')) {
-                  const value = parseInt(valueText.replace(/[^\d]/g, ''));
-                  if (value) resourceProduction.crop = value;
-                }
+          // Look for all numeric values in the production area
+          const parent = productionSection.parentElement || productionSection;
+          const numbers = parent.textContent.match(/\d{4,}/g);
+          
+          if (numbers && numbers.length > 0) {
+            // Check if there's a checkbox/radio that's selected
+            const inputs = parent.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+            let selectedIndex = -1;
+            let isEvenDistribution = false;
+            
+            inputs.forEach((input, idx) => {
+              if (input.checked) {
+                selectedIndex = idx;
+                // Check if this is the "all resources" option (usually first)
+                if (idx === 0) isEvenDistribution = true;
               }
             });
-          });
-          
-          // Alternative: Look for production values in specific patterns
-          const prodMatches = bodyText.match(/(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)/);
-          if (prodMatches && prodMatches.length === 5) {
-            resourceProduction.wood = parseInt(prodMatches[1]);
-            resourceProduction.clay = parseInt(prodMatches[2]);
-            resourceProduction.iron = parseInt(prodMatches[3]);
-            resourceProduction.crop = parseInt(prodMatches[4]);
-          }
-          
-          if (Object.keys(resourceProduction).length > 0) {
+            
+            // The first number is typically the even distribution value
+            const evenValue = parseInt(numbers[0]);
+            
+            if (isEvenDistribution || selectedIndex === 0) {
+              // Even distribution across all resources
+              resourceProduction.wood = evenValue;
+              resourceProduction.clay = evenValue;
+              resourceProduction.iron = evenValue;
+              resourceProduction.crop = evenValue;
+              console.log('[TLA] Hero production set to even distribution:', evenValue);
+            } else if (selectedIndex > 0 && selectedIndex <= 4) {
+              // Single resource selected
+              const singleValue = numbers[selectedIndex] ? parseInt(numbers[selectedIndex]) : parseInt(numbers[1]);
+              resourceProduction.wood = selectedIndex === 1 ? singleValue : 0;
+              resourceProduction.clay = selectedIndex === 2 ? singleValue : 0;
+              resourceProduction.iron = selectedIndex === 3 ? singleValue : 0;
+              resourceProduction.crop = selectedIndex === 4 ? singleValue : 0;
+              console.log('[TLA] Hero production set to single resource at index', selectedIndex, ':', singleValue);
+            } else {
+              // Fallback: if we can't determine the selection, assume even distribution of first value
+              resourceProduction.wood = evenValue;
+              resourceProduction.clay = evenValue;
+              resourceProduction.iron = evenValue;
+              resourceProduction.crop = evenValue;
+              console.log('[TLA] Defaulting to even distribution:', evenValue);
+            }
+            
             heroData.resourceProduction = resourceProduction;
-            console.log('[TLA] Found resource production:', resourceProduction);
           }
-        }
-        
-        // Fallback: Extract resource bonus percentage (old format)
-        const resourceBonusMatch = bodyText.match(/Resource Bonus[\s\S]*?(\d+)%/i);
-        if (resourceBonusMatch) {
-          heroData.resourceBonus = parseInt(resourceBonusMatch[1]);
-          console.log('[TLA] Found resource bonus:', heroData.resourceBonus);
         }
         
         // Debug logging
@@ -842,16 +847,14 @@
       document.getElementById('ta-hero-off-bonus').textContent = hero.offBonus !== undefined ? hero.offBonus.toFixed(1) + '%' : '-';
       document.getElementById('ta-hero-def-bonus').textContent = hero.defBonus !== undefined ? hero.defBonus.toFixed(1) + '%' : '-';
       
-      // Handle resource display - show production if available, otherwise bonus percentage
+      // Handle resource display - show production if available
       if (hero.resourceProduction) {
         const prod = hero.resourceProduction;
-        const resourceText = this.formatNumber(prod.wood) + '/' + 
-                            this.formatNumber(prod.clay) + '/' + 
-                            this.formatNumber(prod.iron) + '/' + 
-                            this.formatNumber(prod.crop) + ' /h';
+        const resourceText = this.formatNumber(prod.wood || 0) + '/' + 
+                            this.formatNumber(prod.clay || 0) + '/' + 
+                            this.formatNumber(prod.iron || 0) + '/' + 
+                            this.formatNumber(prod.crop || 0) + ' /h';
         document.getElementById('ta-hero-resources').textContent = resourceText;
-      } else if (hero.resourceBonus !== undefined) {
-        document.getElementById('ta-hero-resources').textContent = hero.resourceBonus + '%';
       } else {
         document.getElementById('ta-hero-resources').textContent = '-';
       }
