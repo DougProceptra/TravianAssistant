@@ -1,8 +1,8 @@
-// TravianAssistant Settlement Race HUD with AI Chat
+// TravianAssistant HUD with Improved UI and CP Capture
 (function() {
   'use strict';
   
-  console.log('[TLA] Settlement Race with AI Chat Active!');
+  console.log('[TLA] TravianAssistant Active!');
   
   const CONFIG = {
     backendUrl: 'https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev',
@@ -12,8 +12,7 @@
     accountId: localStorage.getItem('TLA_ACCOUNT_ID') || generateAccountId(),
     syncInterval: 60000,
     debugMode: true,
-    serverSpeed: 2, // 2x speed server as per user
-    serverType: 'standard' // Update based on actual server
+    serverSpeed: 2 // 2x speed server
   };
   
   function generateAccountId() {
@@ -32,6 +31,7 @@
         villageName: null,
         villageCoords: null,
         resources: {},
+        production: {},
         population: 0,
         culturePoints: {},
         villages: [],
@@ -42,8 +42,7 @@
       this.staticGameData = null;
       this.chatOpen = false;
       this.chatMessages = [];
-      this.conversationHistory = []; // Full conversation history for context
-      this.promptHistory = [];
+      this.conversationHistory = [];
       this.init();
     }
     
@@ -51,10 +50,13 @@
       this.createHUD();
       this.initDragAndDrop();
       await this.loadStaticGameData();
+      await this.loadStoredData();
       this.startDataCollection();
       this.loadPosition();
+      this.captureCulturePoints();
+      this.captureProduction();
       
-      // Check if we're on hero page and scrape it
+      // Capture hero data if on hero page
       if (window.location.href.includes('/hero')) {
         this.scrapeHeroPage();
       }
@@ -66,55 +68,83 @@
       hud.innerHTML = `
         <div class="ta-header">
           <span class="ta-title">TravianAssistant</span>
-          <button class="ta-chat-btn" title="AI Chat">💬</button>
-          <button class="ta-hero-btn" title="Hero Info">⚔️</button>
-          <button class="ta-minimize">_</button>
-          <button class="ta-close">×</button>
+          <div class="ta-buttons">
+            <button class="ta-chat-btn" title="AI Chat">💬</button>
+            <button class="ta-hero-btn" title="Hero Info">⚔️</button>
+            <button class="ta-minimize">_</button>
+            <button class="ta-close">×</button>
+          </div>
         </div>
         <div class="ta-content">
           <div class="ta-status">
             <span class="sync-indicator ${this.syncStatus}"></span>
-            <span id="ta-server-info" style="font-size: 10px; opacity: 0.8;">-</span>
+            <span id="ta-server-info">-</span>
           </div>
-          <div class="ta-metrics">
-            <div class="metric-row">
-              <span class="metric-icon">👥</span>
-              <span id="ta-pop">-</span>
-              <span class="metric-icon">🌟</span>
+          
+          <!-- Culture Points Section -->
+          <div class="ta-section ta-culture">
+            <div class="ta-row">
+              <span class="ta-icon">🌟</span>
               <span id="ta-cp">-/-</span>
             </div>
-            <div class="metric-row">
-              <span class="metric-icon">📈</span>
+            <div class="ta-row">
+              <span class="ta-icon">📈</span>
               <span id="ta-cp-rate">-/day</span>
-              <span class="metric-icon">⏱️</span>
+            </div>
+            <div class="ta-row">
+              <span class="ta-icon">⏱️</span>
               <span id="ta-cp-time">-</span>
             </div>
-            <div class="metric-row">
+          </div>
+          
+          <!-- Resources Section -->
+          <div class="ta-section ta-resources">
+            <div class="ta-resource-row">
               <span class="res-icon wood">🪵</span>
-              <span id="ta-wood">-</span>
+              <span class="res-current" id="ta-wood">-</span>
+              <span class="res-production" id="ta-wood-prod">-/h</span>
+            </div>
+            <div class="ta-resource-row">
               <span class="res-icon clay">🧱</span>
-              <span id="ta-clay">-</span>
+              <span class="res-current" id="ta-clay">-</span>
+              <span class="res-production" id="ta-clay-prod">-/h</span>
             </div>
-            <div class="metric-row">
+            <div class="ta-resource-row">
               <span class="res-icon iron">⚙️</span>
-              <span id="ta-iron">-</span>
-              <span class="res-icon crop">🌾</span>
-              <span id="ta-crop">-</span>
+              <span class="res-current" id="ta-iron">-</span>
+              <span class="res-production" id="ta-iron-prod">-/h</span>
             </div>
-            <div class="metric-row">
-              <span class="metric-label">Day:</span>
-              <span id="ta-server-day">-</span>
-              <span class="metric-label">Village:</span>
-              <span id="ta-village-coords">-</span>
+            <div class="ta-resource-row">
+              <span class="res-icon crop">🌾</span>
+              <span class="res-current" id="ta-crop">-</span>
+              <span class="res-production" id="ta-crop-prod">-/h</span>
+            </div>
+          </div>
+          
+          <!-- Village Info Section -->
+          <div class="ta-section ta-info">
+            <div class="ta-row">
+              <span class="ta-icon">👥</span>
+              <span id="ta-pop">-</span>
+            </div>
+            <div class="ta-row">
+              <span class="ta-icon">📍</span>
+              <span id="ta-village">-</span>
+            </div>
+            <div class="ta-row">
+              <span class="ta-icon">📅</span>
+              <span id="ta-server-day">Day -</span>
             </div>
           </div>
         </div>
+        
+        <!-- Hero Window -->
         <div class="ta-hero-window" style="display: none;">
-          <div class="ta-hero-header">
+          <div class="ta-window-header">
             <span>Hero Stats</span>
             <button class="ta-hero-close">×</button>
           </div>
-          <div class="ta-hero-content">
+          <div class="ta-window-content">
             <div class="hero-stat">Level: <span id="ta-hero-level">-</span></div>
             <div class="hero-stat">Experience: <span id="ta-hero-exp">-</span></div>
             <div class="hero-stat">Health: <span id="ta-hero-health">-</span>%</div>
@@ -125,10 +155,11 @@
             <div class="hero-stat">Resources: <span id="ta-hero-resources">-</span>%</div>
           </div>
         </div>
+        
+        <!-- Chat Window -->
         <div class="ta-chat-window" style="display: none;">
           <div class="ta-chat-header">
             <span>AI Strategic Advisor</span>
-            <button class="ta-debug-btn" title="Debug">🐛</button>
             <button class="ta-chat-close">×</button>
           </div>
           <div class="ta-chat-messages"></div>
@@ -137,15 +168,6 @@
             <button class="ta-chat-send">Send</button>
           </div>
           <div class="ta-chat-resize"></div>
-        </div>
-        <div class="ta-debug-window" style="display: none;">
-          <div class="ta-debug-header">
-            <span>Debug: System Prompt</span>
-            <button class="ta-debug-close">×</button>
-          </div>
-          <div class="ta-debug-content">
-            <pre id="ta-debug-prompt"></pre>
-          </div>
         </div>
       `;
       
@@ -163,8 +185,6 @@
       document.querySelector('.ta-chat-input input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') this.sendMessage();
       });
-      document.querySelector('.ta-debug-btn').addEventListener('click', () => this.toggleDebug());
-      document.querySelector('.ta-debug-close').addEventListener('click', () => this.toggleDebug());
       
       this.initResize();
     }
@@ -176,43 +196,52 @@
           position: fixed;
           top: 20px;
           right: 20px;
-          width: 220px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          width: 240px;
+          background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
           border-radius: 12px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          box-shadow: 0 10px 30px rgba(0,0,0,0.4);
           z-index: 10000;
-          font-family: Arial, sans-serif;
+          font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
           color: white;
+          font-size: 13px;
         }
         
         .ta-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 8px 10px;
+          padding: 10px 12px;
           cursor: move;
-          background: rgba(0,0,0,0.2);
+          background: rgba(0,0,0,0.3);
           border-radius: 12px 12px 0 0;
+          border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         
         .ta-title {
-          font-weight: bold;
-          font-size: 12px;
+          font-weight: 600;
+          font-size: 14px;
+          letter-spacing: 0.5px;
+        }
+        
+        .ta-buttons {
+          display: flex;
+          gap: 4px;
         }
         
         .ta-header button {
-          background: none;
-          border: none;
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.2);
           color: white;
           cursor: pointer;
           font-size: 14px;
-          padding: 0 4px;
-          opacity: 0.8;
-          margin-left: 2px;
+          padding: 2px 6px;
+          border-radius: 4px;
+          transition: all 0.2s;
         }
         
         .ta-header button:hover {
-          opacity: 1;
+          background: rgba(255,255,255,0.2);
+          transform: translateY(-1px);
         }
         
         .ta-chat-btn, .ta-hero-btn {
@@ -220,12 +249,18 @@
         }
         
         .ta-content {
-          padding: 8px;
+          padding: 12px;
         }
         
         .ta-status {
-          text-align: center;
-          margin-bottom: 8px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(255,255,255,0.1);
+          font-size: 11px;
+          opacity: 0.9;
         }
         
         .sync-indicator {
@@ -233,112 +268,151 @@
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          margin-right: 4px;
         }
         
         .sync-indicator.connected {
           background: #4CAF50;
           animation: pulse 2s infinite;
+          box-shadow: 0 0 8px #4CAF50;
         }
         
         @keyframes pulse {
-          0% { opacity: 1; }
+          0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
-          100% { opacity: 1; }
         }
         
-        .ta-metrics {
-          font-size: 11px;
+        .ta-section {
+          background: rgba(255,255,255,0.1);
+          border-radius: 8px;
+          padding: 8px;
+          margin-bottom: 10px;
         }
         
-        .metric-row {
+        .ta-section:last-child {
+          margin-bottom: 0;
+        }
+        
+        .ta-row {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          padding: 2px 5px;
+          gap: 8px;
+          padding: 4px 0;
+        }
+        
+        .ta-icon {
+          font-size: 14px;
+          width: 20px;
+          text-align: center;
+        }
+        
+        /* Resources Section Special Layout */
+        .ta-resources {
+          background: rgba(255,255,255,0.12);
+        }
+        
+        .ta-resource-row {
+          display: grid;
+          grid-template-columns: 24px 1fr 1fr;
+          align-items: center;
+          gap: 8px;
+          padding: 5px 4px;
+          border-radius: 4px;
+          transition: background 0.2s;
+        }
+        
+        .ta-resource-row:hover {
           background: rgba(255,255,255,0.1);
-          border-radius: 3px;
-          margin-bottom: 3px;
         }
         
-        .metric-icon, .res-icon {
-          font-size: 12px;
-          margin-right: 3px;
+        .res-icon {
+          font-size: 16px;
+          text-align: center;
         }
         
-        .metric-label {
-          font-weight: bold;
-          margin-right: 5px;
-          font-size: 10px;
+        .res-current {
+          font-weight: 600;
+          font-size: 13px;
         }
         
-        .ta-hero-window {
+        .res-production {
+          font-size: 11px;
+          opacity: 0.9;
+          text-align: right;
+        }
+        
+        /* Culture Points Section */
+        .ta-culture {
+          background: rgba(255,215,0,0.1);
+          border: 1px solid rgba(255,215,0,0.2);
+        }
+        
+        /* Info Section */
+        .ta-info {
+          background: rgba(255,255,255,0.08);
+        }
+        
+        /* Windows */
+        .ta-hero-window, .ta-chat-window {
           position: absolute;
           top: 100%;
           margin-top: 10px;
-          right: 0;
-          width: 200px;
           background: white;
           border-radius: 12px;
           box-shadow: 0 10px 30px rgba(0,0,0,0.3);
           color: #333;
         }
         
-        .ta-hero-header {
-          padding: 8px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .ta-hero-window {
+          right: 0;
+          width: 220px;
+        }
+        
+        .ta-chat-window {
+          left: 0;
+          width: 380px;
+          height: 450px;
+          display: flex;
+          flex-direction: column;
+          resize: both;
+          overflow: auto;
+          min-width: 320px;
+          min-height: 300px;
+          max-width: 600px;
+          max-height: 600px;
+        }
+        
+        .ta-window-header, .ta-chat-header {
+          padding: 10px 12px;
+          background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
           border-radius: 12px 12px 0 0;
           display: flex;
           justify-content: space-between;
           align-items: center;
           color: white;
+          font-weight: 600;
         }
         
-        .ta-hero-content {
-          padding: 10px;
+        .ta-window-content {
+          padding: 12px;
           font-size: 12px;
         }
         
         .hero-stat {
-          margin-bottom: 5px;
+          margin-bottom: 6px;
           display: flex;
           justify-content: space-between;
+          padding: 4px;
+          border-radius: 4px;
         }
         
-        .ta-chat-window {
-          position: absolute;
-          top: 100%;
-          margin-top: 10px;
-          left: 0;
-          width: 350px;
-          height: 400px;
-          background: white;
-          border-radius: 12px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-          display: flex;
-          flex-direction: column;
-          resize: both;
-          overflow: auto;
-          min-width: 300px;
-          min-height: 200px;
-          max-width: 600px;
-          max-height: 600px;
-        }
-        
-        .ta-chat-header {
-          padding: 10px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border-radius: 12px 12px 0 0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        .hero-stat:hover {
+          background: #f5f5f5;
         }
         
         .ta-chat-messages {
           flex: 1;
           padding: 12px;
           overflow-y: auto;
-          color: #333;
         }
         
         .chat-message {
@@ -347,86 +421,74 @@
           border-radius: 8px;
           max-width: 80%;
           white-space: pre-wrap;
-          font-size: 14px;
+          font-size: 13px;
         }
         
         .user-message {
-          background: #f0f0f0;
+          background: #e3f2fd;
           margin-left: auto;
           text-align: right;
         }
         
         .ai-message {
-          background: #e8f4fd;
-          border-left: 3px solid #667eea;
+          background: #f5f5f5;
+          border-left: 3px solid #3498db;
         }
         
         .ta-chat-input {
           display: flex;
           padding: 10px;
           border-top: 1px solid #e0e0e0;
+          gap: 8px;
         }
         
         .ta-chat-input input {
           flex: 1;
-          padding: 6px 10px;
+          padding: 8px 12px;
           border: 1px solid #ddd;
           border-radius: 20px;
           outline: none;
           font-size: 13px;
         }
         
+        .ta-chat-input input:focus {
+          border-color: #3498db;
+        }
+        
         .ta-chat-send {
-          margin-left: 6px;
-          padding: 6px 12px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 8px 16px;
+          background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
           color: white;
           border: none;
           border-radius: 20px;
           cursor: pointer;
           font-size: 13px;
+          font-weight: 600;
+          transition: transform 0.2s;
         }
         
-        .ta-debug-window {
+        .ta-chat-send:hover {
+          transform: scale(1.05);
+        }
+        
+        .ta-chat-resize {
           position: absolute;
-          top: 50px;
-          left: -400px;
-          width: 380px;
-          max-height: 500px;
-          background: #1e1e1e;
-          border-radius: 12px;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-          color: #fff;
-          overflow: hidden;
-        }
-        
-        .ta-debug-header {
-          padding: 10px;
-          background: #2d2d2d;
-          border-radius: 12px 12px 0 0;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        
-        .ta-debug-content {
-          padding: 10px;
-          overflow-y: auto;
-          max-height: 450px;
-        }
-        
-        .ta-debug-content pre {
-          font-family: 'Courier New', monospace;
-          font-size: 11px;
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          margin: 0;
+          bottom: 0;
+          right: 0;
+          width: 20px;
+          height: 20px;
+          cursor: nwse-resize;
+          opacity: 0.3;
         }
         
         #travian-assistant-hud.minimized .ta-content,
         #travian-assistant-hud.minimized .ta-chat-window,
         #travian-assistant-hud.minimized .ta-hero-window {
           display: none;
+        }
+        
+        #travian-assistant-hud.minimized {
+          width: auto;
         }
       `;
       document.head.appendChild(style);
@@ -482,10 +544,10 @@
         const newWidth = e.clientX - rect.left;
         const newHeight = e.clientY - rect.top;
         
-        if (newWidth >= 300 && newWidth <= 600) {
+        if (newWidth >= 320 && newWidth <= 600) {
           chatWindow.style.width = newWidth + 'px';
         }
-        if (newHeight >= 200 && newHeight <= 600) {
+        if (newHeight >= 300 && newHeight <= 600) {
           chatWindow.style.height = newHeight + 'px';
         }
       });
@@ -501,11 +563,11 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        const welcomeMsg = `Welcome! I'm your Travian Legends strategic advisor for this ${CONFIG.serverSpeed}x speed server. 
+        const welcomeMsg = `Welcome! I'm your Travian Legends strategic advisor for this ${CONFIG.serverSpeed}x speed server.
         
-I can see you're playing with ${this.gameData.tribe || 'your tribe'} and have ${this.gameData.villages?.length || 'multiple'} villages. 
+Based on your current data, you have ${this.gameData.culturePoints?.hoursRemaining || 'unknown'} hours until your next settlement.
 
-What would you like help with today?`;
+How can I help optimize your gameplay today?`;
         this.addMessage('ai', welcomeMsg);
       }
     }
@@ -520,14 +582,153 @@ What would you like help with today?`;
       }
     }
     
-    toggleDebug() {
-      const debugWindow = document.querySelector('.ta-debug-window');
-      const isVisible = debugWindow.style.display !== 'none';
-      debugWindow.style.display = isVisible ? 'none' : 'block';
+    toggleMinimize() {
+      const hud = document.getElementById('travian-assistant-hud');
+      hud.classList.toggle('minimized');
+    }
+    
+    close() {
+      const hud = document.getElementById('travian-assistant-hud');
+      hud.remove();
+    }
+    
+    savePosition() {
+      const hud = document.getElementById('travian-assistant-hud');
+      const rect = hud.getBoundingClientRect();
+      localStorage.setItem('TLA_HUD_POSITION', JSON.stringify({
+        left: rect.left,
+        top: rect.top
+      }));
+    }
+    
+    loadPosition() {
+      const saved = localStorage.getItem('TLA_HUD_POSITION');
+      if (saved) {
+        const pos = JSON.parse(saved);
+        const hud = document.getElementById('travian-assistant-hud');
+        hud.style.left = pos.left + 'px';
+        hud.style.top = pos.top + 'px';
+        hud.style.right = 'auto';
+      }
+    }
+    
+    async loadStoredData() {
+      // Load stored CP data
+      const storedCP = localStorage.getItem('TLA_CP_DATA');
+      if (storedCP) {
+        this.gameData.culturePoints = JSON.parse(storedCP);
+        console.log('[TLA] Loaded stored CP data:', this.gameData.culturePoints);
+      }
+      
+      // Load stored production data
+      const storedProd = localStorage.getItem('TLA_PRODUCTION');
+      if (storedProd) {
+        this.gameData.production = JSON.parse(storedProd);
+        console.log('[TLA] Loaded stored production:', this.gameData.production);
+      }
+      
+      // Load stored hero data
+      const storedHero = localStorage.getItem('TLA_HERO_DATA');
+      if (storedHero) {
+        this.gameData.heroData = JSON.parse(storedHero);
+      }
+    }
+    
+    captureCulturePoints() {
+      // Check if we're on a culture building page
+      if (window.location.href.includes('gid=24') || // Town Hall
+          window.location.href.includes('gid=25') || // Residence
+          window.location.href.includes('gid=26') || // Palace
+          window.location.href.includes('gid=29')) { // Command Center
+        
+        console.log('[TLA] On culture building - capturing CP...');
+        const cpData = {};
+        const bodyText = document.body.innerText;
+        
+        // Extract CP values using regex
+        const currentMatch = bodyText.match(/Culture points produced so far[\s\S]*?(\d{3,})/);
+        if (currentMatch) cpData.current = parseInt(currentMatch[1]);
+        
+        const neededMatch = bodyText.match(/Next village controllable at[\s\S]*?(\d{3,})/);
+        if (neededMatch) cpData.needed = parseInt(neededMatch[1]);
+        
+        const deficitMatch = bodyText.match(/Culture points still needed[\s\S]*?(\d{3,})/);
+        if (deficitMatch) cpData.deficit = parseInt(deficitMatch[1]);
+        
+        // Look for per day production
+        document.querySelectorAll('td').forEach(cell => {
+          const text = cell.textContent?.trim();
+          if (text && /^\d{3,5}$/.test(text)) {
+            const num = parseInt(text);
+            if (num > 5000 && num < 10000) cpData.totalPerDay = num;
+          }
+        });
+        
+        // Calculate hours remaining
+        if (cpData.deficit && cpData.totalPerDay) {
+          cpData.hoursRemaining = Math.ceil((cpData.deficit / cpData.totalPerDay) * 24);
+        }
+        
+        // Store if found
+        if (cpData.current) {
+          this.gameData.culturePoints = cpData;
+          localStorage.setItem('TLA_CP_DATA', JSON.stringify({
+            ...cpData,
+            timestamp: new Date().toISOString()
+          }));
+          console.log('[TLA] Captured CP data:', cpData);
+        }
+      }
+    }
+    
+    captureProduction() {
+      // Check if we're on overview page
+      if (window.location.href.includes('dorf1.php')) {
+        console.log('[TLA] On overview page - capturing production...');
+        const production = {};
+        
+        // Look for production values
+        document.querySelectorAll('.villageInfobox.production .num').forEach((elem, idx) => {
+          const value = parseInt(elem.textContent.replace(/[^\d]/g, ''));
+          if (value) {
+            if (idx === 0) production.wood = value;
+            else if (idx === 1) production.clay = value;
+            else if (idx === 2) production.iron = value;
+            else if (idx === 3) production.crop = value;
+          }
+        });
+        
+        // Store if found
+        if (production.wood) {
+          this.gameData.production = production;
+          localStorage.setItem('TLA_PRODUCTION', JSON.stringify({
+            ...production,
+            timestamp: new Date().toISOString()
+          }));
+          console.log('[TLA] Captured production:', production);
+        }
+      }
+    }
+    
+    scrapeHeroPage() {
+      console.log('[TLA] Scraping hero page...');
+      const heroData = {};
+      
+      // Extract hero data from page
+      const levelElem = document.querySelector('.heroLevel, .level');
+      if (levelElem) {
+        const match = levelElem.textContent.match(/(\d+)/);
+        if (match) heroData.level = parseInt(match[1]);
+      }
+      
+      // Store if found
+      if (heroData.level) {
+        this.gameData.heroData = heroData;
+        localStorage.setItem('TLA_HERO_DATA', JSON.stringify(heroData));
+      }
     }
     
     updateHeroDisplay() {
-      // Update hero display from stored data
       const hero = this.gameData.heroData || {};
       document.getElementById('ta-hero-level').textContent = hero.level || '-';
       document.getElementById('ta-hero-exp').textContent = hero.experience || '-';
@@ -539,113 +740,17 @@ What would you like help with today?`;
       document.getElementById('ta-hero-resources').textContent = hero.resourceBonus || '-';
     }
     
-    scrapeHeroPage() {
-      // This runs when we're on the hero attributes page
-      console.log('[TLA] Scraping hero page...');
-      
-      try {
-        const heroData = {};
-        
-        // Hero level and experience
-        const levelElem = document.querySelector('.heroLevel, .level');
-        if (levelElem) {
-          const levelMatch = levelElem.textContent.match(/(\d+)/);
-          if (levelMatch) heroData.level = parseInt(levelMatch[1]);
-        }
-        
-        // Hero experience
-        const expBar = document.querySelector('.heroXp, .experience .bar');
-        if (expBar) {
-          const title = expBar.getAttribute('title') || expBar.textContent;
-          const expMatch = title.match(/(\d+)\s*\/\s*(\d+)/);
-          if (expMatch) {
-            heroData.experience = `${expMatch[1]}/${expMatch[2]}`;
-          }
-        }
-        
-        // Hero health
-        const healthBar = document.querySelector('.health .bar, .heroHealth');
-        if (healthBar) {
-          const healthPercent = healthBar.style.width || 
-                               healthBar.getAttribute('value') || 
-                               healthBar.textContent;
-          heroData.health = parseInt(healthPercent) || 100;
-        }
-        
-        // Hero attributes
-        const attributes = document.querySelectorAll('.attribute, .heroAttributes .row');
-        attributes.forEach(attr => {
-          const text = attr.textContent;
-          if (text.includes('Attack') || text.includes('Fighting strength')) {
-            const match = text.match(/(\d+)/);
-            if (match) heroData.attack = parseInt(match[1]);
-          }
-          if (text.includes('Defence')) {
-            const match = text.match(/(\d+)/);
-            if (match) heroData.defense = parseInt(match[1]);
-          }
-          if (text.includes('Off Bonus') || text.includes('offensive bonus')) {
-            const match = text.match(/(\d+)/);
-            if (match) heroData.offBonus = parseInt(match[1]);
-          }
-          if (text.includes('Def Bonus') || text.includes('defensive bonus')) {
-            const match = text.match(/(\d+)/);
-            if (match) heroData.defBonus = parseInt(match[1]);
-          }
-          if (text.includes('Resources') || text.includes('resource production')) {
-            const match = text.match(/(\d+)/);
-            if (match) heroData.resourceBonus = parseInt(match[1]);
-          }
-        });
-        
-        // Store hero data
-        if (Object.keys(heroData).length > 0) {
-          this.gameData.heroData = heroData;
-          localStorage.setItem('TLA_HERO_DATA', JSON.stringify(heroData));
-          console.log('[TLA] Hero data scraped:', heroData);
-          this.updateHeroDisplay();
-        }
-      } catch (error) {
-        console.error('[TLA] Hero scraping error:', error);
-      }
-    }
-    
-    async loadStaticGameData() {
-      try {
-        console.log('[TLA] Loading game data from backend...');
-        const response = await fetch(`${CONFIG.backendUrl}/api/game-data`);
-        if (response.ok) {
-          this.staticGameData = await response.json();
-          console.log('[TLA] Loaded game data:', {
-            buildings: this.staticGameData.buildings?.length || 0,
-            troops: this.staticGameData.troops?.length || 0,
-            quests: this.staticGameData.quests?.length || 0
-          });
-        }
-      } catch (error) {
-        console.error('[TLA] Failed to load game data:', error);
-      }
-      
-      // Load stored hero data
-      const storedHero = localStorage.getItem('TLA_HERO_DATA');
-      if (storedHero) {
-        this.gameData.heroData = JSON.parse(storedHero);
-      }
-    }
-    
     detectTribe() {
-      // Check for tribe-specific buildings or units in the page
       const tribeIndicators = {
-        'romans': ['City Wall', 'Horse Drinking', 'Legionnaire', 'Praetorian'],
-        'gauls': ['Palisade', 'Trapper', 'Phalanx', 'Druidrider'],
-        'teutons': ['Earth Wall', 'Brewery', 'Clubswinger', 'Teutonic Knight'],
-        'egyptians': ['Stone Wall', 'Waterworks', 'Slave Militia', 'Ash Warden'],
-        'huns': ['Makeshift Wall', 'Command Center', 'Mercenary', 'Marksman'],
-        'spartans': ['Defensive Wall', 'Hoplite', 'Shieldsman']
+        'romans': ['City Wall', 'Legionnaire'],
+        'gauls': ['Palisade', 'Phalanx'],
+        'teutons': ['Earth Wall', 'Clubswinger'],
+        'egyptians': ['Stone Wall', 'Slave Militia'],
+        'huns': ['Makeshift Wall', 'Mercenary'],
+        'spartans': ['Defensive Wall', 'Hoplite']
       };
       
       const pageText = document.body.textContent.toLowerCase();
-      
       for (const [tribe, indicators] of Object.entries(tribeIndicators)) {
         for (const indicator of indicators) {
           if (pageText.includes(indicator.toLowerCase())) {
@@ -653,69 +758,27 @@ What would you like help with today?`;
           }
         }
       }
-      
-      // Check body class or other indicators
-      const bodyClass = document.body.className.toLowerCase();
-      for (const tribe of Object.keys(tribeIndicators)) {
-        if (bodyClass.includes(tribe)) {
-          return tribe;
-        }
-      }
-      
       return null;
     }
     
     buildSystemPrompt() {
-      // Build comprehensive system prompt with backend access info
       const backendUrl = CONFIG.backendUrl;
-      
-      return `You are an expert Travian Legends strategic advisor. This is specifically about the online browser game Travian Legends, NOT historical facts.
+      return `You are an expert Travian Legends strategic advisor. This is the online game, NOT historical information.
 
-## CRITICAL CONTEXT
-- Game: Travian Legends (browser game)
-- Server: ${CONFIG.serverSpeed}x speed server
-- Player Tribe: ${this.gameData.tribe || 'Unknown'}
-- Current Villages: ${this.gameData.villages?.length || 1}
-
-## YOUR CAPABILITIES
-You have access to real-time game data through these backend endpoints:
-- GET ${backendUrl}/api/game-data - Returns buildings, troops, quests data
-- GET ${backendUrl}/api/villages/${CONFIG.accountId} - Returns player's villages
-- GET ${backendUrl}/api/recommendations - Returns previous AI recommendations
-
-Always query current data before providing strategic advice.
-
-## CURRENT GAME STATE
-- Population: ${this.gameData.population || 0}
-- Culture Points: ${this.gameData.culturePoints?.current || 0}/${this.gameData.culturePoints?.needed || 500}
-- CP Production: ${this.gameData.culturePoints?.production || 0}/day
+## CONTEXT
+- Server: ${CONFIG.serverSpeed}x speed
+- Tribe: ${this.gameData.tribe || 'Unknown'}
+- Villages: ${this.gameData.villages?.length || 1}
+- Culture Points: ${this.gameData.culturePoints?.current || 0}/${this.gameData.culturePoints?.needed || 'unknown'}
+- Time to Settlement: ${this.gameData.culturePoints?.hoursRemaining || 'unknown'} hours
 - Resources: Wood ${this.gameData.resources?.wood || 0}, Clay ${this.gameData.resources?.clay || 0}, Iron ${this.gameData.resources?.iron || 0}, Crop ${this.gameData.resources?.crop || 0}
-${this.gameData.villages?.length > 0 ? `
-- Villages (${this.gameData.villages.length}):
-${this.gameData.villages.map(v => `  * ${v.name} at (${v.x}|${v.y})`).join('\n')}
-` : ''}
-${this.gameData.heroData?.level ? `
-- Hero Level: ${this.gameData.heroData.level}
-- Hero Attack: ${this.gameData.heroData.attack || 0}
-- Hero Defense: ${this.gameData.heroData.defense || 0}
-` : ''}
 
-## RESPONSE GUIDELINES
-1. Focus ONLY on Travian Legends game strategy
-2. Query backend data when needed for accurate advice
-3. Consider the ${CONFIG.serverSpeed}x speed when giving timing advice
-4. Provide specific, actionable recommendations
-5. Never discuss historical facts unless directly related to game strategy
+## BACKEND ACCESS
+You can query these endpoints:
+- GET ${backendUrl}/api/game-data
+- GET ${backendUrl}/api/villages/${CONFIG.accountId}
 
-## CONVERSATION CONTEXT
-${this.conversationHistory.length > 0 ? 
-  `Recent conversation:
-${this.conversationHistory.slice(-3).map(h => 
-    `${h.role}: ${h.content.substring(0, 100)}...`
-  ).join('\n')}` : 
-  'This is the start of our conversation.'}
-
-Remember: You are a Travian Legends game advisor. All responses should be about the game, not history or other topics.`;
+Always provide strategic advice specific to Travian Legends gameplay.`;
     }
     
     async sendMessage() {
@@ -729,31 +792,15 @@ Remember: You are a Travian Legends game advisor. All responses should be about 
       const loadingMessage = this.addMessage('ai', '...');
       
       try {
-        // Ensure we have game data
-        if (!this.staticGameData) {
-          await this.loadStaticGameData();
-        }
-        
-        // Build system prompt with backend access info
         const systemPrompt = this.buildSystemPrompt();
+        const contextualMessage = `[Travian Legends ${CONFIG.serverSpeed}x server]
+${message}`;
         
-        // Wrap user message with game context
-        const contextualMessage = `[CONTEXT: Question about Travian Legends game, ${CONFIG.serverSpeed}x server, ${this.gameData.tribe || 'unknown'} tribe]
-${message}
-
-[IMPORTANT: Respond ONLY about Travian Legends gameplay. If the question seems ambiguous, assume it's about game strategy.]`;
-        
-        // Store conversation history
         this.conversationHistory.push({
           role: 'user',
           content: contextualMessage
         });
         
-        // Log debug info
-        document.getElementById('ta-debug-prompt').textContent = systemPrompt;
-        console.log('[TLA] Sending message with game context');
-        
-        // Send request with full conversation context
         const request = {
           model: CONFIG.modelName,
           max_tokens: CONFIG.maxTokens,
@@ -767,9 +814,7 @@ ${message}
           body: JSON.stringify(request)
         });
         
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
         
         const data = await response.json();
         this.removeLoadingMessage(loadingMessage);
@@ -777,14 +822,11 @@ ${message}
         if (data.content && data.content[0]) {
           const aiResponse = data.content[0].text;
           this.addMessage('ai', aiResponse);
-          
-          // Store AI response in conversation history
           this.conversationHistory.push({
             role: 'assistant',
             content: aiResponse
           });
           
-          // Limit conversation history to last 10 exchanges
           if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
           }
@@ -821,33 +863,15 @@ ${message}
       return message;
     }
     
-    toggleMinimize() {
-      const hud = document.getElementById('travian-assistant-hud');
-      hud.classList.toggle('minimized');
-    }
-    
-    close() {
-      const hud = document.getElementById('travian-assistant-hud');
-      hud.remove();
-    }
-    
-    savePosition() {
-      const hud = document.getElementById('travian-assistant-hud');
-      const rect = hud.getBoundingClientRect();
-      localStorage.setItem('TLA_HUD_POSITION', JSON.stringify({
-        left: rect.left,
-        top: rect.top
-      }));
-    }
-    
-    loadPosition() {
-      const saved = localStorage.getItem('TLA_HUD_POSITION');
-      if (saved) {
-        const pos = JSON.parse(saved);
-        const hud = document.getElementById('travian-assistant-hud');
-        hud.style.left = pos.left + 'px';
-        hud.style.top = pos.top + 'px';
-        hud.style.right = 'auto';
+    async loadStaticGameData() {
+      try {
+        console.log('[TLA] Loading game data from backend...');
+        const response = await fetch(`${CONFIG.backendUrl}/api/game-data`);
+        if (response.ok) {
+          this.staticGameData = await response.json();
+        }
+      } catch (error) {
+        console.error('[TLA] Failed to load game data:', error);
       }
     }
     
@@ -858,198 +882,135 @@ ${message}
     
     collectData() {
       try {
-        // Get server and player info
-        const serverName = document.querySelector('.serverName')?.textContent || 
-                          window.location.hostname.split('.')[0] || null;
+        // Get server info
+        const serverName = window.location.hostname.split('.')[0] || null;
+        const playerName = document.querySelector('.playerName')?.textContent || null;
         
-        const playerName = document.querySelector('.playerName')?.textContent ||
-                          document.querySelector('[class*="player"] .name')?.textContent || null;
+        // Get current village
+        const villageNameElem = document.querySelector('#villageNameField');
+        const villageName = villageNameElem?.value?.trim() || null;
         
-        // Get current village name and coordinates from the village info box
-        const villageNameElem = document.querySelector('#villageNameField, .villageName, .coordinatesWrapper .name');
-        const villageName = villageNameElem?.textContent?.trim() || 
-                           villageNameElem?.value?.trim() || null;
-        
-        const coordsElem = document.querySelector('.coordinatesWrapper .coordinateX, .coordinates');
+        // Get coordinates
+        const coordX = document.querySelector('.coordinateX')?.textContent;
+        const coordY = document.querySelector('.coordinateY')?.textContent;
         let villageCoords = null;
-        if (coordsElem) {
-          // Try to get X and Y separately first
-          const xCoord = document.querySelector('.coordinateX')?.textContent;
-          const yCoord = document.querySelector('.coordinateY')?.textContent;
-          if (xCoord && yCoord) {
-            villageCoords = { x: parseInt(xCoord), y: parseInt(yCoord) };
-          } else {
-            // Fall back to regex parsing
-            const coordMatch = coordsElem.textContent.match(/\(?\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)?/);
-            if (coordMatch) {
-              villageCoords = { x: parseInt(coordMatch[1]), y: parseInt(coordMatch[2]) };
-            }
-          }
+        if (coordX && coordY) {
+          villageCoords = {
+            x: parseInt(coordX.replace(/[^\d-]/g, '')),
+            y: parseInt(coordY.replace(/[^\d-]/g, ''))
+          };
         }
         
         // Detect tribe
         const tribe = this.detectTribe();
         
-        // Get resources from stockBar - using the IDs from your screenshot
+        // Get resources
         const resources = {
-          wood: parseInt(document.querySelector('#l1, .stockBarButton .value')?.textContent?.replace(/[^\d-]/g, '') || 0),
-          clay: parseInt(document.querySelector('#l2, .stockBarButton:nth-of-type(2) .value')?.textContent?.replace(/[^\d-]/g, '') || 0),
-          iron: parseInt(document.querySelector('#l3, .stockBarButton:nth-of-type(3) .value')?.textContent?.replace(/[^\d-]/g, '') || 0),
-          crop: parseInt(document.querySelector('#l4, .stockBarButton:nth-of-type(4) .value')?.textContent?.replace(/[^\d-]/g, '') || 0)
+          wood: parseInt(document.querySelector('#l1')?.textContent?.replace(/[^\d]/g, '') || 0),
+          clay: parseInt(document.querySelector('#l2')?.textContent?.replace(/[^\d]/g, '') || 0),
+          iron: parseInt(document.querySelector('#l3')?.textContent?.replace(/[^\d]/g, '') || 0),
+          crop: parseInt(document.querySelector('#l4')?.textContent?.replace(/[^\d]/g, '') || 0)
         };
         
-        // Get population - from your screenshot, it's near the village name
+        // Get population
         let population = 0;
-        const popElement = document.querySelector('.inhabitants .value, .population');
-        if (popElement) {
-          const popText = popElement.textContent || '';
-          const match = popText.match(/(\d+)/);
-          if (match) population = parseInt(match[1]);
-        }
-        
-        // Get culture points - THE CRITICAL FIX
-        let cpCurrent = 0;
-        let cpNeeded = 500; // Default for first settlement
-        let cpProduction = 0;
-        
-        // Try to get CP from the village list panel which shows in your screenshot
-        const villageRows = document.querySelectorAll('.villageList .listEntry, .villages tbody tr');
-        if (villageRows.length > 0) {
-          // Multiple villages means we need more CP for next one
-          // Travian formula: 1st=0, 2nd=500, 3rd=1000, 4th=1500, etc
-          cpNeeded = Math.round(500 * Math.pow(2, villageRows.length - 1));
-        }
-        
-        // Look for culture points display - may be in tooltip or separate element
-        const cpTooltip = document.querySelector('[class*="culture"] .tooltip, .culturePoints');
-        if (cpTooltip) {
-          const cpText = cpTooltip.textContent || cpTooltip.getAttribute('title') || '';
-          // Match patterns like "123/500" or "123 / 500"
-          const cpMatch = cpText.match(/(\d+)\s*\/\s*(\d+)/);
-          if (cpMatch) {
-            cpCurrent = parseInt(cpMatch[1]);
-            cpNeeded = parseInt(cpMatch[2]);
-          }
-        }
-        
-        // Get CP production from village list
-        villageRows.forEach(row => {
-          const cpCell = row.querySelector('.cp, .culture, [class*="culture"]');
-          if (cpCell) {
-            const cpValue = parseInt(cpCell.textContent) || 0;
-            cpProduction += cpValue;
-          }
+        document.querySelectorAll('[class*="inhabitants"], [class*="population"]').forEach(elem => {
+          const match = elem.textContent?.match(/(\d+)/);
+          if (match) population = Math.max(population, parseInt(match[1]));
         });
         
-        // Alternative: Check the culture points in the side panel
-        const cpSidePanel = document.querySelector('.sideInfoCulture, .culturepointsProduction');
-        if (cpSidePanel) {
-          const prodMatch = cpSidePanel.textContent.match(/(\d+)/);
-          if (prodMatch && !cpProduction) {
-            cpProduction = parseInt(prodMatch[1]);
-          }
-        }
-        
-        // Calculate time to next village
-        let cpTimeToNext = '-';
-        if (cpProduction > 0 && cpNeeded > cpCurrent) {
-          const cpDeficit = cpNeeded - cpCurrent;
-          const daysNeeded = Math.ceil(cpDeficit / cpProduction);
-          const hoursNeeded = Math.ceil((cpDeficit / cpProduction) * 24);
-          
-          if (hoursNeeded < 24) {
-            cpTimeToNext = `${hoursNeeded}h`;
-          } else {
-            cpTimeToNext = `${daysNeeded}d`;
-          }
-        }
-        
-        // Get villages from the village list
+        // Get villages from list
         const villages = [];
-        villageRows.forEach((row, index) => {
-          const nameElem = row.querySelector('.name, .villageName, a');
-          const coordElem = row.querySelector('.coordinates, .coords');
-          
-          if (nameElem) {
-            const name = nameElem.textContent.trim();
-            let coords = { x: 0, y: 0 };
-            
-            if (coordElem) {
-              const coordMatch = coordElem.textContent.match(/\(?\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)?/);
-              if (coordMatch) {
-                coords = { x: parseInt(coordMatch[1]), y: parseInt(coordMatch[2]) };
-              }
+        document.querySelectorAll('#sidebarBoxVillagelist .listEntry').forEach(entry => {
+          const name = entry.querySelector('.name')?.textContent?.trim();
+          const coordElem = entry.querySelector('.coordinatesGrid');
+          if (name && coordElem) {
+            const x = coordElem.querySelector('.coordinateX')?.textContent;
+            const y = coordElem.querySelector('.coordinateY')?.textContent;
+            if (x && y) {
+              villages.push({
+                name,
+                x: parseInt(x.replace(/[^\d-]/g, '')),
+                y: parseInt(y.replace(/[^\d-]/g, ''))
+              });
             }
-            
-            villages.push({ name, ...coords });
           }
         });
         
-        // Get server day/time
+        // Get server day
+        const serverTimeElem = document.querySelector('#servertime, .serverTime');
         let serverDay = null;
-        const serverTimeElem = document.querySelector('.serverTime');
         if (serverTimeElem) {
-          const dayMatch = serverTimeElem.textContent.match(/Day\s+(\d+)/i);
-          if (dayMatch) {
-            serverDay = parseInt(dayMatch[1]);
-          }
+          const match = serverTimeElem.textContent.match(/Day\s+(\d+)/i);
+          if (match) serverDay = parseInt(match[1]);
         }
         
-        // Update display
-        document.getElementById('ta-wood').textContent = this.formatNumber(resources.wood);
-        document.getElementById('ta-clay').textContent = this.formatNumber(resources.clay);
-        document.getElementById('ta-iron').textContent = this.formatNumber(resources.iron);
-        document.getElementById('ta-crop').textContent = this.formatNumber(resources.crop);
-        document.getElementById('ta-pop').textContent = population;
-        document.getElementById('ta-cp').textContent = `${cpCurrent}/${cpNeeded}`;
-        document.getElementById('ta-cp-rate').textContent = `${cpProduction}/day`;
-        document.getElementById('ta-cp-time').textContent = cpTimeToNext;
-        document.getElementById('ta-server-day').textContent = serverDay || '-';
-        document.getElementById('ta-village-coords').textContent = 
-          villageCoords ? `(${villageCoords.x}|${villageCoords.y})` : '-';
-        document.getElementById('ta-server-info').textContent = 
-          `${serverName || 'Server'} - ${tribe || 'Unknown'}`;
-        
-        // Store all game data
+        // Update game data
         this.gameData = {
+          ...this.gameData,
           serverName,
           playerName,
           tribe,
           villageName,
           villageCoords,
-          villages,
           resources,
           population,
-          culturePoints: {
-            current: cpCurrent,
-            needed: cpNeeded,
-            production: cpProduction,
-            timeToNext: cpTimeToNext
-          },
+          villages: villages.length > 0 ? villages : this.gameData.villages,
           serverDay,
           timestamp: new Date().toISOString()
         };
         
-        console.log('[TLA] Game data collected:', this.gameData);
-        
-        // Debug CP specifically
-        if (CONFIG.debugMode) {
-          console.log('[TLA] Culture Points Debug:', {
-            current: cpCurrent,
-            needed: cpNeeded,
-            production: cpProduction,
-            villages: villages.length,
-            timeToNext: cpTimeToNext
-          });
-        }
-        
-        this.updateSyncStatus('connected');
+        // Update display
+        this.updateDisplay();
         this.syncToBackend();
         
       } catch (error) {
         console.error('[TLA] Data collection error:', error);
-        this.updateSyncStatus('error');
       }
+    }
+    
+    updateDisplay() {
+      // Update server info
+      const serverInfo = `${this.gameData.serverName || 'Server'} - ${this.gameData.tribe || 'Unknown'}`;
+      document.getElementById('ta-server-info').textContent = serverInfo;
+      
+      // Update culture points
+      const cp = this.gameData.culturePoints || {};
+      if (cp.current && cp.needed) {
+        document.getElementById('ta-cp').textContent = 
+          `${this.formatNumber(cp.current)}/${this.formatNumber(cp.needed)}`;
+        document.getElementById('ta-cp-rate').textContent = 
+          `${this.formatNumber(cp.totalPerDay || 0)}/day`;
+        document.getElementById('ta-cp-time').textContent = 
+          cp.hoursRemaining ? `${cp.hoursRemaining}h left` : '-';
+      }
+      
+      // Update resources with production
+      const res = this.gameData.resources || {};
+      const prod = this.gameData.production || {};
+      
+      document.getElementById('ta-wood').textContent = this.formatNumber(res.wood || 0);
+      document.getElementById('ta-wood-prod').textContent = prod.wood ? `+${this.formatNumber(prod.wood)}/h` : '-';
+      
+      document.getElementById('ta-clay').textContent = this.formatNumber(res.clay || 0);
+      document.getElementById('ta-clay-prod').textContent = prod.clay ? `+${this.formatNumber(prod.clay)}/h` : '-';
+      
+      document.getElementById('ta-iron').textContent = this.formatNumber(res.iron || 0);
+      document.getElementById('ta-iron-prod').textContent = prod.iron ? `+${this.formatNumber(prod.iron)}/h` : '-';
+      
+      document.getElementById('ta-crop').textContent = this.formatNumber(res.crop || 0);
+      document.getElementById('ta-crop-prod').textContent = prod.crop ? `+${this.formatNumber(prod.crop)}/h` : '-';
+      
+      // Update village info
+      document.getElementById('ta-pop').textContent = this.gameData.population || '-';
+      if (this.gameData.villageName && this.gameData.villageCoords) {
+        document.getElementById('ta-village').textContent = 
+          `${this.gameData.villageName} (${this.gameData.villageCoords.x}|${this.gameData.villageCoords.y})`;
+      } else {
+        document.getElementById('ta-village').textContent = '-';
+      }
+      document.getElementById('ta-server-day').textContent = 
+        this.gameData.serverDay ? `Day ${this.gameData.serverDay}` : 'Day -';
     }
     
     formatNumber(num) {
@@ -1060,7 +1021,7 @@ ${message}
     
     async syncToBackend() {
       try {
-        const response = await fetch(`${CONFIG.backendUrl}/api/village`, {
+        await fetch(`${CONFIG.backendUrl}/api/village`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1068,10 +1029,7 @@ ${message}
             village: this.gameData
           })
         });
-        
-        if (response.ok) {
-          this.updateSyncStatus('connected');
-        }
+        this.updateSyncStatus('connected');
       } catch (error) {
         console.error('[TLA] Sync error:', error);
         this.updateSyncStatus('offline');
