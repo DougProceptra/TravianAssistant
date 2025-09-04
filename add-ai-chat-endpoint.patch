@@ -1,0 +1,12 @@
+// Patch file to add AI chat endpoint to server.js
+// Apply this after line 583 (after the recommendations endpoint)
+
+// Import AI chat handler at the top of file (after line 11):
+const { handleAIChat } = require('./api/ai-chat-handler');
+
+// Add the endpoint (after line 583):
+// AI Chat endpoint with mem0 integration
+app.post('/api/ai-chat', handleAIChat);
+
+// This patch adds the missing /api/ai-chat endpoint that Vercel is trying to call
+// for mem0 integration. The handler is in api/ai-chat-handler.js
