@@ -6,7 +6,7 @@
   
   const CONFIG = {
     backendUrl: 'https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev',
-    proxyUrl: 'https://travian-proxy-simple.vercel.app/api/proxy',
+    proxyUrl: 'https://travian-proxy-simple.vercel.app/api/anthropic',
     modelName: 'claude-sonnet-4-20250514',
     maxTokens: 2000,
     accountId: localStorage.getItem('TLA_ACCOUNT_ID') || generateAccountId(),
