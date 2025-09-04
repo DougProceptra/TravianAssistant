@@ -1,129 +1,24 @@
-// TravianAssistant HUD with Mem0 Integration and Full Game Context
+// TravianAssistant HUD with Improved UI and CP Capture
 (function() {
   'use strict';
   
-  console.log('[TLA] TravianAssistant with Mem0 Active!');
+  console.log('[TLA] TravianAssistant Active!');
   
   const CONFIG = {
     backendUrl: 'https://3a6514bb-7f32-479b-978e-cb64d6f1bf42-00-1j1tdn8b0kpfn.riker.replit.dev',
     proxyUrl: 'https://travian-proxy-simple.vercel.app/api/proxy',
     modelName: 'claude-sonnet-4-20250514',
     maxTokens: 2000,
-    userId: null,  // Will be set after email capture
+    accountId: localStorage.getItem('TLA_ACCOUNT_ID') || generateAccountId(),
     syncInterval: 60000,
     debugMode: true,
-    serverSpeed: 2
+    serverSpeed: 2 // 2x speed server
   };
   
-  // Email capture and hashing functions
-  async function getUserId() {
-    let userId = localStorage.getItem('TLA_USER_ID');
-    
-    if (!userId) {
-      const email = await showEmailPrompt();
-      if (email) {
-        userId = await hashEmail(email);
-        localStorage.setItem('TLA_USER_ID', userId);
-        localStorage.setItem('TLA_USER_EMAIL_MASKED', email.split('@')[0] + '@***');
-        console.log('[TLA] User registered:', userId);
-      } else {
-        userId = 'anon_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('TLA_USER_ID', userId);
-        console.log('[TLA] Anonymous user:', userId);
-      }
-    }
-    
-    return userId;
-  }
-  
-  async function hashEmail(email) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(email.toLowerCase().trim());
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    return 'user_' + hashHex.substring(0, 16);
-  }
-  
-  function showEmailPrompt() {
-    return new Promise((resolve) => {
-      const modal = document.createElement('div');
-      modal.id = 'tla-email-modal-wrapper';
-      modal.innerHTML = `
-        <div style="
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0,0,0,0.5);
-          z-index: 100000;
-        "></div>
-        <div style="
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          background: white;
-          padding: 30px;
-          border-radius: 12px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-          z-index: 100001;
-          max-width: 400px;
-        ">
-          <h3 style="margin-top: 0; color: #333;">TravianAssistant Setup</h3>
-          <p style="color: #666;">Enter your email for personalized AI memory across sessions:</p>
-          <input type="email" id="tla-email-input" placeholder="your.email@example.com" style="
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            margin: 10px 0;
-            box-sizing: border-box;
-          "/>
-          <p style="font-size: 11px; color: #999;">
-            Your email is hashed locally for privacy. We never store or see your actual email.
-          </p>
-          <div style="display: flex; gap: 10px; justify-content: flex-end;">
-            <button id="tla-email-skip" style="
-              padding: 8px 16px;
-              border: 1px solid #ddd;
-              background: white;
-              border-radius: 6px;
-              cursor: pointer;
-            ">Skip (No Memory)</button>
-            <button id="tla-email-submit" style="
-              padding: 8px 16px;
-              background: #3498db;
-              color: white;
-              border: none;
-              border-radius: 6px;
-              cursor: pointer;
-            ">Start</button>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(modal);
-      
-      document.getElementById('tla-email-submit').addEventListener('click', () => {
-        const email = document.getElementById('tla-email-input').value;
-        if (email && email.includes('@')) {
-          modal.remove();
-          resolve(email);
-        } else {
-          alert('Please enter a valid email address');
-        }
-      });
-      
-      document.getElementById('tla-email-skip').addEventListener('click', () => {
-        modal.remove();
-        resolve(null);
-      });
-      
-      document.getElementById('tla-email-input').focus();
-    });
+  function generateAccountId() {
+    const id = 'user_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('TLA_ACCOUNT_ID', id);
+    return id;
   }
   
   class TravianHUD {
@@ -148,14 +43,7 @@
       this.chatOpen = false;
       this.chatMessages = [];
       this.conversationHistory = [];
-      
-      // Initialize user first, then continue
-      this.initUser().then(() => this.init());
-    }
-    
-    async initUser() {
-      CONFIG.userId = await getUserId();
-      console.log('[TLA] User initialized:', CONFIG.userId);
+      this.init();
     }
     
     async init() {
@@ -165,52 +53,9 @@
       await this.loadStoredData();
       this.startDataCollection();
       this.loadPosition();
-      
-      // Set up URL monitoring for navigation changes
-      this.setupUrlMonitoring();
-      
-      // Initial checks
-      this.checkCurrentPage();
-    }
-    
-    setupUrlMonitoring() {
-      // Monitor for URL changes (single-page app navigation)
-      let lastUrl = location.href;
-      new MutationObserver(() => {
-        const url = location.href;
-        if (url !== lastUrl) {
-          lastUrl = url;
-          console.log('[TLA] Navigation detected to:', url);
-          this.checkCurrentPage();
-        }
-      }).observe(document, { subtree: true, childList: true });
-      
-      // Also listen for popstate events
-      window.addEventListener('popstate', () => {
-        console.log('[TLA] Popstate navigation');
-        this.checkCurrentPage();
-      });
-    }
-    
-    checkCurrentPage() {
-      const url = window.location.href;
-      
-      // Check for culture building pages
-      if (url.includes('gid=24') || url.includes('gid=25') || 
-          url.includes('gid=26') || url.includes('gid=29')) {
-        setTimeout(() => this.captureCulturePoints(), 500);
-      }
-      
-      // Check for hero attributes page
-      if (url.includes('/hero/attributes')) {
-        console.log('[TLA] On hero attributes page - capturing data...');
-        setTimeout(() => this.captureHeroData(), 500);
-      }
-      
-      // Check for overview page
-      if (url.includes('dorf1.php')) {
-        setTimeout(() => this.captureProduction(), 500);
-      }
+      this.captureCulturePoints();
+      this.captureProduction();
+      this.captureHeroData();
     }
     
     createHUD() {
@@ -294,7 +139,7 @@
             <div class="hero-stat">Fighting Strength: <span id="ta-hero-fighting">-</span></div>
             <div class="hero-stat">Off Bonus: <span id="ta-hero-off-bonus">-</span>%</div>
             <div class="hero-stat">Def Bonus: <span id="ta-hero-def-bonus">-</span>%</div>
-            <div class="hero-stat">Resources: <span id="ta-hero-resources">-</span></div>
+            <div class="hero-stat">Resource Bonus: <span id="ta-hero-resources">-</span>%</div>
           </div>
         </div>
         
@@ -705,7 +550,7 @@
       chatWindow.style.display = this.chatOpen ? 'flex' : 'none';
       
       if (this.chatOpen && this.chatMessages.length === 0) {
-        const welcomeMsg = 'Welcome! I am your Travian Legends strategic advisor for this ' + CONFIG.serverSpeed + 'x speed server.\n\nBased on your current data, you have ' + (this.gameData.culturePoints?.hoursRemaining || 'unknown') + ' hours until your next settlement.\n\nHow can I help optimize your gameplay today?';
+        const welcomeMsg = 'Welcome! I\'m your Travian Legends strategic advisor for this ' + CONFIG.serverSpeed + 'x speed server.\n\nBased on your current data, you have ' + (this.gameData.culturePoints?.hoursRemaining || 'unknown') + ' hours until your next settlement.\n\nHow can I help optimize your gameplay today?';
         this.addMessage('ai', welcomeMsg);
       }
     }
@@ -751,190 +596,183 @@
     }
     
     async loadStoredData() {
+      // Load stored CP data
       const storedCP = localStorage.getItem('TLA_CP_DATA');
       if (storedCP) {
         this.gameData.culturePoints = JSON.parse(storedCP);
         console.log('[TLA] Loaded stored CP data:', this.gameData.culturePoints);
       }
       
+      // Load stored production data
       const storedProd = localStorage.getItem('TLA_PRODUCTION');
       if (storedProd) {
         this.gameData.production = JSON.parse(storedProd);
         console.log('[TLA] Loaded stored production:', this.gameData.production);
       }
       
+      // Load stored hero data
       const storedHero = localStorage.getItem('TLA_HERO_DATA');
       if (storedHero) {
         this.gameData.heroData = JSON.parse(storedHero);
         console.log('[TLA] Loaded stored hero data:', this.gameData.heroData);
-        this.updateHeroDisplay();
       }
     }
     
     captureCulturePoints() {
-      console.log('[TLA] Capturing culture points...');
-      const cpData = {};
-      const bodyText = document.body.innerText;
-      
-      const currentMatch = bodyText.match(/Culture points produced so far[\s\S]*?(\d{3,})/);
-      if (currentMatch) cpData.current = parseInt(currentMatch[1]);
-      
-      const neededMatch = bodyText.match(/Next village controllable at[\s\S]*?(\d{3,})/);
-      if (neededMatch) cpData.needed = parseInt(neededMatch[1]);
-      
-      const deficitMatch = bodyText.match(/Culture points still needed[\s\S]*?(\d{3,})/);
-      if (deficitMatch) cpData.deficit = parseInt(deficitMatch[1]);
-      
-      document.querySelectorAll('td').forEach(cell => {
-        const text = cell.textContent?.trim();
-        if (text && /^\d{3,5}$/.test(text)) {
-          const num = parseInt(text);
-          if (num > 5000 && num < 10000) cpData.totalPerDay = num;
+      // Check if we're on a culture building page
+      if (window.location.href.includes('gid=24') || // Town Hall
+          window.location.href.includes('gid=25') || // Residence
+          window.location.href.includes('gid=26') || // Palace
+          window.location.href.includes('gid=29')) { // Command Center
+        
+        console.log('[TLA] On culture building - capturing CP...');
+        const cpData = {};
+        const bodyText = document.body.innerText;
+        
+        // Extract CP values using regex
+        const currentMatch = bodyText.match(/Culture points produced so far[\s\S]*?(\d{3,})/);
+        if (currentMatch) cpData.current = parseInt(currentMatch[1]);
+        
+        const neededMatch = bodyText.match(/Next village controllable at[\s\S]*?(\d{3,})/);
+        if (neededMatch) cpData.needed = parseInt(neededMatch[1]);
+        
+        const deficitMatch = bodyText.match(/Culture points still needed[\s\S]*?(\d{3,})/);
+        if (deficitMatch) cpData.deficit = parseInt(deficitMatch[1]);
+        
+        // Look for per day production
+        document.querySelectorAll('td').forEach(cell => {
+          const text = cell.textContent?.trim();
+          if (text && /^\d{3,5}$/.test(text)) {
+            const num = parseInt(text);
+            if (num > 5000 && num < 10000) cpData.totalPerDay = num;
+          }
+        });
+        
+        // Calculate hours remaining
+        if (cpData.deficit && cpData.totalPerDay) {
+          cpData.hoursRemaining = Math.ceil((cpData.deficit / cpData.totalPerDay) * 24);
         }
-      });
-      
-      if (cpData.deficit && cpData.totalPerDay) {
-        cpData.hoursRemaining = Math.ceil((cpData.deficit / cpData.totalPerDay) * 24);
-      }
-      
-      if (cpData.current) {
-        this.gameData.culturePoints = cpData;
-        localStorage.setItem('TLA_CP_DATA', JSON.stringify({
-          ...cpData,
-          timestamp: new Date().toISOString()
-        }));
-        console.log('[TLA] Captured CP data:', cpData);
-        this.updateDisplay();
+        
+        // Store if found
+        if (cpData.current) {
+          this.gameData.culturePoints = cpData;
+          localStorage.setItem('TLA_CP_DATA', JSON.stringify({
+            ...cpData,
+            timestamp: new Date().toISOString()
+          }));
+          console.log('[TLA] Captured CP data:', cpData);
+        }
       }
     }
     
     captureProduction() {
-      console.log('[TLA] Capturing production data...');
-      const production = {};
-      
-      document.querySelectorAll('.villageInfobox.production .num').forEach((elem, idx) => {
-        const value = parseInt(elem.textContent.replace(/[^\d]/g, ''));
-        if (value) {
-          if (idx === 0) production.wood = value;
-          else if (idx === 1) production.clay = value;
-          else if (idx === 2) production.iron = value;
-          else if (idx === 3) production.crop = value;
+      // Check if we're on overview page
+      if (window.location.href.includes('dorf1.php')) {
+        console.log('[TLA] On overview page - capturing production...');
+        const production = {};
+        
+        // Look for production values
+        document.querySelectorAll('.villageInfobox.production .num').forEach((elem, idx) => {
+          const value = parseInt(elem.textContent.replace(/[^\d]/g, ''));
+          if (value) {
+            if (idx === 0) production.wood = value;
+            else if (idx === 1) production.clay = value;
+            else if (idx === 2) production.iron = value;
+            else if (idx === 3) production.crop = value;
+          }
+        });
+        
+        // Store if found
+        if (production.wood) {
+          this.gameData.production = production;
+          localStorage.setItem('TLA_PRODUCTION', JSON.stringify({
+            ...production,
+            timestamp: new Date().toISOString()
+          }));
+          console.log('[TLA] Captured production:', production);
         }
-      });
-      
-      if (production.wood) {
-        this.gameData.production = production;
-        localStorage.setItem('TLA_PRODUCTION', JSON.stringify({
-          ...production,
-          timestamp: new Date().toISOString()
-        }));
-        console.log('[TLA] Captured production:', production);
-        this.updateDisplay();
       }
     }
     
     captureHeroData() {
-      console.log('[TLA] Capturing hero data from /hero/attributes page...');
-      const heroData = {};
-      
-      // Look for the hero level in the page header/title
-      const pageText = document.body.innerText;
-      
-      // Extract level (format: "McCarthy - level 39")
-      const levelMatch = pageText.match(/level\s+(\d+)/i);
-      if (levelMatch) {
-        heroData.level = parseInt(levelMatch[1]);
-        console.log('[TLA] Found level:', heroData.level);
-      }
-      
-      // Look for table rows with hero data
-      const rows = document.querySelectorAll('tr, .row');
-      rows.forEach(row => {
-        const text = row.textContent || '';
+      // Check if we're on hero attributes page
+      if (window.location.href.includes('hero.php') || 
+          window.location.href.includes('/hero/attributes') ||
+          window.location.href.includes('hero/')) {
         
-        // Experience
-        if (text.includes('Experience')) {
-          const match = text.match(/(\d+)/);
-          if (match) {
-            heroData.experience = parseInt(match[1]);
-            console.log('[TLA] Found experience:', heroData.experience);
+        console.log('[TLA] On hero page - capturing hero data...');
+        const heroData = {};
+        
+        // Extract hero level from header - your test showed this works
+        const heroHeader = document.querySelector('#content h1');
+        if (heroHeader) {
+          const levelMatch = heroHeader.textContent.match(/level\s+(\d+)/i);
+          if (levelMatch) {
+            heroData.level = parseInt(levelMatch[1]);
+            console.log('[TLA] Found level:', heroData.level);
           }
         }
         
-        // Health
-        if (text.includes('Health')) {
-          const match = text.match(/(\d+)\s*%/);
-          if (match) {
-            heroData.health = parseInt(match[1]);
-            console.log('[TLA] Found health:', heroData.health);
-          }
+        // Extract experience from page text - your test showed "Experience" exists
+        const bodyText = document.body.textContent;
+        const expMatch = bodyText.match(/Experience[\s\S]*?(\d{4,})/i) || 
+                        bodyText.match(/(\d{5,})\s*exp/i) ||
+                        bodyText.match(/experience[\s:]*(\d{4,})/i);
+        if (expMatch) {
+          heroData.experience = parseInt(expMatch[1]);
+          console.log('[TLA] Found experience:', heroData.experience);
         }
         
-        // Fighting strength (likely 4 digits like 5275)
-        if (text.includes('Fighting') || text.includes('strength')) {
-          const match = text.match(/(\d{4,5})/);
-          if (match) {
-            heroData.fightingStrength = parseInt(match[1]);
-            console.log('[TLA] Found fighting strength:', heroData.fightingStrength);
-          }
+        // Extract health percentage
+        const healthMatch = bodyText.match(/Health[\s\S]*?(\d+)%/i) || 
+                           bodyText.match(/(\d+)%.*health/i);
+        if (healthMatch) {
+          heroData.health = parseInt(healthMatch[1]);
+          console.log('[TLA] Found health:', heroData.health);
         }
         
-        // Speed
-        if (text.includes('Speed')) {
-          const match = text.match(/(\d+)/);
-          if (match) {
-            heroData.speed = parseInt(match[1]);
-            console.log('[TLA] Found speed:', heroData.speed);
-          }
+        // Extract fighting strength
+        const strengthMatch = bodyText.match(/Fighting strength[\s\S]*?(\d{3,})/i) || 
+                             bodyText.match(/(\d{3,})\s*fighting/i);
+        if (strengthMatch) {
+          heroData.fightingStrength = parseInt(strengthMatch[1]);
+          console.log('[TLA] Found fighting strength:', heroData.fightingStrength);
         }
         
-        // Off Bonus
-        if (text.includes('Off') && text.includes('Bonus')) {
-          const match = text.match(/([\d.]+)\s*%/);
-          if (match) {
-            heroData.offBonus = parseFloat(match[1]);
-            console.log('[TLA] Found off bonus:', heroData.offBonus);
-          }
+        // Extract bonuses
+        const offBonusMatch = bodyText.match(/Off bonus[\s\S]*?([\d.]+)%/i);
+        if (offBonusMatch) {
+          heroData.offBonus = parseFloat(offBonusMatch[1]);
+          console.log('[TLA] Found off bonus:', heroData.offBonus);
         }
         
-        // Def Bonus
-        if (text.includes('Def') && text.includes('Bonus')) {
-          const match = text.match(/([\d.]+)\s*%/);
-          if (match) {
-            heroData.defBonus = parseFloat(match[1]);
-            console.log('[TLA] Found def bonus:', heroData.defBonus);
-          }
+        const defBonusMatch = bodyText.match(/Def bonus[\s\S]*?([\d.]+)%/i);
+        if (defBonusMatch) {
+          heroData.defBonus = parseFloat(defBonusMatch[1]);
+          console.log('[TLA] Found def bonus:', heroData.defBonus);
         }
-      });
-      
-      // Look for hero resource production
-      const productionSection = document.querySelector('.heroProduction, [class*="production"]');
-      if (productionSection) {
-        const inputs = productionSection.querySelectorAll('input[type="radio"]:checked');
-        const values = productionSection.textContent.match(/\d{4,}/g);
-        if (values && values.length > 0) {
-          const prodValue = parseInt(values[0]);
-          heroData.resourceProduction = {
-            wood: prodValue,
-            clay: prodValue,
-            iron: prodValue,
-            crop: prodValue
-          };
-          console.log('[TLA] Found resource production:', prodValue);
+        
+        const resourceBonusMatch = bodyText.match(/Resource Bonus[\s\S]*?(\d+)%/i);
+        if (resourceBonusMatch) {
+          heroData.resourceBonus = parseInt(resourceBonusMatch[1]);
+          console.log('[TLA] Found resource bonus:', heroData.resourceBonus);
         }
-      }
-      
-      // Store if we found any data
-      if (Object.keys(heroData).length > 0) {
-        this.gameData.heroData = { ...this.gameData.heroData, ...heroData };
-        localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
-          ...this.gameData.heroData,
-          timestamp: new Date().toISOString()
-        }));
-        console.log('[TLA] Stored hero data:', this.gameData.heroData);
-        this.updateHeroDisplay();
-      } else {
-        console.log('[TLA] No hero data found on this page');
+        
+        // Debug logging
+        console.log('[TLA] Hero page URL:', window.location.href);
+        console.log('[TLA] Hero data extracted:', heroData);
+        
+        // Store if we found any data
+        if (heroData.level || heroData.experience || heroData.health) {
+          this.gameData.heroData = heroData;
+          localStorage.setItem('TLA_HERO_DATA', JSON.stringify({
+            ...heroData,
+            timestamp: new Date().toISOString()
+          }));
+          console.log('[TLA] Captured and stored hero data:', heroData);
+        } else {
+          console.log('[TLA] No hero data found on this page');
+        }
       }
     }
     
@@ -942,21 +780,11 @@
       const hero = this.gameData.heroData || {};
       document.getElementById('ta-hero-level').textContent = hero.level || '-';
       document.getElementById('ta-hero-exp').textContent = hero.experience ? this.formatNumber(hero.experience) : '-';
-      document.getElementById('ta-hero-health').textContent = hero.health !== undefined ? hero.health + '%' : '-';
+      document.getElementById('ta-hero-health').textContent = hero.health !== undefined ? hero.health : '-';
       document.getElementById('ta-hero-fighting').textContent = hero.fightingStrength ? this.formatNumber(hero.fightingStrength) : '-';
-      document.getElementById('ta-hero-off-bonus').textContent = hero.offBonus !== undefined ? hero.offBonus.toFixed(1) + '%' : '-';
-      document.getElementById('ta-hero-def-bonus').textContent = hero.defBonus !== undefined ? hero.defBonus.toFixed(1) + '%' : '-';
-      
-      if (hero.resourceProduction) {
-        const prod = hero.resourceProduction;
-        const resourceText = this.formatNumber(prod.wood || 0) + '/' + 
-                            this.formatNumber(prod.clay || 0) + '/' + 
-                            this.formatNumber(prod.iron || 0) + '/' + 
-                            this.formatNumber(prod.crop || 0) + ' /h';
-        document.getElementById('ta-hero-resources').textContent = resourceText;
-      } else {
-        document.getElementById('ta-hero-resources').textContent = '-';
-      }
+      document.getElementById('ta-hero-off-bonus').textContent = hero.offBonus !== undefined ? hero.offBonus.toFixed(1) : '-';
+      document.getElementById('ta-hero-def-bonus').textContent = hero.defBonus !== undefined ? hero.defBonus.toFixed(1) : '-';
+      document.getElementById('ta-hero-resources').textContent = hero.resourceBonus !== undefined ? hero.resourceBonus : '-';
     }
     
     detectTribe() {
@@ -993,7 +821,7 @@
              '## BACKEND ACCESS\n' +
              'You can query these endpoints:\n' +
              '- GET ' + backendUrl + '/api/game-data\n' +
-             '- GET ' + backendUrl + '/api/villages/' + CONFIG.userId + '\n\n' +
+             '- GET ' + backendUrl + '/api/villages/' + CONFIG.accountId + '\n\n' +
              'Always provide strategic advice specific to Travian Legends gameplay.';
     }
     
@@ -1008,38 +836,25 @@
       const loadingMessage = this.addMessage('ai', '...');
       
       try {
-        // Fetch game mechanics if relevant keywords detected
-        let gameMechanics = null;
-        if (message.match(/build|upgrade|troop|hero|settle|culture|CP|resource/i)) {
-          gameMechanics = await this.fetchGameMechanics(message);
-        }
+        const systemPrompt = this.buildSystemPrompt();
+        const contextualMessage = '[Travian Legends ' + CONFIG.serverSpeed + 'x server]\n' + message;
         
-        // Build comprehensive context for mem0 and Claude
-        const fullContext = {
-          userId: CONFIG.userId,  // Critical for mem0 segregation
-          message: message,
-          gameState: {
-            resources: this.gameData.resources,
-            production: this.gameData.production,
-            culturePoints: this.gameData.culturePoints,
-            heroData: this.gameData.heroData,
-            villages: this.gameData.villages,
-            population: this.gameData.population,
-            tribe: this.gameData.tribe || 'unknown',
-            serverSpeed: CONFIG.serverSpeed,
-            timestamp: new Date().toISOString()
-          },
-          gameMechanics: gameMechanics,
-          conversationId: sessionStorage.getItem('TLA_CONVERSATION_ID') || this.generateConversationId()
+        this.conversationHistory.push({
+          role: 'user',
+          content: contextualMessage
+        });
+        
+        const request = {
+          model: CONFIG.modelName,
+          max_tokens: CONFIG.maxTokens,
+          system: systemPrompt,
+          messages: this.conversationHistory
         };
         
-        console.log('[TLA] Sending to AI with full context:', fullContext);
-        
-        // Send to Vercel proxy (which will handle mem0)
         const response = await fetch(CONFIG.proxyUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(fullContext)
+          body: JSON.stringify(request)
         });
         
         if (!response.ok) throw new Error('API error: ' + response.status);
@@ -1050,11 +865,10 @@
         if (data.content && data.content[0]) {
           const aiResponse = data.content[0].text;
           this.addMessage('ai', aiResponse);
-          
-          this.conversationHistory.push(
-            { role: 'user', content: message },
-            { role: 'assistant', content: aiResponse }
-          );
+          this.conversationHistory.push({
+            role: 'assistant',
+            content: aiResponse
+          });
           
           if (this.conversationHistory.length > 20) {
             this.conversationHistory = this.conversationHistory.slice(-20);
@@ -1065,33 +879,6 @@
         this.removeLoadingMessage(loadingMessage);
         this.addMessage('ai', 'Error: ' + error.message);
       }
-    }
-    
-    async fetchGameMechanics(query) {
-      try {
-        const response = await fetch(CONFIG.backendUrl + '/api/game-mechanics-context', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: query,
-            tribe: this.gameData.tribe,
-            villages: this.gameData.villages?.length || 1
-          })
-        });
-        
-        if (response.ok) {
-          return await response.json();
-        }
-      } catch (error) {
-        console.error('[TLA] Failed to fetch game mechanics:', error);
-      }
-      return null;
-    }
-    
-    generateConversationId() {
-      const id = 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      sessionStorage.setItem('TLA_CONVERSATION_ID', id);
-      return id;
     }
     
     removeLoadingMessage(loadingMessage) {
@@ -1138,11 +925,15 @@
     
     collectData() {
       try {
+        // Get server info
         const serverName = window.location.hostname.split('.')[0] || null;
         const playerName = document.querySelector('.playerName')?.textContent || null;
+        
+        // Get current village
         const villageNameElem = document.querySelector('#villageNameField');
         const villageName = villageNameElem?.value?.trim() || null;
         
+        // Get coordinates
         const coordX = document.querySelector('.coordinateX')?.textContent;
         const coordY = document.querySelector('.coordinateY')?.textContent;
         let villageCoords = null;
@@ -1153,8 +944,10 @@
           };
         }
         
+        // Detect tribe
         const tribe = this.detectTribe();
         
+        // Get resources
         const resources = {
           wood: parseInt(document.querySelector('#l1')?.textContent?.replace(/[^\d]/g, '') || 0),
           clay: parseInt(document.querySelector('#l2')?.textContent?.replace(/[^\d]/g, '') || 0),
@@ -1162,12 +955,14 @@
           crop: parseInt(document.querySelector('#l4')?.textContent?.replace(/[^\d]/g, '') || 0)
         };
         
+        // Get population
         let population = 0;
         document.querySelectorAll('[class*="inhabitants"], [class*="population"]').forEach(elem => {
           const match = elem.textContent?.match(/(\d+)/);
           if (match) population = Math.max(population, parseInt(match[1]));
         });
         
+        // Get villages from list
         const villages = [];
         document.querySelectorAll('#sidebarBoxVillagelist .listEntry').forEach(entry => {
           const name = entry.querySelector('.name')?.textContent?.trim();
@@ -1185,6 +980,7 @@
           }
         });
         
+        // Update game data
         this.gameData = {
           ...this.gameData,
           serverName,
@@ -1198,6 +994,7 @@
           timestamp: new Date().toISOString()
         };
         
+        // Update display
         this.updateDisplay();
         this.syncToBackend();
         
@@ -1207,9 +1004,11 @@
     }
     
     updateDisplay() {
+      // Update server info
       const serverInfo = (this.gameData.serverName || 'Server') + ' - ' + (this.gameData.tribe || 'Unknown');
       document.getElementById('ta-server-info').textContent = serverInfo;
       
+      // Update culture points
       const cp = this.gameData.culturePoints || {};
       if (cp.current && cp.needed) {
         document.getElementById('ta-cp').textContent = this.formatNumber(cp.current) + '/' + this.formatNumber(cp.needed);
@@ -1217,6 +1016,7 @@
         document.getElementById('ta-cp-time').textContent = cp.hoursRemaining ? cp.hoursRemaining + 'h left' : '-';
       }
       
+      // Update resources with production
       const res = this.gameData.resources || {};
       const prod = this.gameData.production || {};
       
@@ -1232,6 +1032,7 @@
       document.getElementById('ta-crop').textContent = this.formatNumber(res.crop || 0);
       document.getElementById('ta-crop-prod').textContent = prod.crop ? '+' + this.formatNumber(prod.crop) + '/h' : '-';
       
+      // Update population only
       document.getElementById('ta-pop').textContent = this.gameData.population || '-';
     }
     
@@ -1247,7 +1048,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: CONFIG.userId,  // Changed from accountId
+            accountId: CONFIG.accountId,
             village: this.gameData
           })
         });
